@@ -1,12 +1,13 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.spotless)
 }
 
 kotlin {
     jvmToolchain(21)
     compilerOptions {
         freeCompilerArgs.addAll(
-            "-Xjspecify-annotations=strict"
+            "-Xjspecify-annotations=strict",
         )
     }
 }
@@ -20,4 +21,13 @@ dependencies {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+}
+
+spotless {
+    kotlin {
+        ktfmt().kotlinlangStyle()
+    }
+    kotlinGradle {
+        ktlint()
+    }
 }

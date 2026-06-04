@@ -6,15 +6,21 @@
 
   "[java]": {
     "editor.formatOnSave": true,
+    "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
     "editor.tabSize": 4
   },
   "[kotlin]": {
     "editor.formatOnSave": true,
+    "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
     "editor.tabSize": 4
   },
   "[scala]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "scalameta.metals",
     "editor.tabSize": 2
   },
+
+  "spotlessGradle.format.enable": true,
 
   "files.exclude": {
     "**/.gradle/": true,

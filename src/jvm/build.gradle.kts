@@ -2,11 +2,15 @@ import com.vanniktech.maven.publish.JavaLibrary
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.SourcesJar
 import me.champeau.gradle.japicmp.JapicmpTask
+import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     `java-library`
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.japicmp)
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.errorprone)
+    alias(libs.plugins.nullaway)
 }
 
 group = "io.event-driven"
@@ -19,6 +23,15 @@ java {
 tasks.withType<JavaCompile>().configureEach {
     options.release = 21
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
+    options.errorprone {
+        disableWarningsInGeneratedCode = true
+        excludedPaths = ".*/build/generated/.*"
+        error("NullAway")
+    }
+}
+
+nullaway {
+    onlyNullMarked = true
 }
 
 val testJdk = providers.gradleProperty("testJdk").map(String::toInt).getOrElse(26)
@@ -29,9 +42,26 @@ tasks.withType<Test>().configureEach {
 
 dependencies {
     api(libs.jspecify)
+    errorprone(libs.errorprone.core)
+    errorprone(libs.errorprone.contrib)
+    errorprone(libs.nullaway)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+spotless {
+    java {
+        palantirJavaFormat(
+            libs.versions.palantir.java.format
+                .get(),
+        )
+        removeUnusedImports()
+        formatAnnotations()
+    }
+    kotlinGradle {
+        ktlint()
+    }
 }
 
 mavenPublishing {
@@ -67,9 +97,10 @@ mavenPublishing {
 
 val baseline = providers.gradleProperty("baselineVersion").orNull?.takeIf { it.isNotBlank() }
 if (baseline != null) {
-    val baselineConfig = configurations.detachedConfiguration(
-        dependencies.create("io.event-driven:strictland:$baseline")
-    )
+    val baselineConfig =
+        configurations.detachedConfiguration(
+            dependencies.create("io.event-driven:strictland:$baseline"),
+        )
     tasks.register<JapicmpTask>("japicmp") {
         oldClasspath.from(baselineConfig)
         newClasspath.from(tasks.named<Jar>("jar").map { it.archiveFile })

@@ -1,5 +1,6 @@
 plugins {
     scala
+    alias(libs.plugins.spotless)
 }
 
 java {
@@ -21,4 +22,13 @@ dependencies {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+}
+
+spotless {
+    scala {
+        scalafmt(libs.versions.scalafmt.get()).configFile(rootProject.file(".scalafmt.conf"))
+    }
+    kotlinGradle {
+        ktlint()
+    }
 }

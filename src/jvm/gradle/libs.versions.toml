@@ -3,6 +3,14 @@ kotlin = "2.3.21"
 scala = "3.8.3"
 jspecify = "1.0.0"
 junit = "5.12.2"
+spotless = "8.6.0"
+palantir-java-format = "2.91.0"
+scalafmt = "3.11.1"
+errorprone = "2.49.0"
+errorprone-plugin = "5.1.0"
+errorprone-support = "0.29.0"
+nullaway = "0.13.4"
+nullaway-plugin = "3.0.0"
 
 [libraries]
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
@@ -10,8 +18,14 @@ scala-library = { module = "org.scala-lang:scala3-library_3", version.ref = "sca
 scalatest = { module = "org.scalatest:scalatest_3", version = "3.2.19" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
+errorprone-contrib = { module = "tech.picnic.error-prone-support:error-prone-contrib", version.ref = "errorprone-support" }
+nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 maven-publish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 japicmp = { id = "me.champeau.gradle.japicmp", version = "0.4.6" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone-plugin" }
+nullaway = { id = "net.ltgt.nullaway", version.ref = "nullaway-plugin" }
