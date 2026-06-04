@@ -1,0 +1,26 @@
+{
+  "java.import.gradle.enabled": true,
+  "java.import.gradle.wrapper.enabled": true,
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.configuration.updateBuildConfiguration": "automatic",
+
+  "[java]": {
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4
+  },
+  "[kotlin]": {
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4
+  },
+  "[scala]": {
+    "editor.tabSize": 2
+  },
+
+  "files.exclude": {
+    "**/.gradle/": true,
+    "**/build/": true
+  },
+
+  "gradle.nestedProjects": true,
+  "gradle.projectRootLocations": ["src/jvm"]
+}
