@@ -4,14 +4,16 @@
   "java.compile.nullAnalysis.mode": "automatic",
   "java.configuration.updateBuildConfiguration": "automatic",
 
+  "java.format.settings.google.style": "palantir",
+  "java.format.settings.google.version": "2.91.0",
+  "java.format.settings.google.mode": "native-binary",
+
   "[java]": {
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
+    "editor.defaultFormatter": "josevseb.google-java-format-for-vs-code",
     "editor.tabSize": 4
   },
   "[kotlin]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
     "editor.tabSize": 4
   },
   "[scala]": {
@@ -20,13 +22,16 @@
     "editor.tabSize": 2
   },
 
-  "spotlessGradle.format.enable": true,
-
   "files.exclude": {
     "**/.gradle/": true,
     "**/build/": true
   },
 
   "gradle.nestedProjects": true,
-  "gradle.projectRootLocations": ["src/jvm"]
+  "gradle.projectRootLocations": [
+    "src/jvm"
+  ],
+  "files.watcherExclude": {
+    "**/target": true
+  }
 }

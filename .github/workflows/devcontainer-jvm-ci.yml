@@ -1,0 +1,31 @@
+name: Dev Container JVM CI
+
+on:
+  push:
+    paths:
+      - '.devcontainer/jvm/**'
+      - 'src/jvm/**'
+      - '.github/workflows/devcontainer-jvm-ci.yml'
+  pull_request:
+    paths:
+      - '.devcontainer/jvm/**'
+      - 'src/jvm/**'
+      - '.github/workflows/devcontainer-jvm-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jvm-devcontainer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build dev container and run the JVM build inside it
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/jvm/devcontainer.json
+          push: never
+          runCmd: cd src/jvm && ./gradlew build

@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+# Format staged JVM sources with Spotless before committing, so the build's
+# spotlessCheck never fails on formatting. The Gradle build is the source of
+# truth; this hook keeps commits clean regardless of which editor produced them.
+set -eu
+
+staged=$(git diff --cached --name-only --diff-filter=ACM -- src/jvm | grep -E '\.(java|kts)$' || true)
+[ -z "$staged" ] && exit 0
+
+echo "pre-commit: running Spotless on staged JVM sources..."
+( cd src/jvm && ./gradlew spotlessApply --quiet )
+
+# Re-stage the files Spotless may have reformatted.
+printf '%s\n' "$staged" | xargs git add

@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
-class StrictlandTest {
+final class StrictlandTest {
 
     @Test
     void greet_returnsExpectedMessage() {

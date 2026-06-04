@@ -3,8 +3,13 @@ name: JVM Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'jvm-*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 0.1.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,18 +20,27 @@ jobs:
     environment: maven-central
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 26
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#jvm-}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Publish to Maven Central
         working-directory: src/jvm
-        run: ./gradlew publishToMavenCentral -Pversion=${GITHUB_REF_NAME#v} --no-configuration-cache
+        run: ./gradlew publishToMavenCentral -Pversion=${{ steps.version.outputs.version }} --no-configuration-cache
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
@@ -34,6 +48,8 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
+          tag_name: jvm-${{ steps.version.outputs.version }}
+          name: Strictland JVM ${{ steps.version.outputs.version }}
           generate_release_notes: true
