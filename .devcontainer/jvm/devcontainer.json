@@ -15,13 +15,15 @@
         "vscjava.vscode-java-pack",
         "vscjava.vscode-gradle",
         "fwcd.kotlin",
-        "scalameta.metals"
+        "scalameta.metals",
+        "richardwillis.vscode-spotless-gradle"
       ],
       "settings": {
         "java.import.gradle.enabled": true,
         "java.import.gradle.wrapper.enabled": true,
         "java.compile.nullAnalysis.mode": "automatic",
         "java.configuration.updateBuildConfiguration": "automatic",
+        "spotlessGradle.format.enable": true,
         "gradle.nestedProjects": true,
         "gradle.projectRootLocations": ["src/jvm"]
       }
