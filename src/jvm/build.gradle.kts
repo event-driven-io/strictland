@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.japicmp)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.palantir.java.format.idea)
     alias(libs.plugins.errorprone)
     alias(libs.plugins.nullaway)
 }
@@ -44,6 +45,7 @@ dependencies {
     api(libs.jspecify)
     errorprone(libs.errorprone.core)
     errorprone(libs.errorprone.contrib)
+    errorprone(libs.errorprone.refaster)
     errorprone(libs.nullaway)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

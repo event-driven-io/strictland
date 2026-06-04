@@ -20,6 +20,7 @@ junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 errorprone-contrib = { module = "tech.picnic.error-prone-support:error-prone-contrib", version.ref = "errorprone-support" }
+errorprone-refaster = { module = "tech.picnic.error-prone-support:refaster-runner", version.ref = "errorprone-support" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 
 [plugins]
@@ -27,5 +28,6 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 maven-publish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
 japicmp = { id = "me.champeau.gradle.japicmp", version = "0.4.6" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+palantir-java-format-idea = { id = "com.palantir.java-format-idea", version.ref = "palantir-java-format" }
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone-plugin" }
 nullaway = { id = "net.ltgt.nullaway", version.ref = "nullaway-plugin" }

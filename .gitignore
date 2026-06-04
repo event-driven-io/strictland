@@ -1,0 +1,13 @@
+# IntelliJ IDEA: ignore everything the IDE rewrites per-user (workspace.xml, ...)
+# or regenerates from the Gradle import (gradle.xml, misc.xml, modules, *.iml).
+# Track only hand-authored shared config — here, the recommended-plugins list.
+.idea/*
+!.idea/externalDependencies.xml
+
+# Scala tooling regenerated at the workspace root by Metals / scala-cli / Bloop.
+# (src/jvm/.gitignore is path-scoped and can't reach these root-level dirs.)
+.metals/
+.bloop/
+.bsp/
+.scala-build/
+.ammonite/

@@ -4,7 +4,6 @@
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
       "version": "26",
-      "additionalVersions": "21",
       "jdkDistro": "tem",
       "installGradle": false
     }
@@ -16,18 +15,20 @@
         "vscjava.vscode-gradle",
         "fwcd.kotlin",
         "scalameta.metals",
-        "richardwillis.vscode-spotless-gradle"
+        "josevseb.google-java-format-for-vs-code"
       ],
       "settings": {
         "java.import.gradle.enabled": true,
         "java.import.gradle.wrapper.enabled": true,
         "java.compile.nullAnalysis.mode": "automatic",
         "java.configuration.updateBuildConfiguration": "automatic",
-        "spotlessGradle.format.enable": true,
+        "java.format.settings.google.style": "palantir",
+        "java.format.settings.google.version": "2.91.0",
+        "java.format.settings.google.mode": "native-binary",
         "gradle.nestedProjects": true,
         "gradle.projectRootLocations": ["src/jvm"]
       }
     }
   },
-  "postCreateCommand": "cd src/jvm && ./gradlew --version"
+  "postCreateCommand": "git config core.hooksPath .githooks && cd src/jvm && ./gradlew --version"
 }

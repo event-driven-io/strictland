@@ -15,6 +15,13 @@
       "problemMatcher": ["$java"]
     },
     {
+      "label": "assemble",
+      "type": "shell",
+      "command": "./gradlew assemble",
+      "group": "build",
+      "problemMatcher": ["$java"]
+    },
+    {
       "label": "test",
       "type": "shell",
       "command": "./gradlew test",
