@@ -16,7 +16,15 @@
         "vscjava.vscode-gradle",
         "fwcd.kotlin",
         "scalameta.metals"
-      ]
+      ],
+      "settings": {
+        "java.import.gradle.enabled": true,
+        "java.import.gradle.wrapper.enabled": true,
+        "java.compile.nullAnalysis.mode": "automatic",
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "gradle.nestedProjects": true,
+        "gradle.projectRootLocations": ["src/jvm"]
+      }
     }
   },
   "postCreateCommand": "cd src/jvm && ./gradlew --version"
