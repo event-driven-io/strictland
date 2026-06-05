@@ -1,37 +1,5 @@
 {
-  "java.import.gradle.enabled": true,
-  "java.import.gradle.wrapper.enabled": true,
-  "java.compile.nullAnalysis.mode": "automatic",
-  "java.configuration.updateBuildConfiguration": "automatic",
-
-  "java.format.settings.google.style": "palantir",
-  "java.format.settings.google.version": "2.91.0",
-  "java.format.settings.google.mode": "native-binary",
-
-  "[java]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "josevseb.google-java-format-for-vs-code",
-    "editor.tabSize": 4
-  },
-  "[kotlin]": {
-    "editor.tabSize": 4
-  },
-  "[scala]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "scalameta.metals",
-    "editor.tabSize": 2
-  },
-
-  "files.exclude": {
-    "**/.gradle/": true,
-    "**/build/": true
-  },
-
-  "gradle.nestedProjects": true,
-  "gradle.projectRootLocations": [
-    "src/jvm"
-  ],
-  "files.watcherExclude": {
-    "**/target": true
-  }
+    "files.watcherExclude": {
+        "**/target": true
+    }
 }

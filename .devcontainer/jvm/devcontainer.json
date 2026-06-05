@@ -15,16 +15,14 @@
         "vscjava.vscode-gradle",
         "fwcd.kotlin",
         "scalameta.metals",
-        "josevseb.google-java-format-for-vs-code"
+        "richardwillis.vscode-spotless-gradle"
       ],
       "settings": {
         "java.import.gradle.enabled": true,
         "java.import.gradle.wrapper.enabled": true,
         "java.compile.nullAnalysis.mode": "automatic",
         "java.configuration.updateBuildConfiguration": "automatic",
-        "java.format.settings.google.style": "palantir",
-        "java.format.settings.google.version": "2.91.0",
-        "java.format.settings.google.mode": "native-binary",
+        "spotlessGradle.format.enable": true,
         "gradle.nestedProjects": true,
         "gradle.projectRootLocations": ["src/jvm"]
       }

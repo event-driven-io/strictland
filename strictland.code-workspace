@@ -1,0 +1,45 @@
+{
+  "folders": [
+    {
+      "name": "strictland",
+      "path": "."
+    },
+    {
+      "name": "jvm",
+      "path": "src/jvm"
+    }
+  ],
+  "settings": {
+    "java.import.gradle.enabled": true,
+    "java.import.gradle.wrapper.enabled": true,
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "automatic",
+
+    "spotlessGradle.format.enable": true,
+
+    "[java]": {
+      "editor.formatOnSave": true,
+      "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
+      "editor.codeActionsOnSave": {
+        "source.fixAll.spotlessGradle": "explicit"
+      },
+      "editor.tabSize": 4
+    },
+    "[kotlin]": {
+      "editor.tabSize": 4
+    },
+    "[scala]": {
+      "editor.formatOnSave": true,
+      "editor.defaultFormatter": "scalameta.metals",
+      "editor.tabSize": 2
+    },
+
+    "files.exclude": {
+      "**/.gradle/": true,
+      "**/build/": true
+    },
+    "files.watcherExclude": {
+      "**/target": true
+    }
+  }
+}
