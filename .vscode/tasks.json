@@ -5,13 +5,20 @@
   },
   "tasks": [
     {
-      "label": "build",
+      "label": "compile",
       "type": "shell",
-      "command": "./gradlew build",
+      "command": "./gradlew testClasses",
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "problemMatcher": ["$java"]
+    },
+    {
+      "label": "build (full)",
+      "type": "shell",
+      "command": "./gradlew build",
+      "group": "build",
       "problemMatcher": ["$java"]
     },
     {
@@ -59,6 +66,17 @@
       "label": "clean",
       "type": "shell",
       "command": "./gradlew clean",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "reset build state",
+      "detail": "Deep clean: removes build/ and the .gradle project cache. Use when Spotless reports targets outside the project dir after switching between host and container builds.",
+      "type": "shell",
+      "command": "./gradlew clean && rm -rf .gradle",
+      "windows": {
+        "command": "./gradlew clean; if (Test-Path .gradle) { Remove-Item -Recurse -Force .gradle }"
+      },
       "group": "build",
       "problemMatcher": []
     },

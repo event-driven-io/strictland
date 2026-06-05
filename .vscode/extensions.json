@@ -4,6 +4,6 @@
     "vscjava.vscode-gradle",
     "fwcd.kotlin",
     "scalameta.metals",
-    "josevseb.google-java-format-for-vs-code"
+    "richardwillis.vscode-spotless-gradle"
   ]
 }
