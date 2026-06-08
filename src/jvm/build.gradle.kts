@@ -3,9 +3,11 @@ import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.SourcesJar
 import me.champeau.gradle.japicmp.JapicmpTask
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     `java-library`
+    jacoco
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.japicmp)
     alias(libs.plugins.spotless)
@@ -39,10 +41,26 @@ val testJdk = providers.gradleProperty("testJdk").map(String::toInt).getOrElse(2
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     javaLauncher.set(javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(testJdk) })
+    finalizedBy(tasks.named("jacocoTestReport"))
 }
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("test"))
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.named("check") { dependsOn("jacocoTestReport") }
 
 dependencies {
     api(libs.jspecify)
+    api(libs.jackson.databind)
+    api(libs.jackson.datatype.jsr310)
+    api(libs.approvaltests)
+    api(platform(libs.junit.bom))
+    api(libs.junit.jupiter)
     errorprone(libs.errorprone.core)
     errorprone(libs.errorprone.contrib)
     errorprone(libs.errorprone.refaster)
