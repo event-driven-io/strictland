@@ -1,5 +1,17 @@
 {
     "files.watcherExclude": {
         "**/target": true
-    }
+    },
+    "files.exclude": {
+      "**/.gradle/": true,
+      "**/.metals/": true,
+      "**/.kotlin/": true,
+      "**/.scala-build/": true,
+      "**/build/": true,
+      "**/bin/": true,
+      "node_modules/": true,
+      "**/node_modules/": true,
+      "**/dist/": true,
+      "**/*.tsbuildinfo": true,
+    },
 }

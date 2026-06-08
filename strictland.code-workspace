@@ -17,6 +17,7 @@
 
     "spotlessGradle.format.enable": true,
 
+
     "[java]": {
       "editor.formatOnSave": true,
       "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
@@ -36,7 +37,15 @@
 
     "files.exclude": {
       "**/.gradle/": true,
-      "**/build/": true
+      "**/.metals/": true,
+      "**/.kotlin/": true,
+      "**/.scala-build/": true,
+      "**/build/": true,
+      "**/bin/": true,
+      "node_modules/": true,
+      "**/node_modules/": true,
+      "**/dist/": true,
+      "**/*.tsbuildinfo": true,
     },
     "files.watcherExclude": {
       "**/target": true
