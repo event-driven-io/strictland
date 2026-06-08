@@ -56,6 +56,7 @@ tasks.named("check") { dependsOn("jacocoTestReport") }
 
 dependencies {
     api(libs.jspecify)
+    implementation(libs.classgraph)
     api(libs.jackson.databind)
     api(libs.jackson.datatype.jsr310)
     api(libs.approvaltests)
