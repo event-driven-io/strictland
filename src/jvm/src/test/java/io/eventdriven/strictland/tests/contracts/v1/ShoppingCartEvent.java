@@ -4,7 +4,7 @@ import io.eventdriven.strictland.tests.contracts.v1.productitems.ProductItem;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public sealed interface ShoppingCartEvent {
+public sealed interface ShoppingCartEvent extends HasShoppingCartId {
 
     record ShoppingCartOpened(UUID shoppingCartId, UUID clientId) implements ShoppingCartEvent {}
 

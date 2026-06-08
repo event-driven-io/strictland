@@ -1,12 +1,15 @@
-import io.eventdriven.strictland.Strictland
+import io.eventdriven.strictland.Contract
+import io.eventdriven.strictland.Snapshot
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 class StrictlandSmokeTest {
 
     @Test
     fun `library is consumable from Kotlin`() {
-        val result = Strictland().greet()
-        assertEquals("Hello from Strictland!", result)
+        val contract = Contract.specification()
+        val step = contract.given(Snapshot.forMessageType("SomeEvent"))
+
+        assertNotNull(step)
     }
 }

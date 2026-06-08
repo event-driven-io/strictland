@@ -50,7 +50,7 @@ public class ThenContractStep<S> {
         }
     }
 
-    private static ApprovalNamer namedAt(Path path) {
+    static ApprovalNamer namedAt(Path path) {
         var parent = path.getParent();
         if (parent == null) {
             throw new IllegalArgumentException("Snapshot path must have a parent directory: " + path);

@@ -1,4 +1,8 @@
-public interface io.eventdriven.strictland.tests.contracts.v1.ShoppingCartEvent {
+public interface io.eventdriven.strictland.tests.contracts.v1.HasShoppingCartId {
+  public abstract java.util.UUID shoppingCartId();
+}
+
+public interface io.eventdriven.strictland.tests.contracts.v1.ShoppingCartEvent extends io.eventdriven.strictland.tests.contracts.v1.HasShoppingCartId {
 }
 
 public static final record io.eventdriven.strictland.tests.contracts.v1.ShoppingCartEvent$ProductItemAddedToShoppingCart implements io.eventdriven.strictland.tests.contracts.v1.ShoppingCartEvent {

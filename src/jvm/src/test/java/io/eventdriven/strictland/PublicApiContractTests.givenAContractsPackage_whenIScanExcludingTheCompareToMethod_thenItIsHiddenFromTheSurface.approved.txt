@@ -1,0 +1,16 @@
+public enum io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus {
+  public static final io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus.CANCELLED;
+  public static final io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus.CONFIRMED;
+  public static final io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus.PENDING;
+  public static io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus valueOf(java.lang.String);
+  public static io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus[] values();
+}
+
+public class io.eventdriven.strictland.tests.contracts.v2.ShoppingCartSummary implements java.lang.Comparable {
+  public final java.util.UUID io.eventdriven.strictland.tests.contracts.v2.ShoppingCartSummary.shoppingCartId;
+  public ShoppingCartSummary(java.util.UUID, io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus);
+  public boolean equals(java.lang.Object);
+  public io.eventdriven.strictland.tests.contracts.v2.ShoppingCartStatus getStatus();
+  public int hashCode();
+  public java.lang.String toString();
+}
