@@ -3,6 +3,7 @@ kotlin = "2.3.21"
 scala = "3.8.3"
 jspecify = "1.0.0"
 jackson = "2.17.0"
+classgraph = "4.8.179"
 approvaltests = "24.0.0"
 junit = "5.12.2"
 spotless = "8.6.0"
@@ -16,6 +17,7 @@ nullaway-plugin = "3.0.0"
 
 [libraries]
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+classgraph = { module = "io.github.classgraph:classgraph", version.ref = "classgraph" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
 approvaltests = { module = "com.approvaltests:approvaltests", version.ref = "approvaltests" }
