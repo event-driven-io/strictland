@@ -61,7 +61,7 @@ public class PublicApiScanner {
         sb.append(typeDeclaration(clazz)).append(" {\n");
 
         Arrays.stream(clazz.getDeclaredFields())
-                .filter(f -> Modifier.isPublic(f.getModifiers()) && !f.isSynthetic())
+                .filter(f -> Modifier.isPublic(f.getModifiers()))
                 .sorted(Comparator.comparing(Field::getName))
                 .forEach(f -> sb.append("  ").append(f.toGenericString()).append(";\n"));
 
@@ -73,7 +73,7 @@ public class PublicApiScanner {
         }
 
         Arrays.stream(clazz.getDeclaredMethods())
-                .filter(m -> Modifier.isPublic(m.getModifiers()) && !m.isSynthetic() && !m.isBridge())
+                .filter(m -> Modifier.isPublic(m.getModifiers()) && !m.isSynthetic())
                 .filter(methodFilter)
                 .sorted(Comparator.comparing(Method::getName).thenComparing(Method::toGenericString))
                 .forEach(m -> sb.append("  ").append(formatMethod(m)).append(";\n"));
@@ -100,7 +100,7 @@ public class PublicApiScanner {
     private static String typeDeclaration(Class<?> clazz) {
         var parts = new StringBuilder();
 
-        if (Modifier.isPublic(clazz.getModifiers())) parts.append("public ");
+        parts.append("public ");
         if (Modifier.isStatic(clazz.getModifiers())) parts.append("static ");
         if (Modifier.isFinal(clazz.getModifiers()) && !clazz.isEnum()) parts.append("final ");
 

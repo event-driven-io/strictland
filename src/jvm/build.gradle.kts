@@ -3,6 +3,7 @@ import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.SourcesJar
 import me.champeau.gradle.japicmp.JapicmpTask
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
@@ -52,7 +53,25 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     }
 }
 
-tasks.named("check") { dependsOn("jacocoTestReport") }
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.named("test"))
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.named("check") { dependsOn("jacocoTestReport", "jacocoTestCoverageVerification") }
 
 dependencies {
     api(libs.jspecify)

@@ -12,18 +12,19 @@ class SnapshotPathResolver {
             SnapshotPathResolver.class.getName());
     private static final String SOURCE_ROOT = "src/test/java";
 
-    static Path resolve(String snapshotName) {
-        var callerClass = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-                .walk(frames -> frames.filter(f -> !DSL_CLASSES.contains(f.getClassName()))
-                        .filter(f -> !f.getClassName().startsWith("java."))
-                        .filter(f -> !f.getClassName().startsWith("jdk."))
-                        .filter(f -> !f.getClassName().startsWith("sun."))
-                        .filter(f -> !f.getClassName().startsWith("org.junit."))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("Cannot determine calling test class from stack")))
-                .getDeclaringClass();
+    private SnapshotPathResolver() {}
 
+    static Path resolve(String snapshotName) {
+        var frame = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                .walk(frames -> frames.filter(f -> !DSL_CLASSES.contains(f.getClassName()))
+                        .findFirst());
+        var callerClass = requireCaller(frame);
         var packagePath = callerClass.getPackageName().replace('.', '/');
         return Path.of(SOURCE_ROOT, packagePath, snapshotName + ".approved.txt");
+    }
+
+    static Class<?> requireCaller(java.util.Optional<StackWalker.StackFrame> frame) {
+        return frame.orElseThrow(() -> new IllegalStateException("Cannot determine calling test class from stack"))
+                .getDeclaringClass();
     }
 }

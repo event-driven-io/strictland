@@ -1,12 +1,12 @@
 package io.eventdriven.strictland;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -47,33 +47,59 @@ public class ThenCompatibilityStep<S, T> {
     private void verifySharedFields(Consumer<T> extra) {
         var sourceBytes = resolveSourceBytes();
         T deserialized;
+        Map<String, Object> sourceMap;
+        Map<String, Object> targetMap;
         try {
             deserialized = mapper.readValue(sourceBytes, targetType);
+            if (deserialized == null) {
+                throw new AssertionError("Deserialization as " + targetType.getSimpleName() + " returned empty");
+            }
+            sourceMap = toMap(sourceBytes);
+            targetMap = toMap(mapper.writeValueAsBytes(deserialized));
         } catch (IOException e) {
             throw new RuntimeException("Deserialization as " + targetType.getSimpleName() + " failed", e);
         }
-        if (deserialized == null) {
-            fail("Deserialization as " + targetType.getSimpleName() + " returned empty");
-            return;
-        }
-        assertSharedFieldsMatch(sourceBytes, deserialized);
+        assertRequiredFieldsSatisfied(sourceMap);
+        assertSharedFieldsMatch(sourceMap, targetMap);
         extra.accept(deserialized);
     }
 
-    private void assertSharedFieldsMatch(byte[] sourceBytes, T target) {
-        try {
-            var sourceMap = toMap(sourceBytes);
-            var targetMap = toMap(mapper.writeValueAsBytes(target));
-
-            var sharedKeys = new HashSet<>(sourceMap.keySet());
-            sharedKeys.retainAll(targetMap.keySet());
-
-            for (var key : sharedKeys) {
-                assertEquals(
-                        sourceMap.get(key), targetMap.get(key), "Field '" + key + "' value differs between versions");
+    private void assertRequiredFieldsSatisfied(Map<String, Object> sourceMap) {
+        if (!targetType.isRecord()) return;
+        for (var component : targetType.getRecordComponents()) {
+            if (component.getAnnotatedType().getDeclaredAnnotation(Nullable.class) != null) continue;
+            if (!sourceMap.containsKey(component.getName()) || sourceMap.get(component.getName()) == null) {
+                throw new AssertionError("Required field '"
+                        + component.getName()
+                        + "' in "
+                        + targetType.getSimpleName()
+                        + " is null after deserialization. Source had keys: "
+                        + sourceMap.keySet());
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        }
+    }
+
+    private void assertSharedFieldsMatch(Map<String, Object> sourceMap, Map<String, Object> targetMap) {
+        var sourceOnly = new ArrayList<>(sourceMap.keySet());
+        sourceOnly.removeAll(targetMap.keySet());
+        var targetOnly = new ArrayList<>(targetMap.keySet());
+        targetOnly.removeAll(sourceMap.keySet());
+        var diagnostics = " [source-only: " + sourceOnly + ", target-only: " + targetOnly + "]";
+
+        if (!sourceOnly.isEmpty() && !targetOnly.isEmpty()) {
+            throw new AssertionError(
+                    "Structural incompatibility detected: source and target have different unmapped fields"
+                            + diagnostics);
+        }
+
+        var sharedKeys = new HashSet<>(sourceMap.keySet());
+        sharedKeys.retainAll(targetMap.keySet());
+
+        for (var key : sharedKeys) {
+            assertEquals(
+                    sourceMap.get(key),
+                    targetMap.get(key),
+                    "Field '" + key + "' value differs between versions" + diagnostics);
         }
     }
 

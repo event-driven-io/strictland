@@ -1,0 +1,235 @@
+package io.eventdriven.strictland;
+
+import static java.time.ZoneOffset.UTC;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+@NullMarked
+final class SerializationContractTests {
+    private static final UUID FIXED_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final OffsetDateTime FIXED_DATE = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, UTC);
+
+    private record OrderPlaced(UUID orderId, String customer, OffsetDateTime placedAt) {}
+
+    private record OrderInitiatedV1(UUID orderId, OffsetDateTime initiatedAt) {}
+
+    private record OrderInitiatedV2(UUID orderId, @Nullable String promotionCode, OffsetDateTime initiatedAt) {}
+
+    private record OrderInitiatedV3(UUID orderId, OrderStatus status) {}
+
+    private enum OrderStatus {
+        PENDING,
+        CONFIRMED,
+        SHIPPED
+    }
+
+    private record ShipmentScheduledV1(UUID shipmentId, String recipientName, OffsetDateTime scheduledAt) {}
+
+    private record EmptyMarkerEvent() {}
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = InvoiceIssued.class, name = "InvoiceIssued"),
+        @JsonSubTypes.Type(value = InvoicePaid.class, name = "InvoicePaid")
+    })
+    private sealed interface InvoiceEvent permits InvoiceIssued, InvoicePaid {}
+
+    private record InvoiceIssued(UUID invoiceId, BigDecimal amount) implements InvoiceEvent {}
+
+    private record InvoicePaid(UUID invoiceId) implements InvoiceEvent {}
+
+    private record MemberJoined(UUID userId, String email) {}
+
+    private record UserOnboardedV2(
+            @JsonProperty("user_id") UUID userId,
+            @JsonProperty("user_email") String email) {}
+
+    @Nested
+    final class ShapeIsPinned {
+        @Test
+        void given_eventWithData_whenSerialized_shapeIsPinned() {
+            Contract.specification()
+                    .given(new OrderPlaced(FIXED_ID, "Alice", FIXED_DATE))
+                    .whenSerialized()
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_eventWithNullField_whenSerialized_nullRendersByDefault() {
+            Contract.specification()
+                    .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_markerEventWithNoFields_whenSerialized_producesEmptyObject() {
+            Contract.specification()
+                    .given(new EmptyMarkerEvent())
+                    .whenSerialized(Snapshot.forMessageType("EmptyMarkerEvent"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_polymorphicEvent_whenSerialized_discriminatorIsPinned() {
+            Contract.specification()
+                    .given(new InvoiceIssued(FIXED_ID, new BigDecimal("99.99")))
+                    .whenSerialized(Snapshot.forMessageType("InvoiceIssuedEvent"))
+                    .thenContractIsUnchanged();
+        }
+    }
+
+    @Nested
+    final class UsingYourOwnMapper {
+        private final ObjectMapper timestampMapper = new JsonMapper()
+                .registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true);
+
+        @Test
+        void given_customMapper_whenSerialized_thatMapperDrivesTheOutput() {
+            Contract.specification(timestampMapper)
+                    .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV1_CustomMapperEpoch"))
+                    .thenContractIsUnchanged();
+        }
+    }
+
+    @Nested
+    final class WhereTheGoldenFileLives {
+        @Test
+        void given_event_whenSerialized_goldenFileIsNamedAfterTheEventClass() {
+            Contract.specification()
+                    .given(new MemberJoined(FIXED_ID, "alice@example.com"))
+                    .whenSerialized(Snapshot.of(MemberJoined.class))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_event_whenSerialized_goldenFileNamedByMessageType() {
+            Contract.specification()
+                    .given(new MemberJoined(FIXED_ID, "alice@example.com"))
+                    .whenSerialized(Snapshot.forMessageType("MemberJoined_ByMessageType"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_event_whenSerialized_goldenFileAtAnExplicitPath() {
+            var path = Path.of("src/test/java/io/eventdriven/strictland/MemberJoined_ByPath.approved.txt");
+
+            Contract.specification()
+                    .given(new MemberJoined(FIXED_ID, "alice@example.com"))
+                    .whenSerialized(Snapshot.at(path, MemberJoined.class))
+                    .thenContractIsUnchanged();
+        }
+    }
+
+    @Nested
+    final class SerializerChangesAreCaught {
+        private final ObjectMapper isoMapper = new JsonMapper()
+                .registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+        private final ObjectMapper epochMapper = new JsonMapper()
+                .registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true);
+
+        private final ObjectMapper includeNullsMapper = new JsonMapper()
+                .registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+
+        private final ObjectMapper omitNullsMapper = new JsonMapper()
+                .registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
+        private final ObjectMapper snakeCaseMapper = new JsonMapper()
+                .registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+
+        private final ObjectMapper enumIndexMapper = new JsonMapper()
+                .registerModule(new JavaTimeModule())
+                .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
+                .configure(SerializationFeature.WRITE_ENUMS_USING_INDEX, true);
+
+        @Test
+        void given_isoMapper_whenSerialized_datesAreIsoStrings() {
+            Contract.specification(isoMapper)
+                    .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV1_IsoDate"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_epochMapper_whenSerialized_datesAreEpochNumbers() {
+            Contract.specification(epochMapper)
+                    .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV1_EpochDate"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_nullInclusion_whenSerialized_nullFieldIsPresent() {
+            Contract.specification(includeNullsMapper)
+                    .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullsIncluded"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_nullExclusion_whenSerialized_nullFieldIsOmitted() {
+            Contract.specification(omitNullsMapper)
+                    .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullsOmitted"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_snakeCaseMapper_whenSerialized_keysAreSnakeCase() {
+            Contract.specification(snakeCaseMapper)
+                    .given(new ShipmentScheduledV1(FIXED_ID, "Alice Smith", FIXED_DATE))
+                    .whenSerialized(Snapshot.forMessageType("ShipmentScheduledV1_SnakeCase"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_enumByName_whenSerialized_enumIsAString() {
+            Contract.specification()
+                    .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV3_EnumByName"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_enumByIndex_whenSerialized_enumIsANumber() {
+            Contract.specification(enumIndexMapper)
+                    .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
+                    .whenSerialized(Snapshot.forMessageType("OrderInitiatedV3_EnumByIndex"))
+                    .thenContractIsUnchanged();
+        }
+
+        @Test
+        void given_jsonPropertyRename_whenSerialized_logicalFieldNamesAreCaught() {
+            Contract.specification()
+                    .given(new UserOnboardedV2(FIXED_ID, "alice@example.com"))
+                    .whenSerialized(Snapshot.forMessageType("UserOnboardedV2_JsonProperty"))
+                    .thenContractIsUnchanged();
+        }
+    }
+}
