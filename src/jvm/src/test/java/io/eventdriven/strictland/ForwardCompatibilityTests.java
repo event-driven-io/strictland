@@ -29,7 +29,7 @@ final class ForwardCompatibilityTests {
 
         @Test
         void givenNewOrderWithCoupon_whenReadByOldTypeWithoutCoupon_thenForwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new OrderPlacedWithCoupon(FIXED_ID, "Alice", "SAVE10"))
                     .whenDeserializedAs(OrderPlaced.class)
                     .thenForwardCompatible(order -> assertEquals("Alice", order.customer()));
@@ -52,7 +52,7 @@ final class ForwardCompatibilityTests {
 
             var error = assertThrows(
                     AssertionError.class,
-                    () -> Contract.specification(omitNulls)
+                    () -> MessageContract.specification(omitNulls)
                             .given(new OrderConfirmedOptionalCurrency(FIXED_ID, null))
                             .whenDeserializedAs(OrderConfirmedRequiredCurrency.class)
                             .thenForwardCompatible());
@@ -83,7 +83,7 @@ final class ForwardCompatibilityTests {
         void givenNewOrderWithAShippedStatus_whenReadByOldEnumWithoutIt_thenNotForwardCompatible() {
             assertThrows(
                     RuntimeException.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new OrderStatusChangedV2(FIXED_ID, OrderStatusV2.SHIPPED))
                             .whenDeserializedAs(OrderStatusChangedV1.class)
                             .thenForwardCompatible());
@@ -104,7 +104,7 @@ final class ForwardCompatibilityTests {
 
             assertThrows(
                     RuntimeException.class,
-                    () -> Contract.specification(strictMapper)
+                    () -> MessageContract.specification(strictMapper)
                             .given(new OrderReceivedWithCoupon(FIXED_ID, "Alice", "SAVE10"))
                             .whenDeserializedAs(OrderReceived.class)
                             .thenForwardCompatible());
@@ -112,7 +112,7 @@ final class ForwardCompatibilityTests {
 
         @Test
         void givenNewOrderWithExtraField_whenReadByOldTypeUsingTheLenientDefaultMapper_thenForwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new OrderReceivedWithCoupon(FIXED_ID, "Alice", "SAVE10"))
                     .whenDeserializedAs(OrderReceived.class)
                     .thenForwardCompatible();
@@ -133,7 +133,7 @@ final class ForwardCompatibilityTests {
         void givenANestedShipment_whenReadByOldFlatType_thenNotForwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new ShipmentScheduledNested(FIXED_ID, new Recipient(FIXED_ID)))
                             .whenDeserializedAs(ShipmentScheduled.class)
                             .thenForwardCompatible());
@@ -166,7 +166,7 @@ final class ForwardCompatibilityTests {
         void givenANewVariant_whenReadByOldHierarchyThatDoesNotKnowIt_thenNotForwardCompatible() {
             assertThrows(
                     RuntimeException.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new ShipmentDelivered(FIXED_ID))
                             .whenDeserializedAs(ShipmentEvent.class)
                             .thenForwardCompatible());
@@ -183,7 +183,7 @@ final class ForwardCompatibilityTests {
         void givenNewStringTags_whenReadByOldTypeExpectingNumbers_thenNotForwardCompatible() {
             assertThrows(
                     RuntimeException.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new OrderTaggedWithStrings(FIXED_ID, List.of("urgent")))
                             .whenDeserializedAs(OrderTaggedWithNumbers.class)
                             .thenForwardCompatible());

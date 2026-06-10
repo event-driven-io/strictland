@@ -64,7 +64,7 @@ final class SerializationContractTests {
     final class ShapeIsPinned {
         @Test
         void given_eventWithData_whenSerialized_shapeIsPinned() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new OrderPlaced(FIXED_ID, "Alice", FIXED_DATE))
                     .whenSerialized()
                     .thenContractIsUnchanged();
@@ -72,7 +72,7 @@ final class SerializationContractTests {
 
         @Test
         void given_eventWithNullField_whenSerialized_nullRendersByDefault() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
                     .thenContractIsUnchanged();
@@ -80,7 +80,7 @@ final class SerializationContractTests {
 
         @Test
         void given_markerEventWithNoFields_whenSerialized_producesEmptyObject() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new EmptyMarkerEvent())
                     .whenSerialized(Snapshot.forMessageType("EmptyMarkerEvent"))
                     .thenContractIsUnchanged();
@@ -88,7 +88,7 @@ final class SerializationContractTests {
 
         @Test
         void given_polymorphicEvent_whenSerialized_discriminatorIsPinned() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new InvoiceIssued(FIXED_ID, new BigDecimal("99.99")))
                     .whenSerialized(Snapshot.forMessageType("InvoiceIssuedEvent"))
                     .thenContractIsUnchanged();
@@ -103,7 +103,7 @@ final class SerializationContractTests {
 
         @Test
         void given_customMapper_whenSerialized_thatMapperDrivesTheOutput() {
-            Contract.specification(timestampMapper)
+            MessageContract.specification(timestampMapper)
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV1_CustomMapperEpoch"))
                     .thenContractIsUnchanged();
@@ -114,7 +114,7 @@ final class SerializationContractTests {
     final class WhereTheGoldenFileLives {
         @Test
         void given_event_whenSerialized_goldenFileIsNamedAfterTheEventClass() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new MemberJoined(FIXED_ID, "alice@example.com"))
                     .whenSerialized(Snapshot.of(MemberJoined.class))
                     .thenContractIsUnchanged();
@@ -122,7 +122,7 @@ final class SerializationContractTests {
 
         @Test
         void given_event_whenSerialized_goldenFileNamedByMessageType() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new MemberJoined(FIXED_ID, "alice@example.com"))
                     .whenSerialized(Snapshot.forMessageType("MemberJoined_ByMessageType"))
                     .thenContractIsUnchanged();
@@ -132,7 +132,7 @@ final class SerializationContractTests {
         void given_event_whenSerialized_goldenFileAtAnExplicitPath() {
             var path = Path.of("src/test/java/io/eventdriven/strictland/MemberJoined_ByPath.approved.txt");
 
-            Contract.specification()
+            MessageContract.specification()
                     .given(new MemberJoined(FIXED_ID, "alice@example.com"))
                     .whenSerialized(Snapshot.at(path, MemberJoined.class))
                     .thenContractIsUnchanged();
@@ -170,7 +170,7 @@ final class SerializationContractTests {
 
         @Test
         void given_isoMapper_whenSerialized_datesAreIsoStrings() {
-            Contract.specification(isoMapper)
+            MessageContract.specification(isoMapper)
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV1_IsoDate"))
                     .thenContractIsUnchanged();
@@ -178,7 +178,7 @@ final class SerializationContractTests {
 
         @Test
         void given_epochMapper_whenSerialized_datesAreEpochNumbers() {
-            Contract.specification(epochMapper)
+            MessageContract.specification(epochMapper)
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV1_EpochDate"))
                     .thenContractIsUnchanged();
@@ -186,7 +186,7 @@ final class SerializationContractTests {
 
         @Test
         void given_nullInclusion_whenSerialized_nullFieldIsPresent() {
-            Contract.specification(includeNullsMapper)
+            MessageContract.specification(includeNullsMapper)
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullsIncluded"))
                     .thenContractIsUnchanged();
@@ -194,7 +194,7 @@ final class SerializationContractTests {
 
         @Test
         void given_nullExclusion_whenSerialized_nullFieldIsOmitted() {
-            Contract.specification(omitNullsMapper)
+            MessageContract.specification(omitNullsMapper)
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullsOmitted"))
                     .thenContractIsUnchanged();
@@ -202,7 +202,7 @@ final class SerializationContractTests {
 
         @Test
         void given_snakeCaseMapper_whenSerialized_keysAreSnakeCase() {
-            Contract.specification(snakeCaseMapper)
+            MessageContract.specification(snakeCaseMapper)
                     .given(new ShipmentScheduledV1(FIXED_ID, "Alice Smith", FIXED_DATE))
                     .whenSerialized(Snapshot.forMessageType("ShipmentScheduledV1_SnakeCase"))
                     .thenContractIsUnchanged();
@@ -210,7 +210,7 @@ final class SerializationContractTests {
 
         @Test
         void given_enumByName_whenSerialized_enumIsAString() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV3_EnumByName"))
                     .thenContractIsUnchanged();
@@ -218,7 +218,7 @@ final class SerializationContractTests {
 
         @Test
         void given_enumByIndex_whenSerialized_enumIsANumber() {
-            Contract.specification(enumIndexMapper)
+            MessageContract.specification(enumIndexMapper)
                     .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
                     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV3_EnumByIndex"))
                     .thenContractIsUnchanged();
@@ -226,7 +226,7 @@ final class SerializationContractTests {
 
         @Test
         void given_jsonPropertyRename_whenSerialized_logicalFieldNamesAreCaught() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new UserOnboardedV2(FIXED_ID, "alice@example.com"))
                     .whenSerialized(Snapshot.forMessageType("UserOnboardedV2_JsonProperty"))
                     .thenContractIsUnchanged();

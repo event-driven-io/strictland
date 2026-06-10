@@ -5,7 +5,7 @@ import java.util.Set;
 
 class SnapshotPathResolver {
     private static final Set<String> DSL_CLASSES = Set.of(
-            Contract.class.getName(),
+            MessageContract.class.getName(),
             GivenStep.class.getName(),
             ThenContractStep.class.getName(),
             ThenCompatibilityStep.class.getName(),

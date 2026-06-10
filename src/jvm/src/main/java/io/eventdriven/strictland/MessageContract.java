@@ -9,7 +9,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 /**
  * Entry point for the contract DSL used to verify event schema versioning and serialization compatibility.
  */
-public class Contract {
+public class MessageContract {
     private static final ObjectMapper DEFAULT_MAPPER = new JsonMapper()
             .registerModule(new JavaTimeModule())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -17,16 +17,16 @@ public class Contract {
 
     private final ObjectMapper mapper;
 
-    private Contract(ObjectMapper mapper) {
+    private MessageContract(ObjectMapper mapper) {
         this.mapper = mapper;
     }
 
-    public static Contract specification() {
-        return new Contract(DEFAULT_MAPPER);
+    public static MessageContract specification() {
+        return new MessageContract(DEFAULT_MAPPER);
     }
 
-    public static Contract specification(ObjectMapper mapper) {
-        return new Contract(mapper);
+    public static MessageContract specification(ObjectMapper mapper) {
+        return new MessageContract(mapper);
     }
 
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
