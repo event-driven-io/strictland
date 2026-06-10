@@ -13,7 +13,17 @@ import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The "then" step of the contract DSL that verifies forward and backward compatibility of deserialization.
+ * The check that an old and a new version of the message still work together, so evolving it doesn't
+ * strand the messages already in your store or on the wire.
+ *
+ * <p>Reached after {@link GivenStep#whenDeserializedAs(Class)}. Use {@link #thenBackwardCompatible()}
+ * to confirm the newer version still reads a message the older one wrote - the events you stored last
+ * year, a request already sent. Use {@link #thenForwardCompatible()} to confirm a reader that hasn't
+ * upgraded yet still reads a message the newer version writes. Both compare the fields the two
+ * versions share and fail if a required one is missing or a shared value changed.
+ *
+ * @param <S> the version you started from
+ * @param <T> the version you check it against
  */
 public class ThenCompatibilityStep<S, T> {
     private final @Nullable Snapshot snapshot;
@@ -28,18 +38,72 @@ public class ThenCompatibilityStep<S, T> {
         this.mapper = mapper;
     }
 
+    /**
+     * Confirms a reader that hasn't upgraded yet can read a message the newer version writes, so you
+     * can ship the new shape before everyone reading it has caught up. Fails when the newer version
+     * drops or renames a field the older one needs, or writes a shared value differently.
+     *
+     * {@snippet :
+     * MessageContract.specification()
+     *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
+     *     .whenDeserializedAs(OrderPlaced.class)
+     *     .thenForwardCompatible();
+     * }
+     */
     public void thenForwardCompatible() {
         verifySharedFields(t -> {});
     }
 
+    /**
+     * Confirms a reader that hasn't upgraded yet can read a message the newer version writes, and
+     * hands you the deserialized result so you can assert on specific values too, not just the shared
+     * fields. Fails when the newer version drops or renames a field the older one needs, or writes a
+     * shared value differently.
+     *
+     * {@snippet :
+     * MessageContract.specification()
+     *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
+     *     .whenDeserializedAs(OrderPlaced.class)
+     *     .thenForwardCompatible(order -> assertEquals("Alice", order.customer()));
+     * }
+     *
+     * @param extra assertions to run on the deserialized message
+     */
     public void thenForwardCompatible(Consumer<T> extra) {
         verifySharedFields(extra);
     }
 
+    /**
+     * Confirms the newer version can still read a message the older one wrote, so moving to it doesn't
+     * break on the events you've already stored or the messages still in flight. Fails when the newer
+     * version needs a field the older one never wrote, or reads a shared value differently.
+     *
+     * {@snippet :
+     * MessageContract.specification()
+     *     .given(new OrderPlaced(orderId, "Alice"))
+     *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
+     *     .thenBackwardCompatible();
+     * }
+     */
     public void thenBackwardCompatible() {
         verifySharedFields(t -> {});
     }
 
+    /**
+     * Confirms the newer version can still read a message the older one wrote, and hands you the
+     * deserialized result so you can assert on specific values too, not just the shared fields. Fails
+     * when the newer version needs a field the older one never wrote, or reads a shared value
+     * differently.
+     *
+     * {@snippet :
+     * MessageContract.specification()
+     *     .given(new OrderPlaced(orderId, "Alice"))
+     *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
+     *     .thenBackwardCompatible(order -> assertNull(order.couponCode()));
+     * }
+     *
+     * @param extra assertions to run on the deserialized message
+     */
     public void thenBackwardCompatible(Consumer<T> extra) {
         verifySharedFields(extra);
     }
