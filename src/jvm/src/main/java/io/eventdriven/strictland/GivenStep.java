@@ -30,7 +30,7 @@ public class GivenStep<S> {
     private S requireInstance() {
         if (instance == null) {
             throw new IllegalStateException(
-                    "whenSerialized() requires an instance — use Contract.given(instance), not Contract.given(Snapshot)");
+                    "whenSerialized() requires an instance — use MessageContract.given(instance), not MessageContract.given(Snapshot)");
         }
         return instance;
     }

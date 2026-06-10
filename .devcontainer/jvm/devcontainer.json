@@ -21,7 +21,7 @@
         "java.import.gradle.enabled": true,
         "java.import.gradle.wrapper.enabled": true,
         "java.compile.nullAnalysis.mode": "automatic",
-        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.configuration.updateBuildConfiguration": "interactive",
         "spotlessGradle.format.enable": true,
         "gradle.nestedProjects": true,
         "gradle.projectRootLocations": ["src/jvm"]
