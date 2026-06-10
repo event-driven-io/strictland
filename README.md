@@ -1,20 +1,24 @@
-[![](https://dcbadge.vercel.app/api/server/fTpqUTMmVa?style=flat)](https://discord.gg/fTpqUTMmVa) [<img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" height="20px" />](https://www.linkedin.com/in/oskardudycz/) [![Github Sponsors](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&link=https://github.com/sponsors/event-driven-io)](https://github.com/sponsors/event-driven-io) [![blog](https://img.shields.io/badge/blog-event--driven.io-brightgreen)](https://event-driven.io/?utm_source=event_sourcing_nodejs) [![blog](https://img.shields.io/badge/%F0%9F%9A%80-Architecture%20Weekly-important)](https://www.architecture-weekly.com/?utm_source=event_sourcing_nodejs)
+[![](https://dcbadge.vercel.app/api/server/fTpqUTMmVa?style=flat)](https://discord.gg/fTpqUTMmVa)[![Github Sponsors](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&link=https://github.com/sponsors/event-driven-io)](https://github.com/sponsors/event-driven-io) [![blog](https://img.shields.io/badge/blog-event--driven.io-brightgreen)](https://event-driven.io/?utm_source=event_sourcing_nodejs) [![blog](https://img.shields.io/badge/%F0%9F%9A%80-Architecture%20Weekly-important)](https://www.architecture-weekly.com/?utm_source=event_sourcing_nodejs) [<img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" height="20px" />](https://www.linkedin.com/in/oskardudycz/) 
 
-# Strictland - contract testing for the messages your code sends and stores
+# Strictland - contract and compatibility testing for your messages
 
-Strictland is a contract-testing library for the messages your code sends and stores: events, commands, queue messages, HTTP requests and responses, and anything else you serialize for someone else to read.
+**Strictland is a contract-testing library** for the messages your code sends and stores: events, commands, queue messages, HTTP requests and responses, and anything else you serialize for someone else to read.
 
-You write a small unit test that locks down a message's format. Later you rename a field, change a type, or adjust how a value serializes; the code still compiles and your other tests pass, but that one fails and points at what changed. You fix it in your build, before a consumer or a stored event has hit the old format in production.
+**You write a small unit test that locks down a message's format.** Later you rename a field, change a type, or adjust how a value serializes; the code still compiles and your other tests pass, but that one fails and points at what changed. You fix it in your build, before a consumer or a stored event has hit the old format in production.
 
 When a message changes by accident, a snapshot check shows you exactly what moved. When you evolve a message on purpose, a compatibility check confirms an old and a new version can still read each other's data.
 
 Every check starts from `MessageContract` and reads as a sentence:
 
 ```java
-MessageContract.specification()
-    .given(new OrderPlaced(orderId, "Alice", placedAt))
-    .whenSerialized()
-    .thenContractIsUnchanged();
+@Test
+void ensureOrderPlacedCompatibilityWithNewerVersion() {
+    // Strictland specification
+    MessageContract.specification()
+        .given(new OrderPlaced(orderId, "Alice"))
+        .whenDeserializedAs(OrderPlacedWithCoupon.class)
+        .thenBackwardCompatible();
+}
 ```
 
 ## Getting started
@@ -38,6 +42,15 @@ Maven:
 </dependency>
 ```
 
+Then add new test with:
+
+```java
+MessageContract.specification()
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerialized()
+    .thenContractIsUnchanged();
+```
+
 The first run serializes the message and writes the result to an approved file named after the class, [`OrderPlaced.approved.txt`](./src/jvm/src/test/java/io/eventdriven/strictland/OrderPlaced.approved.txt), saved next to the test:
 
 ```json
@@ -45,6 +58,23 @@ The first run serializes the message and writes the result to an approved file n
 ```
 
 You review that file and commit it. From then on the check compares against it and fails if the format drifts, so a later change to the format shows up in the same pull request as the code that caused it.
+
+## Why Strictland
+
+**When you change how a message serializes, the change is easy to miss.** The code compiles and the tests pass, because they write and read the message with the same code. The mismatch surfaces later, when something that still holds the old format reads it: a stored event, a message waiting on a queue, or another service.
+
+If you've used consumer-driven contract testing, the usual shape is to run both the provider and the consumer, record the consumer's expectations against a mock, verify the provider against them, and share those contracts through a broker.
+
+**Strictland takes a smaller, simpler approach. It serializes one message in a normal unit test and saves the output as a snapshot file you commit.** The test fails when the serialized shape changes, and a separate check confirms an older and a newer version of the message can still read each other's data.
+
+**Because it's only serialization and a file, the setup stays small:**
+
+- **The checks are ordinary unit tests in your existing suite**, so there's no broker, schema registry, or mock service to run, and nothing to start in Docker.
+- **The contract is the serialized JSON committed next to the test**, so a format change appears in a normal diff and is reviewed like any other code.
+- **You write the check beside the message it covers** and get the answer in the same **fast feedback loop** as the rest of your tests.
+- **The check uses your application's own serializer**, so the snapshot is the exact bytes you ship.
+
+Strictland checks the serialized shape of a message and whether its versions stay compatible. It doesn't exercise a live exchange between running services, so it complements that kind of tooling rather than replacing it.
 
 ## How it works
 
@@ -84,7 +114,7 @@ MessageContract.specification()
 
 ## Examples
 
-Pin a polymorphic event so its type discriminator can't change by accident, the kind of field that's invisible in the Java type but breaks deserialization the moment it's renamed:
+You can pin a message so its type can't change by accident, the kind of field that's invisible in the Java type but breaks deserialization the moment it's renamed:
 
 ```java
 MessageContract.specification()
@@ -132,21 +162,6 @@ Approvals.verify(api);
 ```
 
 You'll find these and more in the test suite, [`SerializationContractTests`](./src/jvm/src/test/java/io/eventdriven/strictland/SerializationContractTests.java), [`BackwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/BackwardCompatibilityTests.java), and [`ForwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/ForwardCompatibilityTests.java), each written as a worked example of the cases above.
-
-## Why Strictland
-
-When you change how a message serializes, the change is easy to miss. The code compiles and the tests pass, because they write and read the message with the same code. The mismatch surfaces later, when something that still holds the old format reads it: a stored event, a message waiting on a queue, or another service.
-
-If you've used consumer-driven contract testing, the usual shape is to run both the provider and the consumer, record the consumer's expectations against a mock, verify the provider against them, and share those contracts through a broker. Strictland takes a smaller, simpler approach. It serializes one message in a normal unit test and saves the output as a snapshot file you commit. The test fails when the serialized shape changes, and a separate check confirms an older and a newer version of the message can still read each other's data.
-
-Because it's only serialization and a file, the setup stays small:
-
-- **The checks are ordinary unit tests in your existing suite**, so there's no broker, schema registry, or mock service to run, and nothing to start in Docker.
-- **The contract is the serialized JSON committed next to the test**, so a format change appears in a normal diff and is reviewed like any other code.
-- **You write the check beside the message it covers** and get the answer in the same **fast feedback loop** as the rest of your tests.
-- **The check uses your application's own serializer**, so the snapshot is the exact bytes you ship.
-
-Strictland checks the serialized shape of a message and whether its versions stay compatible. It doesn't exercise a live exchange between running services, so it complements that kind of tooling rather than replacing it.
 
 ## Is it production ready?
 
