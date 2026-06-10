@@ -81,6 +81,13 @@
       "problemMatcher": []
     },
     {
+      "label": "check",
+      "type": "shell",
+      "command": "./gradlew check",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "format",
       "type": "shell",
       "command": "./gradlew spotlessApply",

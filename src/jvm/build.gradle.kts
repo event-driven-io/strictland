@@ -3,6 +3,7 @@ import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.SourcesJar
 import me.champeau.gradle.japicmp.JapicmpTask
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
@@ -68,6 +69,19 @@ tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
                 minimum = "1.0".toBigDecimal()
             }
         }
+    }
+}
+
+tasks.named<Javadoc>("javadoc") {
+    (options as StandardJavadocDocletOptions).apply {
+        // ApprovalTests ships its .java sources inside its jars. With those on the
+        // compile classpath, javadoc would implicitly compile them while resolving
+        // our own API, failing because they import Gson, which we don't depend on.
+        // An empty sourcepath stops javadoc from reading those bundled sources; our
+        // own sources are still documented as they're passed as explicit file args.
+        addStringOption("sourcepath", "")
+        // Treat javadoc warnings (e.g. missing comments on public API) as errors.
+        addBooleanOption("Xwerror", true)
     }
 }
 
