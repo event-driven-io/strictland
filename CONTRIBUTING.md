@@ -24,14 +24,14 @@ Strictland is a monorepo with one package per language under [`src/`](./src/).
 
 **JVM** package is located in [`src/jvm`](./src/jvm).
 
-The quickest start is the **dev container** — it ships with the JDK, the recommended IDE extensions,
+The quickest start is the **dev container** - it ships with the JDK, the recommended IDE extensions,
 and the Git hooks already configured:
 
 1. Install [Docker](https://docs.docker.com/engine/install/) and
    [VS Code](https://code.visualstudio.com/) with the **Dev Containers** extension.
 2. Open the repo and run **Dev Containers: Reopen in Container**.
 
-To work on your own machine instead, install **JDK 26** (we use Temurin) — that's the version the
+To work on your own machine instead, install **JDK 26** (we use Temurin) - that's the version the
 build compiles with. Gradle fetches any other JDK it needs on its own (for example JDK 21, which the
 tests also run against), so you don't have to manage them by hand.
 
@@ -48,7 +48,7 @@ All from [`src/jvm`](./src/jvm):
 
 ```shell
 ./gradlew build         # compile, test, and check everything
-./gradlew testClasses   # compile only — the fast inner loop
+./gradlew testClasses   # compile only - the fast inner loop
 ./gradlew test          # run the tests
 ./gradlew spotlessApply # reformat sources by hand, if you ever need to
 ```
@@ -58,16 +58,16 @@ build (Ctrl+Shift+B).
 
 ### Editor setup
 
-**VS Code** — open the workspace file rather than the folder: `code strictland.code-workspace`. Accept
+**VS Code** - open the workspace file rather than the folder: `code strictland.code-workspace`. Accept
 the recommended extensions when prompted (or run the **Install All Recommended Extensions** task).
 Format-on-save then matches the build exactly, so your changes stay clean as you type.
 
-**IntelliJ IDEA** — import `src/jvm` as a Gradle project and accept the prompt to install the
+**IntelliJ IDEA** - import `src/jvm` as a Gradle project and accept the prompt to install the
 **palantir-java-format** and **Scala** plugins. Enabling palantir-java-format keeps editor formatting
 in step with the build.
 
 
-Stuck on any of this? Ask us on the [Discord channel](https://discord.gg/fTpqUTMmVa) — we're happy to help.
+Stuck on any of this? Ask us on the [Discord channel](https://discord.gg/fTpqUTMmVa) - we're happy to help.
 
 ## Project structure
 
@@ -93,7 +93,7 @@ src/jvm/
 ```
 
 The `compat-kotlin` and `compat-scala` subprojects only prove the jar is consumable and null-correct
-from those languages — they are not published.
+from those languages - they are not published.
 
 
 ## Working with the Git
@@ -110,12 +110,12 @@ from those languages — they are not published.
 Formatting is handled for you by [Spotless](https://github.com/diffplug/spotless), with the Gradle
 build as the single source of truth:
 
-- **Java** — [palantir-java-format](https://github.com/palantir/palantir-java-format)
-- **Kotlin** — `ktfmt` (and `ktlint` for Gradle scripts)
-- **Scala** — `scalafmt`, configured by [`.scalafmt.conf`](./src/jvm/.scalafmt.conf)
+- **Java** - [palantir-java-format](https://github.com/palantir/palantir-java-format)
+- **Kotlin** - `ktfmt` (and `ktlint` for Gradle scripts)
+- **Scala** - `scalafmt`, configured by [`.scalafmt.conf`](./src/jvm/.scalafmt.conf)
 
 The editor integrations and the pre-commit hook both defer to this same config, so once your
-environment is set up you rarely touch it directly — `./gradlew spotlessApply` reformats everything,
+environment is set up you rarely touch it directly - `./gradlew spotlessApply` reformats everything,
 and `./gradlew spotlessCheck` (part of `build`) flags any drift.
 
 To get the pre-commit hook on your own machine, point Git at the shared hooks once (the dev container
@@ -130,7 +130,7 @@ thinking about it.
 
 The build also runs [Error Prone](https://errorprone.info/) with
 [NullAway](https://github.com/uber/NullAway), and the public API is `@NullMarked`
-([JSpecify](https://jspecify.dev/)) — so annotate nullable references explicitly.
+([JSpecify](https://jspecify.dev/)) - so annotate nullable references explicitly.
 
 ## Licensing and legal rights
 

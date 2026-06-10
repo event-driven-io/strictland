@@ -85,7 +85,7 @@ tasks.named<Javadoc>("javadoc") {
     }
 }
 
-tasks.named("check") { dependsOn("jacocoTestReport", "jacocoTestCoverageVerification") }
+tasks.named("check") { dependsOn("jacocoTestReport", "jacocoTestCoverageVerification", "javadoc") }
 
 dependencies {
     api(libs.jspecify)
