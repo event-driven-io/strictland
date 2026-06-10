@@ -132,6 +132,24 @@ The build also runs [Error Prone](https://errorprone.info/) with
 [NullAway](https://github.com/uber/NullAway), and the public API is `@NullMarked`
 ([JSpecify](https://jspecify.dev/)) - so annotate nullable references explicitly.
 
+## Tests, coverage, and documentation
+
+Alongside formatting and static analysis, `./gradlew build` checks two more things: full test coverage and a documented public API. Both run under `check`, so a pull request that drops either won't go green. The existing tests and comments show what's expected, so neither needs to slow you down.
+
+### 100% line and branch coverage
+
+The build requires 100% line and branch coverage ([`jacocoTestCoverageVerification`](./src/jvm/build.gradle.kts)). This does more than confirm the tests run the code they're meant to. It also surfaces code no test can reach. A branch you can't cover is often one that can't execute: a null check on a value that's never null, or a `default` case the type already rules out. When that's the case, the better fix is usually to remove the branch, not to write a test that only satisfies the check. So treat a coverage gap as a question about the code first, and the test second.
+
+We reach the coverage from the outside in. Tests drive the public DSL the same way calling code does: `given(...).whenSerialized().thenContractIsUnchanged()`. The internals are covered because real usage runs through them, not because a test reaches into a private method. Tests written this way survive refactors and read as examples of the API. [`SerializationContractTests`](./src/jvm/src/test/java/io/eventdriven/strictland/SerializationContractTests.java) is a good place to start. The compatibility suites [`BackwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/BackwardCompatibilityTests.java) and [`ForwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/ForwardCompatibilityTests.java) follow the same shape.
+
+### Documented public API
+
+The public API is what other code is written against. Its documentation carries the intent a signature can't: what a type is for, when you'd reach for it, how the pieces fit. That's why we document all of it.
+
+`check` runs Javadoc with warnings treated as errors ([`-Xwerror`](./src/jvm/build.gradle.kts)), so every public and protected member needs a comment or the build fails. Each one is written for the reader calling it. It opens with what the thing is and why you'd reach for it, then shows a short example pulled from a real test with `{@snippet}`. It doesn't restate the signature. The contract DSL steps are a good illustration: their comments say what each stage checks and show the call in context. The members already documented are the easiest guide to the tone.
+
+Writing the comment also tells you something about the API. A member you can't describe in a plain sentence is often one whose design is worth a second look while it's still new.
+
 ## Licensing and legal rights
 
 By contributing to Strictland:
