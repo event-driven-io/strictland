@@ -30,7 +30,7 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenOrderWithoutCoupon_whenReadByTypeThatAddedOptionalCoupon_thenBackwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new OrderPlaced(FIXED_ID, "Alice"))
                     .whenDeserializedAs(OrderPlacedWithCoupon.class)
                     .thenBackwardCompatible(order -> assertNull(order.couponCode()));
@@ -47,7 +47,7 @@ final class BackwardCompatibilityTests {
         void givenOrderWithoutCurrency_whenReadByTypeThatAddedRequiredCurrency_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new OrderConfirmed(FIXED_ID, "Alice"))
                             .whenDeserializedAs(OrderConfirmedWithCurrency.class)
                             .thenBackwardCompatible());
@@ -67,7 +67,7 @@ final class BackwardCompatibilityTests {
         void givenOrderWithCustomer_whenReadByTypeThatRenamedItToClient_thenNotBackwardCompatible() {
             assertThrows(
                     AssertionError.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new OrderCompleted(FIXED_ID, "Alice"))
                             .whenDeserializedAs(OrderCompletedRenamed.class)
                             .thenBackwardCompatible());
@@ -84,7 +84,7 @@ final class BackwardCompatibilityTests {
         void givenOrderWithNullCustomer_whenReadByTypeThatMadeCustomerRequired_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new OrderDrafted(FIXED_ID, null))
                             .whenDeserializedAs(OrderDraftedRequiredCustomer.class)
                             .thenBackwardCompatible());
@@ -102,7 +102,7 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenOrder_whenReadByTypeWithTheSameFieldsInADifferentOrder_thenBackwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new OrderShipped(FIXED_ID, "Alice"))
                     .whenDeserializedAs(OrderShippedReordered.class)
                     .thenBackwardCompatible();
@@ -123,7 +123,7 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredEventNamedAfterItsClass_whenReadByTheEvolvedType_thenBackwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(Snapshot.of(CustomerRegisteredV1.class))
                     .whenDeserializedAs(CustomerRegisteredV2.class)
                     .thenBackwardCompatible(event -> assertNull(event.referralCode()));
@@ -131,7 +131,7 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredEventNamedByItsMessageType_whenReadByTheEvolvedType_thenBackwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(Snapshot.forMessageType("AccountOpenedV1", AccountOpenedV1.class))
                     .whenDeserializedAs(AccountOpenedV2.class)
                     .thenBackwardCompatible(event -> assertNull(event.currency()));
@@ -146,7 +146,7 @@ final class BackwardCompatibilityTests {
         void givenAStoredOldEvent_whenReadByTheCurrentType_thenBackwardCompatible() {
             var path = Path.of("src/test/java/io/eventdriven/strictland/ShoppingCartConfirmedV1.approved.txt");
 
-            Contract.specification()
+            MessageContract.specification()
                     .given(Snapshot.at(path, ShoppingCartConfirmed.class))
                     .whenDeserializedAs(ShoppingCartConfirmed.class)
                     .thenBackwardCompatible();
@@ -163,7 +163,7 @@ final class BackwardCompatibilityTests {
 
             var error = assertThrows(
                     AssertionError.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(Snapshot.at(path, InvoiceIssued.class))
                             .whenDeserializedAs(InvoiceIssued.class)
                             .thenBackwardCompatible());
@@ -181,7 +181,7 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAnIntAmount_whenReadByTypeThatWidenedItToLong_thenBackwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new PaymentCaptured(FIXED_ID, 100))
                     .whenDeserializedAs(PaymentCapturedWiderAmount.class)
                     .thenBackwardCompatible();
@@ -200,7 +200,7 @@ final class BackwardCompatibilityTests {
         void givenARawCustomerId_whenReadByTypeThatWrappedItInAValueObject_thenNotBackwardCompatible() {
             assertThrows(
                     RuntimeException.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new OrderRegistered(FIXED_ID, FIXED_ID))
                             .whenDeserializedAs(OrderRegisteredWithCustomerId.class)
                             .thenBackwardCompatible());
@@ -222,7 +222,7 @@ final class BackwardCompatibilityTests {
 
             assertThrows(
                     RuntimeException.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(Snapshot.at(path, InvoiceStatusChanged.class))
                             .whenDeserializedAs(InvoiceStatusChanged.class)
                             .thenBackwardCompatible());
@@ -243,7 +243,7 @@ final class BackwardCompatibilityTests {
         void givenAFlatShipment_whenReadByTypeThatNestedTheClient_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(new ShipmentScheduled(FIXED_ID, FIXED_ID))
                             .whenDeserializedAs(ShipmentScheduledNested.class)
                             .thenBackwardCompatible());
@@ -268,7 +268,7 @@ final class BackwardCompatibilityTests {
 
         @Test
         void given_anEventModelledAsAClass_whenReadByANewerClassVersion_thenBackwardCompatible() {
-            Contract.specification()
+            MessageContract.specification()
                     .given(new StoredOrderV1(FIXED_ID))
                     .whenDeserializedAs(StoredOrder.class)
                     .thenBackwardCompatible();
@@ -289,7 +289,7 @@ final class BackwardCompatibilityTests {
 
             assertThrows(
                     RuntimeException.class,
-                    () -> Contract.specification()
+                    () -> MessageContract.specification()
                             .given(Snapshot.at(path, ShipmentEvent.class))
                             .whenDeserializedAs(ShipmentEvent.class)
                             .thenBackwardCompatible());
