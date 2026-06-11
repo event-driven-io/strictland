@@ -1,8 +1,7 @@
 package io.eventdriven.strictland;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import org.approvaltests.Approvals;
 import org.approvaltests.core.Options;
@@ -21,12 +20,12 @@ import org.jspecify.annotations.Nullable;
 public class ThenContractStep<S> {
     private final S instance;
     private final @Nullable Snapshot destination;
-    private final ObjectMapper mapper;
+    private final MessageSerializer serializer;
 
-    ThenContractStep(S instance, @Nullable Snapshot destination, ObjectMapper mapper) {
+    ThenContractStep(S instance, @Nullable Snapshot destination, MessageSerializer serializer) {
         this.instance = instance;
         this.destination = destination;
-        this.mapper = mapper;
+        this.serializer = serializer;
     }
 
     /**
@@ -63,12 +62,9 @@ public class ThenContractStep<S> {
     }
 
     private void verify(Options options) {
-        try {
-            Approvals.verify(
-                    mapper.writeValueAsString(instance), options.withReporter(new AutoApproveWhenEmptyReporter()));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        Approvals.verify(
+                new String(serializer.serialize(instance), StandardCharsets.UTF_8),
+                options.withReporter(new AutoApproveWhenEmptyReporter()));
     }
 
     static ApprovalNamer namedAt(Path path) {
