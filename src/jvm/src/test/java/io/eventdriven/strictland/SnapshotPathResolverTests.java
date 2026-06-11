@@ -13,7 +13,7 @@ final class SnapshotPathResolverTests {
 
     @Test
     void requireCaller_whenFrameIsEmpty_throwsIllegalState() {
-        var ex = assertThrows(IllegalStateException.class, () -> SnapshotPathResolver.requireCaller(Optional.empty()));
+        var ex = assertThrows(IllegalStateException.class, () -> FileSnapshotStorage.requireCaller(Optional.empty()));
         assertTrue(requireNonNull(ex.getMessage()).contains("Cannot determine calling test class from stack"));
     }
 }
