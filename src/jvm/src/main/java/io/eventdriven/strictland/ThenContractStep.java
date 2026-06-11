@@ -15,13 +15,19 @@ public class ThenContractStep<S> {
     private final @Nullable Snapshot destination;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
+    private final MessageTypeMapper typeMapper;
 
     ThenContractStep(
-            S instance, @Nullable Snapshot destination, MessageSerializer serializer, SnapshotStorage storage) {
+            S instance,
+            @Nullable Snapshot destination,
+            MessageSerializer serializer,
+            SnapshotStorage storage,
+            MessageTypeMapper typeMapper) {
         this.instance = instance;
         this.destination = destination;
         this.serializer = serializer;
         this.storage = storage;
+        this.typeMapper = typeMapper;
     }
 
     /**
@@ -46,10 +52,10 @@ public class ThenContractStep<S> {
 
     private String snapshotName() {
         if (destination == null) {
-            return instance.getClass().getSimpleName();
+            return typeMapper.name(instance.getClass());
         }
         return switch (destination) {
-            case Snapshot.ByClass<?> b -> b.sourceType().getSimpleName();
+            case Snapshot.ByClass<?> b -> typeMapper.name(b.sourceType());
             case Snapshot.ByMessageType b -> b.messageType();
             case Snapshot.ByPath b -> b.path().toString();
         };

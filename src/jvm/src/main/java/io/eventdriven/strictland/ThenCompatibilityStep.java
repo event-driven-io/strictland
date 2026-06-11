@@ -32,6 +32,7 @@ public class ThenCompatibilityStep<S, T> {
     private final MessageSerializer serializer;
     private final ObjectMapper mapper;
     private final SnapshotStorage storage;
+    private final MessageTypeMapper typeMapper;
 
     ThenCompatibilityStep(
             @Nullable Snapshot snapshot,
@@ -39,13 +40,15 @@ public class ThenCompatibilityStep<S, T> {
             Class<T> targetType,
             MessageSerializer serializer,
             ObjectMapper mapper,
-            SnapshotStorage storage) {
+            SnapshotStorage storage,
+            MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.targetType = targetType;
         this.serializer = serializer;
         this.mapper = mapper;
         this.storage = storage;
+        this.typeMapper = typeMapper;
     }
 
     /**
@@ -195,7 +198,7 @@ public class ThenCompatibilityStep<S, T> {
         }
         var name =
                 switch (snapshot) {
-                    case Snapshot.ByClass<?> s -> s.sourceType().getSimpleName();
+                    case Snapshot.ByClass<?> s -> typeMapper.name(s.sourceType());
                     case Snapshot.ByMessageType s -> s.messageType();
                     case Snapshot.ByPath s -> s.path().toString();
                 };

@@ -17,7 +17,8 @@ final class ThenCompatibilityStepInvariantTests {
                 Object.class,
                 new JacksonMessageSerializer(new JsonMapper()),
                 new JsonMapper(),
-                new FileSnapshotStorage());
+                new FileSnapshotStorage(),
+                MessageTypeMapper.simpleName());
         assertThrows(IllegalStateException.class, step::thenForwardCompatible);
     }
 }

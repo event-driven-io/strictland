@@ -18,18 +18,21 @@ public class GivenStep<S> {
     final MessageSerializer serializer;
     final ObjectMapper mapper;
     final SnapshotStorage storage;
+    final MessageTypeMapper typeMapper;
 
     GivenStep(
             @Nullable Snapshot snapshot,
             @Nullable S instance,
             MessageSerializer serializer,
             ObjectMapper mapper,
-            SnapshotStorage storage) {
+            SnapshotStorage storage,
+            MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.serializer = serializer;
         this.mapper = mapper;
         this.storage = storage;
+        this.typeMapper = typeMapper;
     }
 
     /**
@@ -52,7 +55,7 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerialized() {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, null, serializer, storage);
+        return new ThenContractStep<>(instance, null, serializer, storage, typeMapper);
     }
 
     /**
@@ -76,7 +79,7 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerialized(Snapshot destination) {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, destination, serializer, storage);
+        return new ThenContractStep<>(instance, destination, serializer, storage, typeMapper);
     }
 
     private S requireInstance() {
@@ -107,6 +110,6 @@ public class GivenStep<S> {
      * @return the step where you check compatibility, choosing the direction
      */
     public <T> ThenCompatibilityStep<S, T> whenDeserializedAs(Class<T> targetType) {
-        return new ThenCompatibilityStep<>(snapshot, instance, targetType, serializer, mapper, storage);
+        return new ThenCompatibilityStep<>(snapshot, instance, targetType, serializer, mapper, storage, typeMapper);
     }
 }

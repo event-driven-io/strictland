@@ -43,11 +43,13 @@ public class MessageContract {
     private final MessageSerializer serializer;
     private final ObjectMapper mapper;
     private final SnapshotStorage storage;
+    private final MessageTypeMapper typeMapper;
 
     private MessageContract(ObjectMapper mapper) {
         this.mapper = mapper;
         this.serializer = new JacksonMessageSerializer(mapper);
         this.storage = new FileSnapshotStorage();
+        this.typeMapper = MessageTypeMapper.simpleName();
     }
 
     /**
@@ -97,7 +99,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, mapper, storage);
+        return new GivenStep<>(snapshot, null, serializer, mapper, storage, typeMapper);
     }
 
     /**
@@ -112,7 +114,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, mapper, storage);
+        return new GivenStep<>(snapshot, null, serializer, mapper, storage, typeMapper);
     }
 
     /**
@@ -126,7 +128,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, mapper, storage);
+        return new GivenStep<>(snapshot, null, serializer, mapper, storage, typeMapper);
     }
 
     /**
@@ -141,6 +143,6 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(null, instance, serializer, mapper, storage);
+        return new GivenStep<>(null, instance, serializer, mapper, storage, typeMapper);
     }
 }
