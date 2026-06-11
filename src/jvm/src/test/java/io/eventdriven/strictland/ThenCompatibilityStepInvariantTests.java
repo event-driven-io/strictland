@@ -11,7 +11,8 @@ final class ThenCompatibilityStepInvariantTests {
 
     @Test
     void whenBothSnapshotAndInstanceAreNull_thenForwardCompatible_throwsIllegalState() {
-        var step = new ThenCompatibilityStep<Object, Object>(null, null, Object.class, new JsonMapper());
+        var step = new ThenCompatibilityStep<Object, Object>(
+                null, null, Object.class, new JacksonMessageSerializer(new JsonMapper()), new JsonMapper());
         assertThrows(IllegalStateException.class, step::thenForwardCompatible);
     }
 }

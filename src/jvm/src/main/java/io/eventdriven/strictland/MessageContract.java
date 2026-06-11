@@ -40,10 +40,12 @@ public class MessageContract {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
+    private final MessageSerializer serializer;
     private final ObjectMapper mapper;
 
     private MessageContract(ObjectMapper mapper) {
         this.mapper = mapper;
+        this.serializer = new JacksonMessageSerializer(mapper);
     }
 
     /**
@@ -93,7 +95,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(snapshot, null, mapper);
+        return new GivenStep<>(snapshot, null, serializer, mapper);
     }
 
     /**
@@ -108,7 +110,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(snapshot, null, mapper);
+        return new GivenStep<>(snapshot, null, serializer, mapper);
     }
 
     /**
@@ -122,7 +124,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(snapshot, null, mapper);
+        return new GivenStep<>(snapshot, null, serializer, mapper);
     }
 
     /**
@@ -137,6 +139,6 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(null, instance, mapper);
+        return new GivenStep<>(null, instance, serializer, mapper);
     }
 }

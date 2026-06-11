@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,12 +30,19 @@ public class ThenCompatibilityStep<S, T> {
     private final @Nullable Snapshot snapshot;
     private final @Nullable S instance;
     private final Class<T> targetType;
+    private final MessageSerializer serializer;
     private final ObjectMapper mapper;
 
-    ThenCompatibilityStep(@Nullable Snapshot snapshot, @Nullable S instance, Class<T> targetType, ObjectMapper mapper) {
+    ThenCompatibilityStep(
+            @Nullable Snapshot snapshot,
+            @Nullable S instance,
+            Class<T> targetType,
+            MessageSerializer serializer,
+            ObjectMapper mapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.targetType = targetType;
+        this.serializer = serializer;
         this.mapper = mapper;
     }
 
@@ -114,13 +122,13 @@ public class ThenCompatibilityStep<S, T> {
         Map<String, Object> sourceMap;
         Map<String, Object> targetMap;
         try {
-            deserialized = mapper.readValue(sourceBytes, targetType);
+            deserialized = serializer.deserialize(sourceBytes, targetType);
             if (deserialized == null) {
                 throw new AssertionError("Deserialization as " + targetType.getSimpleName() + " returned empty");
             }
             sourceMap = toMap(sourceBytes);
-            targetMap = toMap(mapper.writeValueAsBytes(deserialized));
-        } catch (IOException e) {
+            targetMap = toMap(serializer.serialize(deserialized));
+        } catch (UncheckedIOException | IOException e) {
             throw new RuntimeException("Deserialization as " + targetType.getSimpleName() + " failed", e);
         }
         assertRequiredFieldsSatisfied(sourceMap);
@@ -174,8 +182,8 @@ public class ThenCompatibilityStep<S, T> {
     private byte[] resolveSourceBytes() {
         if (instance != null) {
             try {
-                return mapper.writeValueAsBytes(instance);
-            } catch (IOException e) {
+                return serializer.serialize(instance);
+            } catch (UncheckedIOException e) {
                 throw new RuntimeException(
                         "Serialization of " + instance.getClass().getSimpleName() + " failed", e);
             }
