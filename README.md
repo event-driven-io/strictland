@@ -2,6 +2,8 @@
 
 # Strictland - contract and compatibility testing for your messages
 
+![](./assets/logo.png)
+
 **Strictland is a contract-testing library** for the messages your code sends and stores: events, commands, queue messages, HTTP requests and responses, and anything else you serialize for someone else to read.
 
 **You write a small unit test that locks down a message's format.** Later you rename a field, change a type, or adjust how a value serializes; the code still compiles and your other tests pass, but that one fails and points at what changed. You fix it in your build, before a consumer or a stored event has hit the old format in production.
