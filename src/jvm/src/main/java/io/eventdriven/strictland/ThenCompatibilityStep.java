@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -32,18 +31,21 @@ public class ThenCompatibilityStep<S, T> {
     private final Class<T> targetType;
     private final MessageSerializer serializer;
     private final ObjectMapper mapper;
+    private final SnapshotStorage storage;
 
     ThenCompatibilityStep(
             @Nullable Snapshot snapshot,
             @Nullable S instance,
             Class<T> targetType,
             MessageSerializer serializer,
-            ObjectMapper mapper) {
+            ObjectMapper mapper,
+            SnapshotStorage storage) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.targetType = targetType;
         this.serializer = serializer;
         this.mapper = mapper;
+        this.storage = storage;
     }
 
     /**
@@ -191,17 +193,12 @@ public class ThenCompatibilityStep<S, T> {
         if (snapshot == null) {
             throw new IllegalStateException("Either a snapshot or an instance is required");
         }
-        var path =
+        var name =
                 switch (snapshot) {
-                    case Snapshot.ByClass<?> s ->
-                        SnapshotPathResolver.resolve(s.sourceType().getSimpleName());
-                    case Snapshot.ByMessageType s -> SnapshotPathResolver.resolve(s.messageType());
-                    case Snapshot.ByPath s -> s.path();
+                    case Snapshot.ByClass<?> s -> s.sourceType().getSimpleName();
+                    case Snapshot.ByMessageType s -> s.messageType();
+                    case Snapshot.ByPath s -> s.path().toString();
                 };
-        try {
-            return Files.readAllBytes(path);
-        } catch (IOException e) {
-            throw new RuntimeException("Cannot read snapshot file: " + path, e);
-        }
+        return storage.read(name).orElseThrow(() -> new RuntimeException("Cannot read snapshot file: " + name));
     }
 }

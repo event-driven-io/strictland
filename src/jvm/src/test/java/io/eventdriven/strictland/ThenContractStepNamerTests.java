@@ -15,7 +15,7 @@ final class ThenContractStepNamerTests {
     @Test
     void namedAt_returnsNamerWithCorrectNameAndPath() {
         var path = Path.of("src/test/java/io/eventdriven/strictland/MyEvent.approved.txt");
-        var namer = ThenContractStep.namedAt(path);
+        var namer = FileSnapshotStorage.namedAt(path);
 
         assertEquals("MyEvent", namer.getApprovalName());
 
