@@ -19,7 +19,7 @@ plugins {
 }
 
 group = "io.event-driven"
-version = providers.gradleProperty("version").getOrElse("0.2.0-SNAPSHOT")
+version = providers.gradleProperty("version").getOrElse("0.3.0-SNAPSHOT")
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(26) }
@@ -125,7 +125,7 @@ mavenPublishing {
     coordinates("io.event-driven", "strictland", version.toString())
     pom {
         name = "Strictland"
-        description = "Fluent DSL for testing event schema versioning and serialization compatibility"
+        description = "Strictland is a contract-testing library for checking the compatibility of messages your code sends and stores"
         inceptionYear = "2026"
         url = "https://github.com/event-driven-io/strictland"
         licenses {
