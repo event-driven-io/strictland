@@ -40,21 +40,24 @@ public class MessageContract {
     }
 
     /**
-     * Creates a message-contract specification from explicit options, your starting point when you go
-     * beyond JSON: a non-Jackson serializer, snapshots kept elsewhere, or names that follow your event
-     * store. Hand it the message with {@code given(...)}, then finish with a {@code then} check.
+     * Creates a message-contract specification, your starting point for locking down a message's
+     * format. Hand it the message with {@code given(...)}, then finish with a {@code then} check.
      *
-     * <p>Build the options with {@link SpecificationOptions#serializer(MessageSerializer)} and the
-     * fluent with-ers, or take one from {@link Json.Jackson}.
+     * <p>Through the options you define how a message is serialized: its format and the serializer's
+     * configuration. Using the serializer your application already uses keeps the contract aligned
+     * with the bytes you actually ship. If you're using JSON, you can plug in your own Jackson mapper
+     * with {@link Json.Jackson#of(com.fasterxml.jackson.databind.ObjectMapper) Json.Jackson.of(mapper)},
+     * or use Strictland's default with {@link Json.Jackson#defaults()}. For another format, implement
+     * {@link MessageSerializer} and pass it through {@link SpecificationOptions}.
      *
      * {@snippet :
-     * MessageContract.specification(SpecificationOptions.serializer(new CsvMessageSerializer()))
-     *     .given(new MemberJoined(memberId, "Alice"))
-     *     .whenDeserializedAs(MemberJoined.class)
-     *     .thenBackwardCompatible();
+     * MessageContract.specification(Json.Jackson.defaults())
+     *     .given(new OrderPlaced(orderId, "Alice", placedAt))
+     *     .whenSerialized()
+     *     .thenContractIsUnchanged();
      * }
      *
-     * @param options the serializer, snapshot storage, and type mapper to run the check on
+     * @param options how a message is serialized, where its snapshot lives, and how its type is named
      * @return a specification you attach the message under test to with {@code given(...)}
      */
     public static MessageContract specification(SpecificationOptions options) {

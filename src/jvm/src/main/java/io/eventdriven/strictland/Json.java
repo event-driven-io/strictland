@@ -3,9 +3,9 @@ package io.eventdriven.strictland;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * The JSON entry points for building {@link SpecificationOptions}, grouping the serializers that read
- * and write JSON. Reach here when your messages are JSON, the common case; for another format, write a
- * {@link MessageSerializer} and start from {@link SpecificationOptions#serializer(MessageSerializer)}.
+ * The JSON serializers for a specification. Take a {@link SpecificationOptions} from {@link Jackson}
+ * and pass it to {@link MessageContract#specification(SpecificationOptions)}. For another format, write
+ * a {@link MessageSerializer} and start from {@link SpecificationOptions#serializer(MessageSerializer)}.
  *
  * <p>{@link Jackson} is the only implementation today.
  *
@@ -19,9 +19,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public interface Json {
 
     /**
-     * JSON options backed by Jackson, the serializer most applications already use. {@link
-     * #defaults()} fits when you haven't customized Jackson; {@link #of(ObjectMapper)} binds your own
-     * mapper so the check pins the exact bytes you ship.
+     * JSON options built on Jackson. {@link #of(ObjectMapper)} serializes with your application's own
+     * mapper, checking the exact bytes you ship; {@link #defaults()} uses Strictland's default mapper
+     * when you have none to reuse.
      *
      * {@snippet :
      * MessageContract.specification(Json.Jackson.of(myObjectMapper))
@@ -33,7 +33,7 @@ public interface Json {
     interface Jackson {
 
         /**
-         * JSON options on Strictland's default Jackson mapper, which writes ISO-8601 dates, keeps null
+         * JSON options using Strictland's default Jackson mapper, which writes ISO-8601 dates, keeps null
          * fields, and ignores unknown properties on read. Use it when your application hasn't
          * customized Jackson; otherwise pass your own mapper to {@link #of(ObjectMapper)}.
          *
@@ -44,7 +44,7 @@ public interface Json {
         }
 
         /**
-         * JSON options bound to your own Jackson mapper, so the check serializes the exact bytes you
+         * JSON options bound to your own Jackson mapper. The check then serializes the exact bytes you
          * ship: snake_case naming, a custom date format, {@code NON_NULL} inclusion, and so on.
          *
          * @param mapper the Jackson mapper your application serializes with

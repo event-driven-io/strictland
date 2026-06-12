@@ -1,12 +1,14 @@
 package io.eventdriven.strictland;
 
 /**
- * Turns a message into bytes and back, the one thing the core knows about a serialization format.
- * Supply your own when your application doesn't serialize with Jackson - a Protobuf, Avro, or CSV
- * encoding - and the contract checks run against the exact bytes you ship.
+ * Converts a message to the bytes your application writes, and reads them back. Strictland provides a
+ * Jackson serializer for JSON out of the box; for another format you implement this interface, as the
+ * CSV and simple-binary serializers in the test suite show. The contract checks then run against the
+ * exact bytes you ship.
  *
- * <p>Hand an implementation to {@link SpecificationOptions#serializer(MessageSerializer)}; for JSON,
- * reach for {@link Json.Jackson} instead of writing one.
+ * <p>Pass your application's serializer to {@link SpecificationOptions#serializer(MessageSerializer)}.
+ * If you're using JSON then you can use the built-in {@link Json.Jackson#of} instead of writing your
+ * own.
  *
  * {@snippet :
  * MessageContract.specification(SpecificationOptions.serializer(new CsvMessageSerializer()))
@@ -18,8 +20,8 @@ package io.eventdriven.strictland;
 public interface MessageSerializer {
 
     /**
-     * Serializes a message to the bytes your application writes, so a contract check pins the shape
-     * consumers actually see.
+     * Serializes a message to the bytes your application writes. A contract check compares those bytes
+     * against the approved snapshot.
      *
      * @param value the message to serialize
      * @return the serialized bytes
@@ -27,7 +29,7 @@ public interface MessageSerializer {
     byte[] serialize(Object value);
 
     /**
-     * Reads bytes back into a message of the given type, so a compatibility check can confirm one
+     * Reads bytes back into a message of the given type. A compatibility check uses it to confirm one
      * version still reads another's data.
      *
      * @param bytes the serialized message to read
