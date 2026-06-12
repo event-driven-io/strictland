@@ -16,7 +16,7 @@ Every check starts from `MessageContract` and reads as a sentence:
 @Test
 void ensureOrderPlacedCompatibilityWithNewerVersion() {
     // Strictland specification
-    MessageContract.specification()
+    MessageContract.specification(Json.Jackson.defaults())
         .given(new OrderPlaced(orderId, "Alice"))
         .whenDeserializedAs(OrderPlacedWithCoupon.class)
         .thenBackwardCompatible();
@@ -47,7 +47,7 @@ Maven:
 Then add new test with:
 
 ```java
-MessageContract.specification()
+MessageContract.specification(Json.Jackson.defaults())
     .given(new OrderPlaced(orderId, "Alice", placedAt))
     .whenSerialized()
     .thenContractIsUnchanged();
@@ -93,7 +93,7 @@ var snakeCase = JsonMapper.builder()
     .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
     .build();
 
-MessageContract.specification(snakeCase)
+MessageContract.specification(Json.Jackson.of(snakeCase))
     .given(new ShipmentScheduled(shipmentId, "Alice Smith", scheduledAt))
     .whenSerialized()
     .thenContractIsUnchanged();
@@ -108,7 +108,7 @@ The snapshot then records the shape your mapper actually produces, snake_case ke
 A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. Every check already uses a default one, named after the message and kept next to your test. You reach for `Snapshot` only to point at a different file, by message-type name when the snapshot is named after a logical type rather than a Java class, by class, or by path:
 
 ```java
-MessageContract.specification()
+MessageContract.specification(Json.Jackson.defaults())
     .given(new OrderInitiated(orderId, null, initiatedAt))
     .whenSerialized(Snapshot.forMessageType("OrderInitiated_NullPromotion"))
     .thenContractIsUnchanged();
@@ -119,7 +119,7 @@ MessageContract.specification()
 You can pin a message so its type can't change by accident, the kind of field that's invisible in the Java type but breaks deserialization the moment it's renamed:
 
 ```java
-MessageContract.specification()
+MessageContract.specification(Json.Jackson.defaults())
     .given(new InvoiceIssued(invoiceId, new BigDecimal("99.99")))
     .whenSerialized(Snapshot.forMessageType("InvoiceIssuedEvent"))
     .thenContractIsUnchanged();
@@ -132,7 +132,7 @@ MessageContract.specification()
 Confirm a newer type still reads what an older one wrote (backward compatible):
 
 ```java
-MessageContract.specification()
+MessageContract.specification(Json.Jackson.defaults())
     .given(new OrderPlaced(orderId, "Alice"))
     .whenDeserializedAs(OrderPlacedWithCoupon.class)
     .thenBackwardCompatible(order -> assertNull(order.couponCode()));
@@ -141,7 +141,7 @@ MessageContract.specification()
 Confirm a reader that hasn't upgraded yet still reads what a newer type writes (forward compatible):
 
 ```java
-MessageContract.specification()
+MessageContract.specification(Json.Jackson.defaults())
     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
     .whenDeserializedAs(OrderPlaced.class)
     .thenForwardCompatible();
@@ -150,7 +150,7 @@ MessageContract.specification()
 Read a snapshot you saved from an old version with today's type, to prove the current code still loads what production stored last year:
 
 ```java
-MessageContract.specification()
+MessageContract.specification(Json.Jackson.defaults())
     .given(Snapshot.of(CustomerRegisteredV1.class))
     .whenDeserializedAs(CustomerRegisteredV2.class)
     .thenBackwardCompatible(event -> assertNull(event.referralCode()));

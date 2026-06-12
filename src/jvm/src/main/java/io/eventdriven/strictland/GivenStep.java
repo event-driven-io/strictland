@@ -39,7 +39,7 @@ public class GivenStep<S> {
      * and fails the test if the format has changed.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice", placedAt))
      *     .whenSerialized()
      *     .thenContractIsUnchanged();
@@ -62,7 +62,7 @@ public class GivenStep<S> {
      * produces several snapshots or the file lives elsewhere.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderInitiatedV2(id, null, initiatedAt))
      *     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
      *     .thenContractIsUnchanged();
@@ -95,7 +95,7 @@ public class GivenStep<S> {
      * ThenCompatibilityStep#thenBackwardCompatible()} when a newer reader takes older data.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
      *     .whenDeserializedAs(OrderPlaced.class)
      *     .thenForwardCompatible();
