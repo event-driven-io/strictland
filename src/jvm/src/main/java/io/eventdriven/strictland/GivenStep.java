@@ -1,6 +1,5 @@
 package io.eventdriven.strictland;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -16,7 +15,6 @@ public class GivenStep<S> {
     final @Nullable Snapshot snapshot;
     final @Nullable S instance;
     final MessageSerializer serializer;
-    final ObjectMapper mapper;
     final SnapshotStorage storage;
     final MessageTypeMapper typeMapper;
 
@@ -24,13 +22,11 @@ public class GivenStep<S> {
             @Nullable Snapshot snapshot,
             @Nullable S instance,
             MessageSerializer serializer,
-            ObjectMapper mapper,
             SnapshotStorage storage,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.serializer = serializer;
-        this.mapper = mapper;
         this.storage = storage;
         this.typeMapper = typeMapper;
     }
@@ -110,6 +106,6 @@ public class GivenStep<S> {
      * @return the step where you check compatibility, choosing the direction
      */
     public <T> ThenCompatibilityStep<S, T> whenDeserializedAs(Class<T> targetType) {
-        return new ThenCompatibilityStep<>(snapshot, instance, targetType, serializer, mapper, storage, typeMapper);
+        return new ThenCompatibilityStep<>(snapshot, instance, targetType, serializer, storage, typeMapper);
     }
 }
