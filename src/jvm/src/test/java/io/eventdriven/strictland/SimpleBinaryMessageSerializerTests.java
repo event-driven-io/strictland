@@ -2,9 +2,7 @@ package io.eventdriven.strictland;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.file.Path;
 import java.util.UUID;
@@ -14,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @NullMarked
-final class BinarySerializerTests {
+final class SimpleBinaryMessageSerializerTests {
     private static final UUID FIXED_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final Path SNAPSHOT_DIR = Path.of("src/test/java/io/eventdriven/strictland/snapshots");
 

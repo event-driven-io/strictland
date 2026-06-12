@@ -2,10 +2,7 @@ package io.eventdriven.strictland;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
@@ -13,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 @NullMarked
-final class CsvSerializerTests {
+final class CsvMessageSerializerTests {
     private static final UUID FIXED_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     private interface Csv {

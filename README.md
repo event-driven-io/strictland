@@ -16,7 +16,7 @@ Every check starts from `MessageContract` and reads as a sentence:
 @Test
 void ensureOrderPlacedCompatibilityWithNewerVersion() {
     // Strictland specification
-    MessageContract.specification(Json.Jackson.defaults())
+    MessageContract.specification(Json.Jackson.of(yourObjectMapper))
         .given(new OrderPlaced(orderId, "Alice"))
         .whenDeserializedAs(OrderPlacedWithCoupon.class)
         .thenBackwardCompatible();
@@ -86,7 +86,18 @@ A **snapshot check** confirms the message still serializes exactly as it did whe
 
 A **compatibility check** is for the version you evolve on purpose, so changing a message doesn't strand the ones already in your store or on the wire. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote, the events you stored last year or a request already sent. Use `thenForwardCompatible()` to confirm a reader that hasn't upgraded yet still reads a message the newer version writes, so you can ship the new shape before everyone reading it has caught up. Both compare the fields the two versions share and fail if a required one is missing or a shared value changed.
 
-By default Strictland serializes with a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read. When your application serializes its own way, pass the same `ObjectMapper` it uses, so the test checks the exact bytes you ship, snake_case naming, a custom date format, `NON_NULL` inclusion, and so on. Against any other serializer you'd be pinning a shape your consumers never see:
+
+Strictland provides an implementation of a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read. You can use it with `Json.Jackson.defaults()`:
+
+```java
+MessageContract.specification(Json.Jackson.defaults())
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerialized()
+    .thenContractIsUnchanged();
+```
+
+
+Yet, we encourage to use your application's object mapper. Pass the same `ObjectMapper` it uses, so the test checks the exact bytes you ship, snake_case naming, a custom date format, `NON_NULL` inclusion, and so on. Against any other serializer you'd be pinning a shape your consumers never see:
 
 ```java
 var snakeCase = JsonMapper.builder()
@@ -108,18 +119,22 @@ The snapshot then records the shape your mapper actually produces, snake_case ke
 A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. Every check already uses a default one, named after the message and kept next to your test. You reach for `Snapshot` only to point at a different file, by message-type name when the snapshot is named after a logical type rather than a Java class, by class, or by path:
 
 ```java
-MessageContract.specification(Json.Jackson.defaults())
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new OrderInitiated(orderId, null, initiatedAt))
     .whenSerialized(Snapshot.forMessageType("OrderInitiated_NullPromotion"))
     .thenContractIsUnchanged();
 ```
+
+You can also define your own serializer, if you're using unsupported (yet?) format or serializer type. See basic examples in:
+- [CsvMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializer.java) and its [tests](src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializerTests.java) or,
+- [SimpleBinaryMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializer.java) and its [tests](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializerTests.java).
 
 ## Examples
 
 You can pin a message so its type can't change by accident, the kind of field that's invisible in the Java type but breaks deserialization the moment it's renamed:
 
 ```java
-MessageContract.specification(Json.Jackson.defaults())
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new InvoiceIssued(invoiceId, new BigDecimal("99.99")))
     .whenSerialized(Snapshot.forMessageType("InvoiceIssuedEvent"))
     .thenContractIsUnchanged();
@@ -132,25 +147,25 @@ MessageContract.specification(Json.Jackson.defaults())
 Confirm a newer type still reads what an older one wrote (backward compatible):
 
 ```java
-MessageContract.specification(Json.Jackson.defaults())
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new OrderPlaced(orderId, "Alice"))
     .whenDeserializedAs(OrderPlacedWithCoupon.class)
     .thenBackwardCompatible(order -> assertNull(order.couponCode()));
 ```
 
-Confirm a reader that hasn't upgraded yet still reads what a newer type writes (forward compatible):
+Confirm a consumer that hasn't upgraded yet still can deserialize what a newer type writes (forward compatible):
 
 ```java
-MessageContract.specification(Json.Jackson.defaults())
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
     .whenDeserializedAs(OrderPlaced.class)
     .thenForwardCompatible();
 ```
 
-Read a snapshot you saved from an old version with today's type, to prove the current code still loads what production stored last year:
+Read a snapshot you saved from an old version with today's type, to prove the current code still deserializes what production stored last year:
 
 ```java
-MessageContract.specification(Json.Jackson.defaults())
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(Snapshot.of(CustomerRegisteredV1.class))
     .whenDeserializedAs(CustomerRegisteredV2.class)
     .thenBackwardCompatible(event -> assertNull(event.referralCode()));
