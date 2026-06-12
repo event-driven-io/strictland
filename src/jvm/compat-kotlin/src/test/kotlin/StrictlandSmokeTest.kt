@@ -1,3 +1,4 @@
+import io.eventdriven.strictland.Json
 import io.eventdriven.strictland.MessageContract
 import io.eventdriven.strictland.Snapshot
 import kotlin.test.Test
@@ -7,7 +8,7 @@ class StrictlandSmokeTest {
 
     @Test
     fun `library is consumable from Kotlin`() {
-        val contract = MessageContract.specification()
+        val contract = MessageContract.specification(Json.Jackson.defaults())
         val step = contract.given(Snapshot.forMessageType("SomeEvent"))
 
         assertNotNull(step)

@@ -1,7 +1,5 @@
 package io.eventdriven.strictland;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 /**
  * Strictland is a contract-testing library for the messages your code sends and stores: events,
  * commands, queue messages, HTTP requests and responses, and anything else you serialize for someone
@@ -19,7 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <p>Every check starts here and reads as a sentence:
  *
  * {@snippet :
- * MessageContract.specification()
+ * MessageContract.specification(Json.Jackson.defaults())
  *     .given(new OrderPlaced(orderId, "Alice", placedAt))
  *     .whenSerialized()
  *     .thenContractIsUnchanged();
@@ -39,39 +37,6 @@ public class MessageContract {
         this.serializer = options.serializer();
         this.storage = options.storage();
         this.typeMapper = options.typeMapper();
-    }
-
-    /**
-     * Creates a message-contract specification, your starting point for locking down a message's
-     * format. Hand it the message with {@code given(...)}, then finish with a {@code then} check.
-     *
-     * <p>Uses Strictland's default serialization, which fits when your application hasn't customized
-     * Jackson; otherwise use {@link #specification(ObjectMapper)} so the test matches the bytes you
-     * ship.
-     *
-     * <p>For reference, the defaults write ISO-8601 dates, keep null fields, and ignore unknown
-     * properties on read.
-     *
-     * @return a specification you attach the message under test to with {@code given(...)}
-     */
-    public static MessageContract specification() {
-        return specification(Json.Jackson.defaults());
-    }
-
-    /**
-     * Creates a message-contract specification bound to your own Jackson mapper, your starting point
-     * when the application serializes in a customized way. Hand it the message with {@code
-     * given(...)}, then finish with a {@code then} check.
-     *
-     * <p>Pass the same {@link ObjectMapper} your application uses, so the test checks the exact bytes
-     * you ship: snake_case naming, a custom date format, {@code NON_NULL} inclusion, and so on.
-     * Against any other serializer you'd be pinning a shape your consumers never see.
-     *
-     * @param mapper the Jackson mapper your application serializes with
-     * @return a specification you attach the message under test to with {@code given(...)}
-     */
-    public static MessageContract specification(ObjectMapper mapper) {
-        return specification(Json.Jackson.of(mapper));
     }
 
     /**

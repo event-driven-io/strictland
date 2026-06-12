@@ -24,7 +24,7 @@ final class MisuseTests {
 
         assertThrows(
                 RuntimeException.class,
-                () -> MessageContract.specification()
+                () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(bad)
                         .whenSerialized()
                         .thenContractIsUnchanged());
@@ -36,7 +36,7 @@ final class MisuseTests {
 
         var exception = assertThrows(
                 RuntimeException.class,
-                () -> MessageContract.specification()
+                () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(bad)
                         .whenDeserializedAs(Bad.class)
                         .thenForwardCompatible());
@@ -48,7 +48,7 @@ final class MisuseTests {
     void given_snapshotSource_whenSerialized_thenFailsBecauseAnInstanceIsRequired() {
         var exception = assertThrows(
                 IllegalStateException.class,
-                () -> MessageContract.specification()
+                () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(Snapshot.forMessageType("OrderPlaced"))
                         .whenSerialized());
 
@@ -61,7 +61,7 @@ final class MisuseTests {
 
         var exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> MessageContract.specification()
+                () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(new OrderPlaced(FIXED_ID, "Alice", OffsetDateTime.parse("2024-01-01T12:00:00Z")))
                         .whenSerialized(Snapshot.at(path))
                         .thenContractIsUnchanged());
@@ -75,7 +75,7 @@ final class MisuseTests {
 
         var exception = assertThrows(
                 RuntimeException.class,
-                () -> MessageContract.specification()
+                () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(Snapshot.at(path, OrderPlaced.class))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenBackwardCompatible());
@@ -90,7 +90,7 @@ final class MisuseTests {
 
         var exception = assertThrows(
                 AssertionError.class,
-                () -> MessageContract.specification()
+                () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(Snapshot.at(path, OrderPlaced.class))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenForwardCompatible());
@@ -104,7 +104,7 @@ final class MisuseTests {
 
         var exception = assertThrows(
                 RuntimeException.class,
-                () -> MessageContract.specification()
+                () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(Snapshot.at(path, OrderPlaced.class))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenBackwardCompatible());

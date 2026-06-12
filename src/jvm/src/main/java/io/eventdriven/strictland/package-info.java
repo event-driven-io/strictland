@@ -17,13 +17,13 @@
  *
  * {@snippet :
  * // Lock a message's format, so any accidental change to it fails the build:
- * MessageContract.specification()
+ * MessageContract.specification(Json.Jackson.defaults())
  *     .given(new OrderPlaced(orderId, "Alice", placedAt))
  *     .whenSerialized()
  *     .thenContractIsUnchanged();
  *
  * // Check that a newer version can still read data written by an older one:
- * MessageContract.specification()
+ * MessageContract.specification(Json.Jackson.defaults())
  *     .given(new OrderPlaced(orderId, "Alice"))
  *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
  *     .thenBackwardCompatible();

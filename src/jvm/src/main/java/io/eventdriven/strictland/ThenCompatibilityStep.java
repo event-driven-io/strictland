@@ -54,7 +54,7 @@ public class ThenCompatibilityStep<S, T> {
      * drops or renames a field the older one needs, or writes a shared value differently.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
      *     .whenDeserializedAs(OrderPlaced.class)
      *     .thenForwardCompatible();
@@ -71,7 +71,7 @@ public class ThenCompatibilityStep<S, T> {
      * shared value differently.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
      *     .whenDeserializedAs(OrderPlaced.class)
      *     .thenForwardCompatible(order -> assertEquals("Alice", order.customer()));
@@ -89,7 +89,7 @@ public class ThenCompatibilityStep<S, T> {
      * version needs a field the older one never wrote, or reads a shared value differently.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice"))
      *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
      *     .thenBackwardCompatible();
@@ -106,7 +106,7 @@ public class ThenCompatibilityStep<S, T> {
      * differently.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice"))
      *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
      *     .thenBackwardCompatible(order -> assertNull(order.couponCode()));

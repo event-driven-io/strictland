@@ -40,7 +40,7 @@ public class ThenContractStep<S> {
      * request as the code that caused it.
      *
      * {@snippet :
-     * MessageContract.specification()
+     * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice", placedAt))
      *     .whenSerialized()
      *     .thenContractIsUnchanged();
