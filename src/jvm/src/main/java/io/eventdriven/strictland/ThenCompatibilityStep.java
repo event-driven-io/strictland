@@ -30,7 +30,6 @@ public class ThenCompatibilityStep<S, T> {
     private final @Nullable S instance;
     private final Class<T> targetType;
     private final MessageSerializer serializer;
-    private final ObjectMapper mapper;
     private final SnapshotStorage storage;
     private final MessageTypeMapper typeMapper;
 
@@ -39,14 +38,12 @@ public class ThenCompatibilityStep<S, T> {
             @Nullable S instance,
             Class<T> targetType,
             MessageSerializer serializer,
-            ObjectMapper mapper,
             SnapshotStorage storage,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.targetType = targetType;
         this.serializer = serializer;
-        this.mapper = mapper;
         this.storage = storage;
         this.typeMapper = typeMapper;
     }
@@ -123,6 +120,7 @@ public class ThenCompatibilityStep<S, T> {
 
     private void verifySharedFields(Consumer<T> extra) {
         var sourceBytes = resolveSourceBytes();
+        var jsonMapper = (serializer instanceof JacksonMessageSerializer j) ? j.mapper() : null;
         T deserialized;
         Map<String, Object> sourceMap;
         Map<String, Object> targetMap;
@@ -131,8 +129,12 @@ public class ThenCompatibilityStep<S, T> {
             if (deserialized == null) {
                 throw new AssertionError("Deserialization as " + targetType.getSimpleName() + " returned empty");
             }
-            sourceMap = toMap(sourceBytes);
-            targetMap = toMap(serializer.serialize(deserialized));
+            if (jsonMapper == null) {
+                extra.accept(deserialized);
+                return;
+            }
+            sourceMap = toMap(jsonMapper, sourceBytes);
+            targetMap = toMap(jsonMapper, serializer.serialize(deserialized));
         } catch (UncheckedIOException | IOException e) {
             throw new RuntimeException("Deserialization as " + targetType.getSimpleName() + " failed", e);
         }
@@ -180,7 +182,7 @@ public class ThenCompatibilityStep<S, T> {
         }
     }
 
-    private Map<String, Object> toMap(byte[] bytes) throws IOException {
+    private Map<String, Object> toMap(ObjectMapper mapper, byte[] bytes) throws IOException {
         return mapper.readValue(bytes, new TypeReference<>() {});
     }
 

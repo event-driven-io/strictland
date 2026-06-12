@@ -1,10 +1,6 @@
 package io.eventdriven.strictland;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
  * Strictland is a contract-testing library for the messages your code sends and stores: events,
@@ -35,21 +31,14 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
  * public API as text so you can approval-test the surface itself.
  */
 public class MessageContract {
-    private static final ObjectMapper DEFAULT_MAPPER = new JsonMapper()
-            .registerModule(new JavaTimeModule())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-
     private final MessageSerializer serializer;
-    private final ObjectMapper mapper;
     private final SnapshotStorage storage;
     private final MessageTypeMapper typeMapper;
 
-    private MessageContract(ObjectMapper mapper) {
-        this.mapper = mapper;
-        this.serializer = new JacksonMessageSerializer(mapper);
-        this.storage = new FileSnapshotStorage();
-        this.typeMapper = MessageTypeMapper.simpleName();
+    private MessageContract(SpecificationOptions options) {
+        this.serializer = options.serializer();
+        this.storage = options.storage();
+        this.typeMapper = options.typeMapper();
     }
 
     /**
@@ -66,7 +55,7 @@ public class MessageContract {
      * @return a specification you attach the message under test to with {@code given(...)}
      */
     public static MessageContract specification() {
-        return new MessageContract(DEFAULT_MAPPER);
+        return specification(Json.Jackson.defaults());
     }
 
     /**
@@ -82,7 +71,29 @@ public class MessageContract {
      * @return a specification you attach the message under test to with {@code given(...)}
      */
     public static MessageContract specification(ObjectMapper mapper) {
-        return new MessageContract(mapper);
+        return specification(Json.Jackson.of(mapper));
+    }
+
+    /**
+     * Creates a message-contract specification from explicit options, your starting point when you go
+     * beyond JSON: a non-Jackson serializer, snapshots kept elsewhere, or names that follow your event
+     * store. Hand it the message with {@code given(...)}, then finish with a {@code then} check.
+     *
+     * <p>Build the options with {@link SpecificationOptions#serializer(MessageSerializer)} and the
+     * fluent with-ers, or take one from {@link Json.Jackson}.
+     *
+     * {@snippet :
+     * MessageContract.specification(SpecificationOptions.serializer(new CsvMessageSerializer()))
+     *     .given(new MemberJoined(memberId, "Alice"))
+     *     .whenDeserializedAs(MemberJoined.class)
+     *     .thenBackwardCompatible();
+     * }
+     *
+     * @param options the serializer, snapshot storage, and type mapper to run the check on
+     * @return a specification you attach the message under test to with {@code given(...)}
+     */
+    public static MessageContract specification(SpecificationOptions options) {
+        return new MessageContract(options);
     }
 
     /**
@@ -99,7 +110,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, mapper, storage, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, typeMapper);
     }
 
     /**
@@ -114,7 +125,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, mapper, storage, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, typeMapper);
     }
 
     /**
@@ -128,7 +139,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, mapper, storage, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, typeMapper);
     }
 
     /**
@@ -143,6 +154,6 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(null, instance, serializer, mapper, storage, typeMapper);
+        return new GivenStep<>(null, instance, serializer, storage, typeMapper);
     }
 }
