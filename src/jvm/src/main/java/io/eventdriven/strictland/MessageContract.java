@@ -35,8 +35,18 @@ public class MessageContract {
 
     private MessageContract(SpecificationOptions options) {
         this.serializer = options.serializer();
-        this.storage = options.storage();
-        this.typeMapper = options.typeMapper();
+        this.storage = resolveStorage(options);
+        var configuredTypeMapper = options.typeMapper();
+        this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.simpleName();
+    }
+
+    private static SnapshotStorage resolveStorage(SpecificationOptions options) {
+        var storage = options.storage();
+        if (storage != null) {
+            return storage;
+        }
+        var layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
+        return new FileSnapshotStorage(layout, options.serializer().fileExtension());
     }
 
     /**

@@ -58,22 +58,11 @@ class FileSnapshotStorage implements SnapshotStorage {
 
     private void storeAtLayout(String name, byte[] payload) {
         var path = layoutPath(name);
-        var parent = path.getParent();
-        if (parent != null) {
-            try {
-                Files.createDirectories(parent);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
         Approvals.verify(
                 new String(payload, StandardCharsets.UTF_8),
                 new Options()
                         .forFile()
-                        .withExtension(fileExtension)
-                        .withBaseName(baseNameOf(path))
-                        .forFile()
-                        .withNamer(namedAt(path, fileExtension))
+                        .withNamer(namedAt(directoryOf(path), baseNameOf(path)))
                         .forFile()
                         .withExtension(fileExtension)
                         .withReporter(new AutoApproveWhenEmptyReporter()));
@@ -108,12 +97,19 @@ class FileSnapshotStorage implements SnapshotStorage {
     }
 
     static ApprovalNamer namedAt(Path path) {
+        var name = path.getFileName().toString().replaceAll("\\.approved\\.txt$", "");
+        return namedAt(directoryOf(path), name);
+    }
+
+    private static String directoryOf(Path path) {
         var parent = path.getParent();
         if (parent == null) {
             throw new IllegalArgumentException("Snapshot path must have a parent directory: " + path);
         }
-        var directory = parent.toAbsolutePath() + File.separator;
-        var name = path.getFileName().toString().replaceAll("\\.approved\\.txt$", "");
+        return parent.toAbsolutePath() + File.separator;
+    }
+
+    static ApprovalNamer namedAt(String directory, String name) {
         return new ApprovalNamer() {
             @Override
             public String getApprovalName() {

@@ -1,6 +1,7 @@
 package io.eventdriven.strictland;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,14 +43,56 @@ final class SpecificationOptionsTests {
         MessageSerializer serializer = new CustomMessageSerializer(new JsonMapper());
         SnapshotStorage storage = new FileSnapshotStorage();
         MessageTypeMapper typeMapper = MessageTypeMapper.simpleName();
+        SnapshotLayout layout = SnapshotLayout.nextToTest();
 
         var options = SpecificationOptions.serializer(serializer)
                 .snapshotStorage(storage)
-                .messageTypeMapper(typeMapper);
+                .messageTypeMapper(typeMapper)
+                .snapshotLayout(layout);
 
         assertSame(serializer, options.serializer());
         assertSame(storage, options.storage());
         assertSame(typeMapper, options.typeMapper());
+        assertSame(layout, options.snapshotLayout());
+    }
+
+    @Test
+    void givenSerializerOnly_whenCreated_thenEveryOtherSettingIsUnset() {
+        var options = SpecificationOptions.serializer(new CustomMessageSerializer(new JsonMapper()));
+
+        assertNull(options.storage());
+        assertNull(options.typeMapper());
+        assertNull(options.snapshotLayout());
+    }
+
+    @Test
+    void givenACustomTypeMapper_whenContractBuilt_thenItNamesTheStoredSnapshot() {
+        var captured = new String[1];
+        SnapshotStorage storage = new SnapshotStorage() {
+            @Override
+            public void store(String name, byte[] payload) {
+                captured[0] = name;
+            }
+
+            @Override
+            public java.util.Optional<byte[]> read(String name) {
+                return java.util.Optional.empty();
+            }
+        };
+
+        MessageContract.specification(SpecificationOptions.serializer(new CustomMessageSerializer(new JsonMapper()))
+                        .snapshotStorage(storage)
+                        .messageTypeMapper(MessageTypeMapper.simpleName()))
+                .given(new MemberJoined(FIXED_ID, "Alice"))
+                .whenSerialized()
+                .thenContractIsUnchanged();
+
+        assertEquals("MemberJoined", captured[0]);
+    }
+
+    @Test
+    void filesPreset_buildsFileBackedStorage() {
+        assertTrue(Snapshots.files() instanceof FileSnapshotStorage);
     }
 
     @Test

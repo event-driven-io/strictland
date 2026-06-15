@@ -6,28 +6,28 @@ only when the build is green.
 
 ## Phase 0: foundations (additive, default unchanged)
 
-- [ ] **Step 1: serializer file extension** (no deps, do first)
-  - [ ] `MessageSerializer.fileExtension()` default `.txt` + Javadoc
-  - [ ] override: Jackson `.json`, CSV `.csv`, binary `.bin`
-  - [ ] tests: each override + the bare-default case
-- [ ] **Step 2: `SnapshotLayout` + pure resolver**
-  - [ ] `Grouping` enum, `SnapshotLayout` value type, factories + withers
-  - [ ] pure `resolve(...)` for every strategy x grouping, variant, ext
-  - [ ] LEGACY output byte-identical to today's path
-  - [ ] tests: full combination matrix, branch-complete
-- [ ] **Step 3: config-file parsing**
-  - [ ] `fromProperties(Properties)` + `fromClasspath()` seam
-  - [ ] keys: strategy / grouping / wrapperFolder / rootPath; `flat` -> LEGACY
-  - [ ] invalid-value error path
-  - [ ] tests via non-default fixture (NO repo-wide strictland.properties)
+- [x] **Step 1: serializer file extension** (no deps, do first)
+  - [x] `MessageSerializer.fileExtension()` default `.txt` + Javadoc
+  - [x] override: Jackson `.json`, CSV `.csv`, binary `.bin`
+  - [x] tests: each override + the bare-default case
+- [x] **Step 2: `SnapshotLayout` + pure resolver**
+  - [x] `Grouping` enum, `SnapshotLayout` value type, factories + withers
+  - [x] pure `resolve(...)` for every strategy x grouping, variant, ext
+  - [x] LEGACY output byte-identical to today's path
+  - [x] tests: full combination matrix, branch-complete
+- [x] **Step 3: config-file parsing**
+  - [x] `fromProperties(Properties)` + `fromClasspath()` seam
+  - [x] keys: strategy / grouping / wrapperFolder / rootPath; `flat` -> LEGACY
+  - [x] invalid-value error path
+  - [x] tests via non-default fixture (NO repo-wide strictland.properties)
 
 ## Phase 1: wire the layout, opt-in only
 
-- [ ] **Step 4: layout-aware `FileSnapshotStorage`**
-  - [ ] thread layout + serializer extension; internal default LEGACY
-  - [ ] new-layout store/read via Step 2 resolver + ApprovalTests withExtension
-  - [ ] LEGACY parity preserved byte-for-byte
-  - [ ] tests: NEXT_TO_TEST + GLOBAL_ROOT, both groupings, round-trip
+- [x] **Step 4: layout-aware `FileSnapshotStorage`**
+  - [x] thread layout + serializer extension; internal default LEGACY
+  - [x] new-layout store/read via Step 2 resolver + ApprovalTests withExtension
+  - [x] LEGACY parity preserved byte-for-byte
+  - [x] tests: NEXT_TO_TEST + GLOBAL_ROOT, both groupings, round-trip
 - [ ] **Step 5: configuration system (global fluent + per-spec + file + precedence)**
   - [ ] refactor `SpecificationOptions`: stop eager defaulting, settings carry "unset" (nullable), resolve on lookup
   - [ ] `SpecificationOptions.snapshotLayout(...)` immutable wither, "unset" falls through
