@@ -11,6 +11,11 @@ import org.jspecify.annotations.Nullable;
 final class CsvMessageSerializer implements MessageSerializer {
 
     @Override
+    public String fileExtension() {
+        return ".csv";
+    }
+
+    @Override
     public byte[] serialize(Object value) {
         var components = value.getClass().getRecordComponents();
         var tokens = new String[components.length];

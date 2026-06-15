@@ -14,6 +14,7 @@ import org.approvaltests.reporters.AutoApproveWhenEmptyReporter;
 
 class FileSnapshotStorage implements SnapshotStorage {
     private static final String APPROVED_SUFFIX = ".approved.txt";
+    private static final String SNAP_BASE_SUFFIX = ".snap";
     private static final Set<String> DSL_CLASSES = Set.of(
             MessageContract.class.getName(),
             GivenStep.class.getName(),
@@ -22,8 +23,24 @@ class FileSnapshotStorage implements SnapshotStorage {
             FileSnapshotStorage.class.getName());
     private static final String SOURCE_ROOT = "src/test/java";
 
+    private final SnapshotLayout layout;
+    private final String fileExtension;
+
+    FileSnapshotStorage() {
+        this(SnapshotLayout.legacy(), APPROVED_SUFFIX);
+    }
+
+    FileSnapshotStorage(SnapshotLayout layout, String fileExtension) {
+        this.layout = layout;
+        this.fileExtension = fileExtension;
+    }
+
     @Override
     public void store(String name, byte[] payload) {
+        if (layout.strategy() != SnapshotLayout.Strategy.LEGACY) {
+            storeAtLayout(name, payload);
+            return;
+        }
         Approvals.verify(
                 new String(payload, StandardCharsets.UTF_8),
                 optionsFor(name).withReporter(new AutoApproveWhenEmptyReporter()));
@@ -31,12 +48,49 @@ class FileSnapshotStorage implements SnapshotStorage {
 
     @Override
     public Optional<byte[]> read(String name) {
-        var path = resolvePath(name);
+        var path = layout.strategy() != SnapshotLayout.Strategy.LEGACY ? layoutPath(name) : resolvePath(name);
         try {
             return Optional.of(Files.readAllBytes(path));
         } catch (IOException e) {
             return Optional.empty();
         }
+    }
+
+    private void storeAtLayout(String name, byte[] payload) {
+        var path = layoutPath(name);
+        var parent = path.getParent();
+        if (parent != null) {
+            try {
+                Files.createDirectories(parent);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        Approvals.verify(
+                new String(payload, StandardCharsets.UTF_8),
+                new Options()
+                        .forFile()
+                        .withExtension(fileExtension)
+                        .withBaseName(baseNameOf(path))
+                        .forFile()
+                        .withNamer(namedAt(path, fileExtension))
+                        .forFile()
+                        .withExtension(fileExtension)
+                        .withReporter(new AutoApproveWhenEmptyReporter()));
+    }
+
+    private Path layoutPath(String name) {
+        var frame = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                .walk(frames -> frames.filter(f -> !DSL_CLASSES.contains(f.getClassName()))
+                        .findFirst());
+        var callerClass = requireCaller(frame);
+        return layout.resolve(callerClass.getPackageName(), callerClass.getSimpleName(), name, null, fileExtension);
+    }
+
+    private String baseNameOf(Path path) {
+        var fileName = path.getFileName().toString();
+        var marker = SNAP_BASE_SUFFIX + ".approved" + fileExtension;
+        return fileName.substring(0, fileName.length() - marker.length()) + SNAP_BASE_SUFFIX;
     }
 
     private Options optionsFor(String name) {
