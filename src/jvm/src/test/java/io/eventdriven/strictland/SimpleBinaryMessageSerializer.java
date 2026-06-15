@@ -15,6 +15,11 @@ final class SimpleBinaryMessageSerializer implements MessageSerializer {
     private static final int MAGIC = 0xCAFEBABE;
 
     @Override
+    public String fileExtension() {
+        return ".bin";
+    }
+
+    @Override
     public byte[] serialize(Object value) {
         var components = value.getClass().getRecordComponents();
         var out = new ByteArrayOutputStream();

@@ -19,6 +19,11 @@ record JacksonMessageSerializer(ObjectMapper mapper) implements MessageSerialize
     }
 
     @Override
+    public String fileExtension() {
+        return ".json";
+    }
+
+    @Override
     public byte[] serialize(Object value) {
         try {
             return mapper.writeValueAsBytes(value);
