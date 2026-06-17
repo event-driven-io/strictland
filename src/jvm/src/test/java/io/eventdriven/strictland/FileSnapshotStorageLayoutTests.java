@@ -1,10 +1,13 @@
 package io.eventdriven.strictland;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.jspecify.annotations.NullMarked;
@@ -18,102 +21,167 @@ final class FileSnapshotStorageLayoutTests {
     private static final String CALLER = "FileSnapshotStorageLayoutTests";
     private static final byte[] PAYLOAD = "{\"id\":1}".getBytes(UTF_8);
 
-    @Test
-    void globalRoot_perTestClass_storesAndReadsAtResolvedPath(@TempDir Path root) {
-        var layout = SnapshotLayout.globalRoot(root.toString());
-        var storage = new FileSnapshotStorage(layout, ".json");
+    private static SnapshotLocation anchoredAt(Path testSourceDir, SnapshotLayout layout, String extension) {
+        return new SnapshotLocation(layout, extension, testClass -> testSourceDir);
+    }
 
-        storage.store("OrderPlaced", PAYLOAD);
+    @Test
+    void globalRoot_perTestClass_resolvesUnderRootAndRoundTrips(@TempDir Path root) {
+        var location = new SnapshotLocation(SnapshotLayout.globalRoot(root.toString()), ".json");
+
+        var key = location.resolve("OrderPlaced", null);
 
         var expected = root.resolve(PACKAGE_PATH).resolve(CALLER).resolve("OrderPlaced.snap.approved.json");
-        assertTrue(Files.exists(expected), "expected snapshot at " + expected);
-        assertArrayEquals(PAYLOAD, storage.read("OrderPlaced").orElseThrow());
+        assertEquals(expected.toString(), key);
+        assertRoundTrips(key);
     }
 
     @Test
     void globalRoot_perContract_groupsUnderMessageType(@TempDir Path root) {
-        var layout = SnapshotLayout.globalRoot(root.toString()).grouping(Grouping.PER_CONTRACT);
-        var storage = new FileSnapshotStorage(layout, ".json");
+        var location = new SnapshotLocation(
+                SnapshotLayout.globalRoot(root.toString()).grouping(Grouping.PER_CONTRACT), ".json");
 
-        storage.store("OrderPlaced", PAYLOAD);
+        var key = location.resolve("OrderPlaced", null);
 
         var expected = root.resolve(PACKAGE_PATH).resolve("OrderPlaced").resolve("OrderPlaced.snap.approved.json");
-        assertTrue(Files.exists(expected), "expected snapshot at " + expected);
-        assertArrayEquals(PAYLOAD, storage.read("OrderPlaced").orElseThrow());
+        assertEquals(expected.toString(), key);
+        assertRoundTrips(key);
     }
 
     @Test
-    void nextToTest_perTestClass_storesBesideTestAndReadsBack() throws Exception {
-        var wrapper = "snapshots-throwaway";
-        var layout = SnapshotLayout.nextToTest().wrapperFolder(wrapper);
-        var storage = new FileSnapshotStorage(layout, ".json");
-        var expected = Path.of("src/test/java", PACKAGE_PATH, wrapper, CALLER, "OrderPlaced.snap.approved.json");
+    void nextToTest_perTestClass_anchorsOnTheTestSourceDir(@TempDir Path src) {
+        var location = anchoredAt(src, SnapshotLayout.nextToTest(), ".json");
 
-        try {
-            storage.store("OrderPlaced", PAYLOAD);
+        var key = location.resolve("OrderPlaced", null);
 
-            assertTrue(Files.exists(expected), "expected snapshot at " + expected);
-            assertArrayEquals(PAYLOAD, storage.read("OrderPlaced").orElseThrow());
-        } finally {
-            deleteWrapper(wrapper);
-        }
+        var expected = src.resolve("snapshots").resolve(CALLER).resolve("OrderPlaced.snap.approved.json");
+        assertEquals(expected.toString(), key);
+        assertRoundTrips(key);
     }
 
     @Test
-    void nextToTest_perContract_groupsUnderMessageType() throws Exception {
-        var wrapper = "snapshots-throwaway-contract";
-        var layout = SnapshotLayout.nextToTest().wrapperFolder(wrapper).grouping(Grouping.PER_CONTRACT);
-        var storage = new FileSnapshotStorage(layout, ".json");
-        var expected = Path.of("src/test/java", PACKAGE_PATH, wrapper, "OrderPlaced", "OrderPlaced.snap.approved.json");
+    void nextToTest_perContract_groupsUnderMessageType(@TempDir Path src) {
+        var location = anchoredAt(src, SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT), ".json");
 
-        try {
-            storage.store("OrderPlaced", PAYLOAD);
+        var key = location.resolve("OrderPlaced", null);
 
-            assertTrue(Files.exists(expected), "expected snapshot at " + expected);
-            assertArrayEquals(PAYLOAD, storage.read("OrderPlaced").orElseThrow());
-        } finally {
-            deleteWrapper(wrapper);
-        }
+        var expected = src.resolve("snapshots").resolve("OrderPlaced").resolve("OrderPlaced.snap.approved.json");
+        assertEquals(expected.toString(), key);
+        assertRoundTrips(key);
     }
 
     @Test
-    void newLayout_whenNothingApproved_readReturnsEmpty(@TempDir Path root) {
-        var storage = new FileSnapshotStorage(SnapshotLayout.globalRoot(root.toString()), ".json");
+    void perContract_variantLabel_namesTheLeafAndReadsBackByLabel(@TempDir Path root) {
+        var location = new SnapshotLocation(
+                SnapshotLayout.globalRoot(root.toString()).grouping(Grouping.PER_CONTRACT), ".json");
 
-        assertTrue(storage.read("Missing").isEmpty());
+        var key = location.resolve("OrderInitiated", "WithPromotion");
+
+        var expected = root.resolve(PACKAGE_PATH).resolve("OrderInitiated").resolve("WithPromotion.snap.approved.json");
+        assertEquals(expected.toString(), key);
+        assertRoundTrips(key);
     }
 
     @Test
-    void newLayout_usesSerializerExtensionInFileName(@TempDir Path root) {
-        var storage = new FileSnapshotStorage(SnapshotLayout.globalRoot(root.toString()), ".csv");
+    void flat_variantLabel_becomesTheLeafFileName(@TempDir Path src) {
+        var location = anchoredAt(src, SnapshotLayout.flat(), ".json");
 
-        storage.store("OrderPlaced", PAYLOAD);
+        var key = location.resolve("OrderInitiated", "FlatVariantLeaf");
 
-        var expected = root.resolve(PACKAGE_PATH).resolve(CALLER).resolve("OrderPlaced.snap.approved.csv");
-        assertEquals(PAYLOAD.length, requireExists(expected));
+        assertEquals(src.resolve("FlatVariantLeaf.approved.txt").toString(), key);
+        assertRoundTrips(key);
     }
 
-    private static long requireExists(Path path) {
-        try {
-            return Files.size(path);
-        } catch (Exception e) {
-            throw new AssertionError("expected snapshot at " + path, e);
-        }
+    @Test
+    void flat_withoutVariant_keepsTheContractNameAsLeaf(@TempDir Path src) {
+        var location = anchoredAt(src, SnapshotLayout.flat(), ".json");
+
+        var key = location.resolve("FlatNoVariant", null);
+
+        assertEquals(src.resolve("FlatNoVariant.approved.txt").toString(), key);
+        assertRoundTrips(key);
     }
 
-    private static void deleteWrapper(String wrapper) throws Exception {
-        var dir = Path.of("src/test/java", PACKAGE_PATH, wrapper);
-        if (!Files.exists(dir)) {
-            return;
-        }
-        try (var paths = Files.walk(dir)) {
-            paths.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
-                try {
-                    Files.delete(p);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        }
+    @Test
+    void usesSerializerExtensionInFileName(@TempDir Path root) {
+        var location = new SnapshotLocation(SnapshotLayout.globalRoot(root.toString()), ".csv");
+
+        var key = location.resolve("OrderPlaced", null);
+
+        assertTrue(key.endsWith("OrderPlaced.snap.approved.csv"), key);
+    }
+
+    @Test
+    void store_writesBytesAtTheResolvedPath_andReadReturnsThem(@TempDir Path dir) {
+        var storage = new FileSnapshotStorage();
+        var key = dir.resolve("Direct.snap.approved.json").toString();
+
+        storage.store(key, PAYLOAD);
+
+        assertTrue(Files.exists(Path.of(key)));
+        assertArrayEquals(PAYLOAD, storage.read(key).orElseThrow());
+    }
+
+    @Test
+    void read_whenNothingApproved_returnsEmpty(@TempDir Path dir) {
+        var storage = new FileSnapshotStorage();
+
+        assertTrue(storage.read(dir.resolve("Missing.snap.approved.json").toString())
+                .isEmpty());
+    }
+
+    @Test
+    void store_rejectsAPathWithoutTheApprovedMarker(@TempDir Path dir) {
+        var storage = new FileSnapshotStorage();
+        var key = dir.resolve("no-marker.json").toString();
+
+        assertThrows(IllegalArgumentException.class, () -> storage.store(key, PAYLOAD));
+    }
+
+    @Test
+    void store_rejectsAPathWithoutAParentDirectory() {
+        var storage = new FileSnapshotStorage();
+
+        assertThrows(IllegalArgumentException.class, () -> storage.store("OrphanLeaf.approved.txt", PAYLOAD));
+    }
+
+    @Test
+    void store_anUnchangedPayload_passesAndClearsAnyReceivedFile(@TempDir Path dir) {
+        var storage = new FileSnapshotStorage();
+        var key = dir.resolve("Stable.snap.approved.json").toString();
+
+        storage.store(key, PAYLOAD);
+        storage.store(key, PAYLOAD);
+
+        assertTrue(Files.exists(Path.of(key)));
+        assertTrue(Files.notExists(dir.resolve("Stable.snap.received.json")));
+    }
+
+    @Test
+    void store_aDriftedPayload_writesAReceivedFileAndThrows(@TempDir Path dir) throws Exception {
+        var storage = new FileSnapshotStorage();
+        var key = dir.resolve("Drifting.snap.approved.json").toString();
+        storage.store(key, PAYLOAD);
+
+        var error = assertThrows(AssertionError.class, () -> storage.store(key, "{\"id\":2}".getBytes(UTF_8)));
+
+        assertTrue(requireNonNull(error.getMessage()).contains("drift"));
+        assertArrayEquals("{\"id\":2}".getBytes(UTF_8), Files.readAllBytes(dir.resolve("Drifting.snap.received.json")));
+    }
+
+    @Test
+    void store_whenTheDirectoryCannotBeCreated_wrapsTheIoFailure(@TempDir Path dir) throws Exception {
+        var blocker = dir.resolve("blocker");
+        Files.writeString(blocker, "not a directory");
+        var storage = new FileSnapshotStorage();
+        var key = blocker.resolve("child.snap.approved.json").toString();
+
+        assertThrows(UncheckedIOException.class, () -> storage.store(key, PAYLOAD));
+    }
+
+    private static void assertRoundTrips(String key) {
+        var storage = new FileSnapshotStorage();
+        storage.store(key, PAYLOAD);
+        assertArrayEquals(PAYLOAD, storage.read(key).orElseThrow());
     }
 }

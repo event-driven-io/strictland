@@ -58,8 +58,9 @@ The layout decomposes into two orthogonal axes plus a filename convention.
 1. **Root location**: `NextToTest` or `GlobalRoot`.
 2. **Grouping**: `PerTestClass` or `PerContract` (message type).
 
-Both are configurable. They combine freely. The legacy `Flat` layout remains a
-selectable third option on the root axis.
+Both are configurable. They combine freely. The `Flat` layout remains a
+selectable third option on the root axis: the original shape, kept for projects
+that want today's behaviour, not a deprecated path.
 
 ## Configuration model
 
@@ -203,8 +204,27 @@ src/test/resources/snapshots/
       IsoDate.snap.approved.json
 ```
 
-**Flat (legacy, selectable):** today's behaviour, unchanged in shape but with
-the new filename convention when opted in.
+**Flat (selectable):** the original behaviour, `<leaf>.approved.txt` straight in
+the test's source directory, with no wrapper folder, no grouping, and no `.snap`
+marker. Kept byte-identical so a project can opt back into it.
+
+### Where the tree is anchored
+
+The two test-relative strategies, `NextToTest` and `Flat`, anchor on the test's
+own source directory, the real file on disk, not a reconstructed
+`src/test/java/<package>`. The examples above show a `java` source set only
+because that is where the sample tests live; the same resolution puts snapshots
+beside a `src/test/kotlin` or `src/test/scala` test without configuration, since
+it never hard-codes the source root.
+
+That directory is found through a small internal locator, behind a one-method
+seam, whose default delegates to ApprovalTests' own source-file resolution. The
+seam reuses a maintained guesser today and leaves room to replace it later
+without changing how layouts resolve.
+
+`GlobalRoot` does not anchor on the test file. It roots the tree at the
+`rootPath` you name and lays the test's package path beneath it, taken from the
+class at runtime, so it resolves the same regardless of source set.
 
 ### Leaf name rules
 
@@ -358,8 +378,18 @@ dumb/nullability-driven pair.
   `.variant(String)` fluent methods on `ByClass<S>`.
 - `MessageContract`: add `given(Class)` sugar.
 - `GivenStep`: support replay-all when given a `ByClass` without a variant.
-- `FileSnapshotStorage`: resolve paths from the configured `SnapshotLayout`
-  rather than the hard-coded `src/test/java/<package>/<name>.approved.txt`.
+- Layout and variant resolution happen in the DSL step
+  (`ThenContractStep`/`ThenCompatibilityStep`), which holds the layout, the type
+  mapper, and the `Snapshot`. The step resolves a snapshot identity and hands it
+  to storage already resolved. Storage does not walk the stack, know the layout,
+  or understand variants.
+- `SnapshotStorage` keeps its two-method shape, `store(name, bytes)` and
+  `read(name)`. The variant is folded into the resolved identity before storage
+  is called, so the public extension point gains no `variantLabel` overloads and
+  a custom storage needs no concept of variants.
+- `FileSnapshotStorage`: write and read at the identity the step resolved, with
+  no hard-coded `src/test/java/<package>` and no ApprovalTests duplicate-tracker
+  workarounds.
 - New `Strictland` global config holder: a process-wide fluent default for every
   setting (layout, value generator, requiredness policy), with `defaults()` and
   `resetDefaults()`.

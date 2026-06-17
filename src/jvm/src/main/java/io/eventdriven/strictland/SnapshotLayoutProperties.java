@@ -108,7 +108,7 @@ public final class SnapshotLayoutProperties {
         return switch (strategy) {
             case "nextToTest" -> SnapshotLayout.nextToTest();
             case "globalRoot" -> SnapshotLayout.globalRoot(rootPath != null ? rootPath : "");
-            case "flat" -> SnapshotLayout.legacy();
+            case "flat" -> SnapshotLayout.flat();
             default -> throw badValue(STRATEGY_KEY, strategy);
         };
     }

@@ -28,13 +28,13 @@ only when the build is green.
   - [x] new-layout store/read via Step 2 resolver + ApprovalTests withExtension
   - [x] LEGACY parity preserved byte-for-byte
   - [x] tests: NEXT_TO_TEST + GLOBAL_ROOT, both groupings, round-trip
-- [ ] **Step 5: configuration system (global fluent + per-spec + file + precedence)**
-  - [ ] refactor `SpecificationOptions`: stop eager defaulting, settings carry "unset" (nullable), resolve on lookup
-  - [ ] `SpecificationOptions.snapshotLayout(...)` immutable wither, "unset" falls through
-  - [ ] `Strictland.defaults()` global fluent holder (layout) + `resetDefaults()`
-  - [ ] one resolution point: per-spec > global > file > built-in, merged per setting
-  - [ ] precedence + reset/no-leak unit tests
-  - [ ] end-to-end opt-in tests (NEXT_TO_TEST, GLOBAL_ROOT) with committed snaps; tests reset globals
+- [x] **Step 5: configuration system (global fluent + per-spec + file + precedence)**
+  - [x] refactor `SpecificationOptions`: stop eager defaulting, settings carry "unset" (nullable), resolve on lookup
+  - [x] `SpecificationOptions.snapshotLayout(...)` immutable wither, "unset" falls through
+  - [x] `Strictland.defaults()` global fluent holder (layout) + `resetDefaults()`
+  - [x] one resolution point: per-spec > global > file > built-in, merged per setting
+  - [x] precedence + reset/no-leak unit tests
+  - [x] end-to-end opt-in tests (NEXT_TO_TEST, GLOBAL_ROOT) with committed snaps; tests reset globals
 
 ## Phase 2: multiple snapshots per contract
 

@@ -42,10 +42,10 @@ final class SnapshotLayoutResolverTests {
     }
 
     @Test
-    void builtInDefaultIsLegacy_whenEverythingUnset() {
+    void builtInDefaultIsFlat_whenEverythingUnset() {
         var resolved = SnapshotLayoutResolver.resolve(null, Optional.empty(), Optional::empty);
 
-        assertEquals(SnapshotLayout.Strategy.LEGACY, resolved.strategy());
+        assertEquals(SnapshotLayout.Strategy.FLAT, resolved.strategy());
     }
 
     @Test
@@ -64,7 +64,7 @@ final class SnapshotLayoutResolverTests {
 
         var resolved = SnapshotLayoutResolver.resolve(null);
 
-        assertEquals(SnapshotLayout.Strategy.LEGACY, resolved.strategy());
+        assertEquals(SnapshotLayout.Strategy.FLAT, resolved.strategy());
     }
 
     @Test
