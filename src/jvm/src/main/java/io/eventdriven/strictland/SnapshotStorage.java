@@ -8,6 +8,10 @@ import java.util.Optional;
  * snapshots somewhere else, such as a shared fixture directory or an in-memory store for a binary
  * format. The contract checks read and write through it.
  *
+ * <p>The key the DSL hands in is already resolved: the layout, the calling test, and any variant label
+ * are folded in before storage is called, so this extension point stays two methods and a custom
+ * storage needs no concept of layouts or variants.
+ *
  * <p>Pass your storage to {@link SpecificationOptions#snapshotStorage(SnapshotStorage)}, or take the
  * default from {@link Snapshots#files()}.
  *

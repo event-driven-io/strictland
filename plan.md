@@ -19,7 +19,7 @@ moving files into folders breaks the whole existing suite at once. So the plan i
 
 - Steps 1 to 9 add new capability behind explicit opt-in. The existing default
   behaviour (today's flat `src/test/java/<pkg>/<name>.approved.txt`) is preserved
-  as a `Legacy` layout and stays the default, so the existing suite never breaks
+  as a `Flat` layout and stays the default, so the existing suite never breaks
   while we build.
 - Step 10 is the single disruptive step: flip the default and migrate the repo's
   own ~30 snapshots in one well-defined, mechanical move.
@@ -58,7 +58,7 @@ rule or skip Javadoc to go green.
 
 **Phase 1: wire the new layout, opt-in only**
 4. Teach `FileSnapshotStorage` the new layout path (selected internally, default
-   still `Legacy`).
+   still `Flat`).
 5. The configuration system: `Strictland` global fluent defaults, per-spec
    `SpecificationOptions`, the config file, and the precedence that merges them;
    first end-to-end opt-in tests.
@@ -146,37 +146,41 @@ Task: add a pure snapshot-layout model and path resolver. No storage wiring yet.
 1. New public types in io.eventdriven.strictland:
    - enum Grouping { PER_TEST_CLASS, PER_CONTRACT }
    - SnapshotLayout: an immutable value carrying
-       strategy (NEXT_TO_TEST | GLOBAL_ROOT | LEGACY),
+       strategy (NEXT_TO_TEST | GLOBAL_ROOT | FLAT),
        Grouping grouping,
        String wrapperFolder (e.g. "snapshots"),
        String rootPath (used only by GLOBAL_ROOT, e.g.
          "src/test/resources/snapshots").
      Provide static factories nextToTest(), globalRoot(String rootPath),
-     legacy(), and copy-on-write withers grouping(...), wrapperFolder(...).
+     flat(), and copy-on-write withers grouping(...), wrapperFolder(...).
      Defaults: grouping = PER_TEST_CLASS, wrapperFolder = "snapshots".
 
 2. A pure resolver method (on SnapshotLayout or a package-private helper) with
    signature roughly:
-     Path resolve(String callerPackage, String callerSimpleName,
-                  String messageTypeName, @Nullable String variantLabel,
-                  String fileExtension)
-   Rules (return the committed approved-file path, including the
-   ".snap.approved" + extension suffix):
+     Path resolve(Path testSourceDir, String callerPackage,
+                  String callerSimpleName, String messageTypeName,
+                  @Nullable String variantLabel, String fileExtension)
+   testSourceDir is the directory holding the test's own source file. The caller
+   (Step 4) discovers it; the resolver hard-codes no source root, so the same
+   rules place snapshots beside a java, kotlin, or scala test. Rules (return the
+   committed approved-file path, including the ".snap.approved" + extension
+   suffix):
    - Leaf name: variantLabel if present, else messageTypeName.
    - PER_TEST_CLASS group folder = callerSimpleName.
    - PER_CONTRACT group folder = messageTypeName; here the leaf defaults to
      messageTypeName when no variant is given.
-   - NEXT_TO_TEST root = src/test/java/<callerPackageAsPath>/<wrapperFolder>.
-   - GLOBAL_ROOT root = <rootPath>/<callerPackageAsPath>.
-   - LEGACY = src/test/java/<callerPackageAsPath>/<leaf>.approved.txt
-     (today's exact behaviour: no wrapper, no group folder, no .snap, .txt
-     extension regardless of fileExtension). Keep LEGACY byte-identical to the
-     current FileSnapshotStorage.resolve output.
-   - Non-LEGACY filename = <leaf>.snap.approved<fileExtension>.
+   - NEXT_TO_TEST root = testSourceDir/<wrapperFolder>.
+   - GLOBAL_ROOT root = <rootPath>/<callerPackageAsPath>. It anchors on the named
+     root and the runtime package, not testSourceDir, so it is source-set
+     independent and resolves the same from any test.
+   - FLAT = testSourceDir/<leaf>.approved.txt (the original behaviour: no
+     wrapper, no group folder, no .snap, .txt extension regardless of
+     fileExtension). Byte-identical to today's output for a src/test/java test.
+   - Non-FLAT filename = <leaf>.snap.approved<fileExtension>.
 
 3. Tests first: a SnapshotLayoutTests covering every strategy x grouping
    combination, with and without a variant label, plus wrapperFolder and
-   rootPath overrides, plus the LEGACY equivalence to today's path shape. Aim for
+   rootPath overrides, plus the FLAT equivalence to today's path shape. Aim for
    full branch coverage of the resolver here, since later steps reuse it.
 
 Javadoc every public member with a {@snippet} from these tests. Do not modify
@@ -210,8 +214,9 @@ Task: parse a strictland.properties into a SnapshotLayout (built in Step 2).
      strictland.layout.grouping   = perTestClass | perContract
      strictland.layout.wrapperFolder
      strictland.layout.rootPath
-   Map "flat" -> LEGACY. Unknown values throw a clear IllegalArgumentException
-   naming the key and the bad value.
+   The "flat" value selects Strategy.FLAT directly (it is a first-class strategy,
+   not an alias). Unknown values throw a clear IllegalArgumentException naming the
+   key and the bad value.
 
 2. CRITICAL: do not add a src/test/resources/strictland.properties to the repo.
    It would be auto-loaded and flip the whole suite. Test fromClasspath() by
@@ -220,50 +225,64 @@ Task: parse a strictland.properties into a SnapshotLayout (built in Step 2).
    Properties seam, so nothing global changes.
 
 3. Tests first: each key parsed, defaults when a key is absent, every enum value,
-   the flat->LEGACY mapping, and the invalid-value error path (branch coverage).
+   the flat strategy selection, and the invalid-value error path (branch
+   coverage).
 
 Javadoc public members with {@snippet}s. Do not wire this into SpecificationOptions
 yet. Finish green with `./gradlew build`. Report keys handled and error cases.
 ```
 
-### Step 4: Teach `FileSnapshotStorage` the new layout path
+### Step 4: Resolve the snapshot path outside storage
 
-Plumbs a `SnapshotLayout` plus the serializer's extension into the storage and
-adds the new-layout code path using the Step 2 resolver, selected by an internal
-field that **defaults to `Legacy`**. Construct it directly in unit tests with a
-layout; do not change `SpecificationOptions` yet, so the default and the existing
-suite stay exactly as they are.
+A snapshot's committed path is decided by the part of the DSL that already holds
+the layout and the `Snapshot`, not by storage. Storage stays a thin reader and
+writer of bytes at a location it is handed. This keeps the public
+`SnapshotStorage` extension point at two methods and keeps layout, caller
+discovery, and variants out of it.
 
 ```text
 You are working in src/jvm. Read CONTRIBUTING.md; full coverage, Javadoc
 -Xwerror, NullAway, Spotless. Work test-first.
 
-Task: give FileSnapshotStorage a new-layout path while keeping LEGACY the default.
+Task: resolve a snapshot's committed path in the DSL and hand storage the
+resolved location. Storage does not hold a layout, walk the stack, or know about
+variants.
 
-1. Add to FileSnapshotStorage a SnapshotLayout field and the serializer's file
-   extension (pass them through a package-private constructor; keep the existing
-   no-arg/default construction producing LEGACY behaviour so current callers are
-   unchanged).
+1. Add a package-private location resolver the DSL step calls (e.g.
+   SnapshotLocation) that:
+   - finds the caller's test class via the existing StackWalker logic (reuse
+     requireCaller / DSL_CLASSES);
+   - finds that test's source directory through a small internal seam (e.g. a
+     TestSourceDirectoryLocator single-method interface) whose default
+     implementation delegates to ApprovalTests' own source-file resolution
+     (com.spun.util.ClassUtils.getSourceDirectory(caller)). Wrapping it behind our
+     own interface is deliberate: it reuses ApprovalTests' maintained guesser now
+     (no hard-coded `src/test/java`, finds kotlin/scala roots) but lets us swap in
+     a vendored or clean-room locator later without touching callers. On a miss,
+     throw a clear error pointing at ApprovalTests'
+     TestUtils.registerSourceDirectoryFinder override.
+   - calls the Step 2 SnapshotLayout.resolve(testSourceDir, package, simpleName,
+     messageType, variantLabel, fileExtension) and returns the committed Path.
 
-2. In store(...) and read(...), when the layout is non-LEGACY:
-   - determine callerPackage and callerSimpleName via the existing StackWalker
-     logic (reuse requireCaller / DSL_CLASSES);
-   - compute the target Path with the Step 2 resolver, using the message type
-     name passed in as `name` and the serializer extension;
-   - drive ApprovalTests with Options.forFile().withExtension(<ext>)
-     .withBaseName("<leaf>.snap") and a namer pointing at the resolved directory,
-     creating parent folders as needed.
-   When the layout is LEGACY, keep the current behaviour byte-for-byte.
+2. FileSnapshotStorage becomes layout-free. store(name, bytes) / read(name) treat
+   `name` as the already-resolved approved-file path: write or compare bytes there,
+   creating parent folders as needed, keeping the approved/received diff workflow.
+   FLAT resolves to a path through the same resolver, so storage has one code path
+   and no FLAT special-case. Remove the FileApprover duplicate-tracker workaround:
+   with each variant resolved to its own path before storage, it is not needed.
 
-3. Tests first: construct FileSnapshotStorage directly with a NEXT_TO_TEST and a
-   GLOBAL_ROOT layout and assert the resolved/created file path and round-trip
-   read. Cover both grouping modes. Keep these test snapshots under a clearly
-   named throwaway test package or temp dir so they do not pollute the suite;
-   committed new-layout snapshots are fine if placed under the new structure.
+3. Keep the SnapshotStorage public surface at two methods, store(name, bytes) and
+   read(name). No variantLabel overloads: the variant is folded into the resolved
+   path before storage is called.
 
-Do not modify SpecificationOptions defaults. Do not move existing *.approved.txt.
-Finish green with `./gradlew build`. Report the new branches and how LEGACY parity
-was preserved.
+4. Tests first: drive resolution for NEXT_TO_TEST and GLOBAL_ROOT, both groupings,
+   asserting the resolved path and a round-trip read; assert FLAT still resolves to
+   the original src/test/java/<pkg>/<leaf>.approved.txt shape and round-trips
+   byte-identically. Commit any new-layout snapshots under the new structure.
+
+Do not change SpecificationOptions defaults (Step 5 wires config). Do not move
+existing *.approved.txt. Finish green with `./gradlew build`. Report where
+resolution now lives and how FLAT parity was preserved.
 ```
 
 ### Step 5: The configuration system (global fluent, per-spec, file, precedence)
@@ -271,7 +290,7 @@ was preserved.
 Builds the full four-level configuration model and the single point that resolves
 it, then adds the first true end-to-end opt-in tests. Every setting is
 configurable globally in code, overridable per spec, with the file as the ambient
-fallback. The default stays `Legacy` for now (the flip is Step 10).
+fallback. The default stays `Flat` for now (the flip is Step 10).
 
 ```text
 You are working in src/jvm. Read CONTRIBUTING.md; full coverage, Javadoc
@@ -316,7 +335,7 @@ overrides only the layout).
 4. Resolution: add ONE place (invoked when a spec builds its FileSnapshotStorage)
    that, per setting, takes the per-spec value if set, else the global value if
    set, else the file value if present, else the built-in default. Built-in
-   default layout stays LEGACY in this step. Thread the resolved layout and the
+   default layout stays FLAT in this step. Thread the resolved layout and the
    serializer's fileExtension into the storage.
 
 5. Tests first:
@@ -351,13 +370,15 @@ Task: support manually labelled snapshot variants.
    Snapshot.variant(String label) returning a Snapshot the serialize path
    understands. The label becomes the leaf name (Step 2 resolver's variantLabel).
 
-2. Thread the label:
-   - GivenStep.whenSerialized(Snapshot) already exists; ensure a variant Snapshot
-     flows into ThenContractStep and sets the leaf via the resolver.
-   - ThenContractStep.snapshotName / the new-layout naming must use the label.
-   - The deserialize read path (ThenCompatibilityStep.resolveSourceBytes) must be
-     able to read a labelled variant back.
-   Under LEGACY the label behaves like today's forMessageType leaf name.
+2. Thread the label through resolution, not through storage:
+   - GivenStep.whenSerialized(Snapshot) already exists; a variant Snapshot flows
+     into ThenContractStep, which passes the label as the resolver's variantLabel
+     (Step 4's SnapshotLocation) so it becomes the leaf of the resolved path.
+   - The deserialize read path (ThenCompatibilityStep.resolveSourceBytes) resolves
+     the same labelled path and reads it back.
+   - Storage still sees only a resolved path: no variantLabel reaches the
+     SnapshotStorage interface.
+   Under FLAT the label behaves like today's forMessageType leaf name.
 
 3. Tests first (opt into NEXT_TO_TEST + PER_CONTRACT so variants sit together):
    write two variants of one message type, assert two distinct files exist and
@@ -470,14 +491,17 @@ You are working in src/jvm. Read CONTRIBUTING.md; full coverage, Javadoc
 
 Task: replay all variants of a contract on deserialization.
 
-1. Add a way for storage to enumerate the recorded variants of a contract under
-   the active layout. Add it to SnapshotStorage as a DEFAULT method so existing
-   implementors keep compiling, e.g.:
-     default Collection<byte[]> readAll(String name) {
-       return read(name).map(List::of).orElse(List.of());
+1. The step resolves which folder holds a contract's variants (Step 4's
+   SnapshotLocation gains a folder resolve, the path without the leaf). Storage is
+   handed that resolved folder and lists the approved snapshots in it. Add the
+   listing to SnapshotStorage as a DEFAULT method so existing implementors keep
+   compiling, e.g.:
+     default Collection<byte[]> readAll(String location) {
+       return read(location).map(List::of).orElse(List.of());
      }
-   Implement the real listing in FileSnapshotStorage for the new layouts (list
-   the contract/class folder for *.snap.approved.<ext>).
+   Implement the real listing in FileSnapshotStorage: read every
+   *.snap.approved.<ext> in the resolved folder. Storage still does no layout
+   resolution; it only reads bytes at a location the step resolved.
 
 2. ThenCompatibilityStep: when the source is a Snapshot.ByClass WITHOUT a
    specific variant, read all variants and assert each deserializes as the target
@@ -507,9 +531,9 @@ carefully and keep the build green at the end.
 Task: make NEXT_TO_TEST + PER_TEST_CLASS the default and migrate existing
 snapshots.
 
-1. Change SpecificationOptions' built-in default layout from LEGACY to
-   NEXT_TO_TEST + PER_TEST_CLASS (wrapperFolder "snapshots"). Keep LEGACY
-   selectable; ensure at least one opt-in test still exercises LEGACY so its code
+1. Change SpecificationOptions' built-in default layout from FLAT to
+   NEXT_TO_TEST + PER_TEST_CLASS (wrapperFolder "snapshots"). Keep FLAT
+   selectable; ensure at least one opt-in test still exercises FLAT so its code
    path stays covered.
 
 2. Migrate the repo's own snapshots in src/test/java/io/eventdriven/strictland:
@@ -531,11 +555,11 @@ snapshots.
    the old shape.
 
 4. Verify no stray *.approved.txt remain except those deliberately kept for the
-   LEGACY opt-in test.
+   FLAT opt-in test.
 
 Finish with a fully green `./gradlew build` AND a clean `./gradlew check` across
 compat-kotlin and compat-scala. Report every file moved, every test updated, and
-confirm the LEGACY path is still covered.
+confirm the FLAT path is still covered.
 ```
 
 ### Step 11: Documentation
@@ -581,6 +605,30 @@ Per the repo rule that every phase ends on a working state and a clean build:
   tests the classpath path via a non-default fixture for this reason.
 - `SnapshotStorage` is public; Step 9's `readAll` must be a `default` method so
   custom implementors keep compiling.
+- Resolution placement: deciding a snapshot's path from the layout, caller, and
+  variant lives in the DSL step (a `SnapshotLocation` helper), not in storage.
+  Storage is a thin sink handed a resolved location, so the public
+  `SnapshotStorage` keeps two methods with no `variantLabel` overloads, and there
+  is no ApprovalTests `FileApprover` duplicate-tracker workaround.
+- The `FLAT` strategy is the original `<leaf>.approved.txt` shape, kept
+  byte-identical and selectable. It is named for what it is (flat), not its
+  history; it is not deprecated.
+- Test-relative strategies (`NEXT_TO_TEST`, `FLAT`) anchor on the test's own
+  source directory, found through a wrapped locator that delegates to
+  ApprovalTests' `ClassUtils.getSourceDirectory(caller)`, so nothing hard-codes
+  `src/test/java` and kotlin/scala roots resolve too. The wrap (a one-method
+  internal interface) exists so the backing implementation can be swapped later.
+  `GLOBAL_ROOT` anchors on the named `rootPath` plus the runtime package, so it is
+  source-set independent.
+- Licensing for a later swap: ApprovalTests is Apache-2.0 and Strictland publishes
+  as Apache-2.0, so vendoring or copying the locator source later is permitted.
+  Obligations: keep its copyright/attribution headers, mark any changes, and
+  reproduce its NOTICE entries if it ships one. Confirm ApprovalTests' NOTICE and
+  this repo's root LICENSE before vendoring.
+- Known limit of the delegated locator: the flattened Kotlin package convention
+  (dropping the common root package from the directory tree) is unsupported by
+  ApprovalTests' guesser (its issue #352); the documented escape hatch is
+  `TestUtils.registerSourceDirectoryFinder`.
 - The value generator (Steps 7 to 9) is the riskiest area. Keep the default dumb
   and deterministic; resist scope creep into faker-style data here.
 - The `Strictland` global config (Step 5) is process-wide mutable state, a

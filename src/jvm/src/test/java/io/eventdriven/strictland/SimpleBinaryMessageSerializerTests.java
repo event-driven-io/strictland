@@ -41,6 +41,16 @@ final class SimpleBinaryMessageSerializerTests {
     }
 
     @Test
+    void givenCustomStorageAndAVariant_whenSerialized_theLabelKeysTheSnapshot(@TempDir Path tmp) {
+        MessageContract.specification(Binary.of(tmp))
+                .given(new OrderPlaced(FIXED_ID, "Alice"))
+                .whenSerialized(Snapshot.variant("AliceVariant"))
+                .thenContractIsUnchanged();
+
+        assertTrue(java.nio.file.Files.exists(tmp.resolve("AliceVariant.approved.txt")));
+    }
+
+    @Test
     void givenBinaryBytes_whenStoredAndReadBack_thenRecordRoundTripsThroughBase64(@TempDir Path tmp) {
         var serializer = new SimpleBinaryMessageSerializer();
         var storage = new Base64SnapshotStorage(tmp);

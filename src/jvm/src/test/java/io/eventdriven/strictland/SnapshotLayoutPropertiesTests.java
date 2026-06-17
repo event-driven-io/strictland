@@ -45,12 +45,12 @@ final class SnapshotLayoutPropertiesTests {
     }
 
     @Test
-    void strategyFlat_mapsToLegacy() {
+    void strategyFlat_mapsToFlat() {
         var props = new Properties();
         props.setProperty("strictland.layout.strategy", "flat");
 
         assertEquals(
-                Strategy.LEGACY, SnapshotLayoutProperties.fromProperties(props).strategy());
+                Strategy.FLAT, SnapshotLayoutProperties.fromProperties(props).strategy());
     }
 
     @Test

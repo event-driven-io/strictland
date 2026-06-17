@@ -31,6 +31,7 @@ public class ThenCompatibilityStep<S, T> {
     private final Class<T> targetType;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
+    private final SnapshotKeys keys;
     private final MessageTypeMapper typeMapper;
 
     ThenCompatibilityStep(
@@ -39,12 +40,14 @@ public class ThenCompatibilityStep<S, T> {
             Class<T> targetType,
             MessageSerializer serializer,
             SnapshotStorage storage,
+            SnapshotKeys keys,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.targetType = targetType;
         this.serializer = serializer;
         this.storage = storage;
+        this.keys = keys;
         this.typeMapper = typeMapper;
     }
 
@@ -198,12 +201,21 @@ public class ThenCompatibilityStep<S, T> {
         if (snapshot == null) {
             throw new IllegalStateException("Either a snapshot or an instance is required");
         }
-        var name =
-                switch (snapshot) {
-                    case Snapshot.ByClass<?> s -> typeMapper.name(s.sourceType());
-                    case Snapshot.ByMessageType s -> s.messageType();
-                    case Snapshot.ByPath s -> s.path().toString();
-                };
-        return storage.read(name).orElseThrow(() -> new RuntimeException("Cannot read snapshot file: " + name));
+        var key = snapshotKey(snapshot);
+        return storage.read(key).orElseThrow(() -> new RuntimeException("Cannot read snapshot file: " + key));
+    }
+
+    private String snapshotKey(Snapshot snapshot) {
+        return switch (snapshot) {
+            case Snapshot.ByClass<?> s -> keys.resolve(typeMapper.name(s.sourceType()), null);
+            case Snapshot.ByMessageType s -> keys.resolve(s.messageType(), null);
+            case Snapshot.ByVariant s -> keys.resolve(variantName(s), s.label());
+            case Snapshot.ByPath s -> s.path().toString();
+        };
+    }
+
+    private String variantName(Snapshot.ByVariant variant) {
+        var sourceType = variant.sourceType();
+        return sourceType != null ? typeMapper.name(sourceType) : variant.label();
     }
 }

@@ -31,22 +31,22 @@ package io.eventdriven.strictland;
 public class MessageContract {
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
+    private final SnapshotKeys keys;
     private final MessageTypeMapper typeMapper;
 
     private MessageContract(SpecificationOptions options) {
         this.serializer = options.serializer();
-        this.storage = resolveStorage(options);
+        var configuredStorage = options.storage();
+        if (configuredStorage != null) {
+            this.storage = configuredStorage;
+            this.keys = (type, variant) -> variant != null ? variant : type;
+        } else {
+            var layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
+            this.storage = new FileSnapshotStorage();
+            this.keys = new SnapshotLocation(layout, options.serializer().fileExtension());
+        }
         var configuredTypeMapper = options.typeMapper();
         this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.simpleName();
-    }
-
-    private static SnapshotStorage resolveStorage(SpecificationOptions options) {
-        var storage = options.storage();
-        if (storage != null) {
-            return storage;
-        }
-        var layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
-        return new FileSnapshotStorage(layout, options.serializer().fileExtension());
     }
 
     /**
@@ -88,7 +88,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
     }
 
     /**
@@ -103,7 +103,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
     }
 
     /**
@@ -117,7 +117,21 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
+    }
+
+    /**
+     * Defines the version under contract: an earlier one you saved as a labelled variant snapshot.
+     *
+     * <p>Reach for it when one message type has several approved snapshots and you want to read just
+     * one back by its label. {@code Snapshot.variant("WithPromotion", OrderInitiated.class)} loads that
+     * variant's file, which you then read as today's type with {@link GivenStep#whenDeserializedAs(Class)}.
+     *
+     * @param snapshot the saved variant to read
+     * @return the next step, where you choose what to check
+     */
+    public GivenStep<Object> given(Snapshot.ByVariant snapshot) {
+        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
     }
 
     /**
@@ -132,6 +146,6 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(null, instance, serializer, storage, typeMapper);
+        return new GivenStep<>(null, instance, serializer, storage, keys, typeMapper);
     }
 }
