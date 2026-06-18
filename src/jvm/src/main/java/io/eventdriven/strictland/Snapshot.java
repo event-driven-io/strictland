@@ -23,26 +23,24 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * A snapshot found by its message class, named after the class's simple name.
      *
      * @param <T> the message type the snapshot holds
-     * @param sourceType the class whose name identifies the snapshot
+     * @param messageClass the class whose name identifies the snapshot
      */
-    record ByClass<T>(Class<T> sourceType) implements Snapshot {}
+    record ByClass<T>(Class<T> messageClass) implements Snapshot {}
 
     /**
      * A snapshot found by a message-type name, for when it's named after a logical type - the one your
      * event store or message bus records - rather than a Java class.
      *
      * @param messageType the name identifying the snapshot
-     * @param sourceType the class the snapshot's data represents, or {@code null} if unspecified
      */
-    record ByMessageType(String messageType, @Nullable Class<?> sourceType) implements Snapshot {}
+    record ByMessageType(String messageType) implements Snapshot {}
 
     /**
      * A snapshot found by an explicit file path, for one kept somewhere other than next to your test.
      *
      * @param path the file to read the snapshot from
-     * @param sourceType the class the snapshot's data represents, or {@code null} if unspecified
      */
-    record ByPath(Path path, @Nullable Class<?> sourceType) implements Snapshot {}
+    record ByPath(Path path) implements Snapshot {}
 
     /**
      * A snapshot distinguished by a variant label, for when one message type has several approved
@@ -50,9 +48,9 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * file name, so it reads as documentation of what the variant captures.
      *
      * @param label the label naming the variant, used as the snapshot's leaf file name
-     * @param sourceType the class the snapshot's data represents, or {@code null} if unspecified
+     * @param messageClass the class the snapshot's data represents, or {@code null} if unspecified
      */
-    record ByVariant(String label, @Nullable Class<?> sourceType) implements Snapshot {}
+    record ByVariant(String label, @Nullable Class<?> messageClass) implements Snapshot {}
 
     /**
      * Points at a snapshot by its message class, named after the class's simple name.
@@ -76,20 +74,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step
      */
     static ByPath at(Path path) {
-        return new ByPath(path, null);
-    }
-
-    /**
-     * Points at a snapshot by file path and records the class its data represents, so a {@code
-     * given(...)} step knows what to read it as.
-     *
-     * @param path the file to read the snapshot from
-     * @param sourceType the class the snapshot's data represents
-     * @param <T> the message type the snapshot holds
-     * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step
-     */
-    static <T> ByPath at(Path path, Class<T> sourceType) {
-        return new ByPath(path, sourceType);
+        return new ByPath(path);
     }
 
     /**
@@ -100,20 +85,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step
      */
     static ByMessageType forMessageType(String messageType) {
-        return new ByMessageType(messageType, null);
-    }
-
-    /**
-     * Points at a snapshot by a message-type name and records the class its data represents, so a
-     * {@code given(...)} step knows what to read it as.
-     *
-     * @param messageType the name identifying the snapshot
-     * @param sourceType the class the snapshot's data represents
-     * @param <T> the message type the snapshot holds
-     * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step
-     */
-    static <T> ByMessageType forMessageType(String messageType, Class<T> sourceType) {
-        return new ByMessageType(messageType, sourceType);
+        return new ByMessageType(messageType);
     }
 
     /**

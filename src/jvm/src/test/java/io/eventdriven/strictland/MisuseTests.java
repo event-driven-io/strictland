@@ -76,7 +76,7 @@ final class MisuseTests {
         var exception = assertThrows(
                 RuntimeException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(Snapshot.at(path, OrderPlaced.class))
+                        .given(Snapshot.at(path))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenBackwardCompatible());
 
@@ -91,7 +91,7 @@ final class MisuseTests {
         var exception = assertThrows(
                 AssertionError.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(Snapshot.at(path, OrderPlaced.class))
+                        .given(Snapshot.at(path))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenForwardCompatible());
 
@@ -105,7 +105,7 @@ final class MisuseTests {
         var exception = assertThrows(
                 RuntimeException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(Snapshot.at(path, OrderPlaced.class))
+                        .given(Snapshot.at(path))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenBackwardCompatible());
 

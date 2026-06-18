@@ -134,7 +134,7 @@ final class SerializationContractTests {
 
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new MemberJoined(FIXED_ID, "alice@example.com"))
-                    .whenSerialized(Snapshot.at(path, MemberJoined.class))
+                    .whenSerialized(Snapshot.at(path))
                     .thenContractIsUnchanged();
         }
     }
