@@ -12,22 +12,25 @@ only when the build is green.
   - [x] tests: each override + the bare-default case
 - [x] **Step 2: `SnapshotLayout` + pure resolver**
   - [x] `Grouping` enum, `SnapshotLayout` value type, factories + withers
-  - [x] pure `resolve(...)` for every strategy x grouping, variant, ext
-  - [x] LEGACY output byte-identical to today's path
+  - [x] pure `resolve(...)` for every strategy x grouping, `(messageType, snapshotName)`, ext
+  - [x] FLAT output byte-identical to today's path
   - [x] tests: full combination matrix, branch-complete
 - [x] **Step 3: config-file parsing**
   - [x] `fromProperties(Properties)` + `fromClasspath()` seam
-  - [x] keys: strategy / grouping / wrapperFolder / rootPath; `flat` -> LEGACY
+  - [x] keys: strategy / grouping / wrapperFolder / rootPath; `flat` -> FLAT
   - [x] invalid-value error path
   - [x] tests via non-default fixture (NO repo-wide strictland.properties)
 
 ## Phase 1: wire the layout, opt-in only
 
-- [x] **Step 4: layout-aware `FileSnapshotStorage`**
-  - [x] thread layout + serializer extension; internal default LEGACY
-  - [x] new-layout store/read via Step 2 resolver + ApprovalTests withExtension
-  - [x] LEGACY parity preserved byte-for-byte
-  - [x] tests: NEXT_TO_TEST + GLOBAL_ROOT, both groupings, round-trip
+- [x] **Step 4: resolution out of storage + ApprovalTests removed**
+  - [x] resolution moved to `SnapshotLocation` (caller discovery + layout); `FileSnapshotStorage` is a plain path sink
+  - [x] plain write/compare storage: first-run approve, compare, `.snap.received` on drift (no ApprovalTests, no duplicate-tracker)
+  - [x] clean-room `TestSourceDirectoryLocator`: known source roots + JVM source-file name, no tree scan; `Strictland.defaults().testSourceRoots(...)` override
+  - [x] identity is `(messageType, snapshotName)`; variant folded in the DSL, layout + storage variant-unaware (no `SnapshotKeys`)
+  - [x] FLAT parity preserved byte-for-byte
+  - [x] ApprovalTests dropped from the library AND the test suite (PublicApiContractTests dogfoods `FileSnapshotStorage`)
+  - [x] tests: NEXT_TO_TEST + GLOBAL_ROOT, both groupings, round-trip; locator java/kotlin/scala roots + override + miss
 - [x] **Step 5: configuration system (global fluent + per-spec + file + precedence)**
   - [x] refactor `SpecificationOptions`: stop eager defaulting, settings carry "unset" (nullable), resolve on lookup
   - [x] `SpecificationOptions.snapshotLayout(...)` immutable wither, "unset" falls through
@@ -38,10 +41,10 @@ only when the build is green.
 
 ## Phase 2: multiple snapshots per contract
 
-- [ ] **Step 6: manual variant labels**
-  - [ ] `Snapshot.variant(String)`
-  - [ ] label threads into serialize naming + deserialize read
-  - [ ] tests: two variants, no overwrite, read one by label, label recorded
+- [x] **Step 6: manual variant labels**
+  - [x] `Snapshot.variant(String)` (and `Snapshot.ByVariant`)
+  - [x] label folds into snapshotName on serialize + deserialize read; storage stays variant-unaware
+  - [x] tests: two variants, no overwrite, read one by label, label recorded (`ManualVariantTests`)
 
 ## Phase 3: value generation and replay (can start Step 7 in parallel with 2-6)
 
@@ -68,11 +71,11 @@ only when the build is green.
 
 - [ ] **Step 10: flip default + migrate repo suite** (single disruptive step)
   - [ ] default -> NEXT_TO_TEST + PER_TEST_CLASS
-  - [ ] keep a LEGACY opt-in test so that path stays covered
+  - [ ] keep a FLAT opt-in test so that path stays covered
   - [ ] move/rename ~30 existing snapshots into the new structure
   - [ ] relocate hand-authored reference fixtures (CustomerRegisteredV1, etc.)
   - [ ] update tests naming explicit paths (BackwardCompatibility, Misuse, namers)
-  - [ ] no stray *.approved.txt except the LEGACY opt-in
+  - [ ] no stray *.approved.txt except the FLAT opt-in
   - [ ] green `./gradlew build` AND `./gradlew check` (kotlin/scala compat)
 - [ ] **Step 11: docs**
   - [ ] README: new layout, config file, variants, given(Class)

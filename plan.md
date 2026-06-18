@@ -158,17 +158,17 @@ Task: add a pure snapshot-layout model and path resolver. No storage wiring yet.
 2. A pure resolver method (on SnapshotLayout or a package-private helper) with
    signature roughly:
      Path resolve(Path testSourceDir, String callerPackage,
-                  String callerSimpleName, String messageTypeName,
-                  @Nullable String variantLabel, String fileExtension)
+                  String callerSimpleName, String messageType,
+                  String snapshotName, String fileExtension)
    testSourceDir is the directory holding the test's own source file. The caller
    (Step 4) discovers it; the resolver hard-codes no source root, so the same
-   rules place snapshots beside a java, kotlin, or scala test. Rules (return the
-   committed approved-file path, including the ".snap.approved" + extension
-   suffix):
-   - Leaf name: variantLabel if present, else messageTypeName.
+   rules place snapshots beside a java, kotlin, or scala test. The DSL folds any
+   variant label into snapshotName before calling, so the resolver is
+   variant-unaware. Rules (return the committed approved-file path, including the
+   ".snap.approved" + extension suffix):
+   - Leaf name = snapshotName.
    - PER_TEST_CLASS group folder = callerSimpleName.
-   - PER_CONTRACT group folder = messageTypeName; here the leaf defaults to
-     messageTypeName when no variant is given.
+   - PER_CONTRACT group folder = messageType.
    - NEXT_TO_TEST root = testSourceDir/<wrapperFolder>.
    - GLOBAL_ROOT root = <rootPath>/<callerPackageAsPath>. It anchors on the named
      root and the runtime package, not testSourceDir, so it is source-set
@@ -252,24 +252,26 @@ variants.
    SnapshotLocation) that:
    - finds the caller's test class via the existing StackWalker logic (reuse
      requireCaller / DSL_CLASSES);
-   - finds that test's source directory through a small internal seam (e.g. a
-     TestSourceDirectoryLocator single-method interface) whose default
-     implementation delegates to ApprovalTests' own source-file resolution
-     (com.spun.util.ClassUtils.getSourceDirectory(caller)). Wrapping it behind our
-     own interface is deliberate: it reuses ApprovalTests' maintained guesser now
-     (no hard-coded `src/test/java`, finds kotlin/scala roots) but lets us swap in
-     a vendored or clean-room locator later without touching callers. On a miss,
-     throw a clear error pointing at ApprovalTests'
-     TestUtils.registerSourceDirectoryFinder override.
+   - finds that test's source directory through a small internal seam (a
+     TestSourceDirectoryLocator single-method interface). The default is clean-room
+     and ApprovalTests-free: it resolves the caller's package directory against the
+     conventional source roots (src/test/java, src/test/kotlin, src/test/scala),
+     matching on the source file name the JVM records for the calling frame, with
+     no filesystem tree scan (so no hard-coded single root, and a build/ mirror
+     cannot shadow real sources). On a miss, throw a clear error pointing at
+     Strictland.defaults().testSourceRoots(...) to configure the roots.
    - calls the Step 2 SnapshotLayout.resolve(testSourceDir, package, simpleName,
-     messageType, variantLabel, fileExtension) and returns the committed Path.
+     messageType, snapshotName, fileExtension) and returns the committed Path. The
+     DSL folds any variant label into snapshotName, so storage and the layout never
+     see a variant.
 
-2. FileSnapshotStorage becomes layout-free. store(name, bytes) / read(name) treat
-   `name` as the already-resolved approved-file path: write or compare bytes there,
-   creating parent folders as needed, keeping the approved/received diff workflow.
-   FLAT resolves to a path through the same resolver, so storage has one code path
-   and no FLAT special-case. Remove the FileApprover duplicate-tracker workaround:
-   with each variant resolved to its own path before storage, it is not needed.
+2. FileSnapshotStorage becomes layout-free and ApprovalTests-free. store(name,
+   bytes) / read(name) treat `name` as the already-resolved approved-file path:
+   plain Java I/O writes the approved baseline on the first run, compares bytes on
+   later runs, and writes a `.snap.received.<ext>` sibling on drift. FLAT resolves
+   to a path through the same resolver, so storage has one code path and no FLAT
+   special-case, and there is no FileApprover duplicate-tracker workaround: each
+   variant resolves to its own path before storage.
 
 3. Keep the SnapshotStorage public surface at two methods, store(name, bytes) and
    read(name). No variantLabel overloads: the variant is folded into the resolved
@@ -368,15 +370,15 @@ Task: support manually labelled snapshot variants.
 
 1. Snapshot API: add a factory for a labelled variant, e.g.
    Snapshot.variant(String label) returning a Snapshot the serialize path
-   understands. The label becomes the leaf name (Step 2 resolver's variantLabel).
+   understands. The DSL folds the label into snapshotName (Step 2 resolver's leaf).
 
 2. Thread the label through resolution, not through storage:
    - GivenStep.whenSerialized(Snapshot) already exists; a variant Snapshot flows
-     into ThenContractStep, which passes the label as the resolver's variantLabel
-     (Step 4's SnapshotLocation) so it becomes the leaf of the resolved path.
+     into ThenContractStep, which folds the label into snapshotName (Step 4's
+     SnapshotLocation) so it becomes the leaf of the resolved path.
    - The deserialize read path (ThenCompatibilityStep.resolveSourceBytes) resolves
      the same labelled path and reads it back.
-   - Storage still sees only a resolved path: no variantLabel reaches the
+   - Storage still sees only a resolved path: no variant reaches the
      SnapshotStorage interface.
    Under FLAT the label behaves like today's forMessageType leaf name.
 
@@ -614,21 +616,21 @@ Per the repo rule that every phase ends on a working state and a clean build:
   byte-identical and selectable. It is named for what it is (flat), not its
   history; it is not deprecated.
 - Test-relative strategies (`NEXT_TO_TEST`, `FLAT`) anchor on the test's own
-  source directory, found through a wrapped locator that delegates to
-  ApprovalTests' `ClassUtils.getSourceDirectory(caller)`, so nothing hard-codes
-  `src/test/java` and kotlin/scala roots resolve too. The wrap (a one-method
-  internal interface) exists so the backing implementation can be swapped later.
-  `GLOBAL_ROOT` anchors on the named `rootPath` plus the runtime package, so it is
-  source-set independent.
-- Licensing for a later swap: ApprovalTests is Apache-2.0 and Strictland publishes
-  as Apache-2.0, so vendoring or copying the locator source later is permitted.
-  Obligations: keep its copyright/attribution headers, mark any changes, and
-  reproduce its NOTICE entries if it ships one. Confirm ApprovalTests' NOTICE and
-  this repo's root LICENSE before vendoring.
-- Known limit of the delegated locator: the flattened Kotlin package convention
-  (dropping the common root package from the directory tree) is unsupported by
-  ApprovalTests' guesser (its issue #352); the documented escape hatch is
-  `TestUtils.registerSourceDirectoryFinder`.
+  source directory, found through a one-method internal locator. The default is
+  clean-room and ApprovalTests-free: it resolves the caller's package directory
+  against configurable source roots (default `src/test/java`, `src/test/kotlin`,
+  `src/test/scala`) by matching the source file name the JVM records for the
+  frame, with no filesystem tree scan, so nothing hard-codes a single root and a
+  `build/` mirror cannot shadow real sources. `GLOBAL_ROOT` anchors on the named
+  `rootPath` plus the runtime package, so it is source-set independent.
+- Non-standard layouts (a flattened Kotlin package tree, a multi-module root, a
+  custom source set) configure the roots with
+  `Strictland.defaults().testSourceRoots(...)`; that is the escape hatch in place
+  of any filesystem guesser.
+- Strictland depends on no external approval tool. `FileSnapshotStorage` owns the
+  approved/received workflow as plain Java I/O, and ApprovalTests is a dependency
+  of neither the library nor its test suite (the public-API surface check in
+  `PublicApiContractTests` dogfoods `FileSnapshotStorage`).
 - The value generator (Steps 7 to 9) is the riskiest area. Keep the default dumb
   and deterministic; resist scope creep into faker-style data here.
 - The `Strictland` global config (Step 5) is process-wide mutable state, a
