@@ -16,7 +16,7 @@ public class GivenStep<S> {
     final @Nullable S instance;
     final MessageSerializer serializer;
     final SnapshotStorage storage;
-    final SnapshotKeys keys;
+    final @Nullable SnapshotLocation location;
     final MessageTypeMapper typeMapper;
 
     GivenStep(
@@ -24,13 +24,13 @@ public class GivenStep<S> {
             @Nullable S instance,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            SnapshotKeys keys,
+            @Nullable SnapshotLocation location,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.serializer = serializer;
         this.storage = storage;
-        this.keys = keys;
+        this.location = location;
         this.typeMapper = typeMapper;
     }
 
@@ -54,7 +54,7 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerialized() {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, null, serializer, storage, keys, typeMapper);
+        return new ThenContractStep<>(instance, null, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -78,7 +78,7 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerialized(Snapshot destination) {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, destination, serializer, storage, keys, typeMapper);
+        return new ThenContractStep<>(instance, destination, serializer, storage, location, typeMapper);
     }
 
     private S requireInstance() {
@@ -109,6 +109,6 @@ public class GivenStep<S> {
      * @return the step where you check compatibility, choosing the direction
      */
     public <T> ThenCompatibilityStep<S, T> whenDeserializedAs(Class<T> targetType) {
-        return new ThenCompatibilityStep<>(snapshot, instance, targetType, serializer, storage, keys, typeMapper);
+        return new ThenCompatibilityStep<>(snapshot, instance, targetType, serializer, storage, location, typeMapper);
     }
 }

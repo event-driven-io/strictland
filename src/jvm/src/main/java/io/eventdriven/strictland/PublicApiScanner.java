@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  *
  * {@snippet :
  * String api = PublicApiScanner.forPackage("com.myapp.events.v1").generate();
- * Approvals.verify(api);
+ * // compare api against a committed approved file with your approval check of choice
  * }
  */
 public class PublicApiScanner {

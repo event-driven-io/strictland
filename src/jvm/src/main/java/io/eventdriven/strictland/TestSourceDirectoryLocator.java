@@ -1,61 +1,71 @@
 package io.eventdriven.strictland;
 
-import static java.util.Objects.requireNonNull;
-
-import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Finds the source directory of a test class, so a snapshot can be anchored beside the test that owns
- * it without hard-coding {@code src/test/java}. A compiled class carries no source path, so the answer
- * is a guess from build conventions; this seam isolates that guess behind one method.
+ * it without hard-coding a single source root. A compiled class carries no source path - the JVM keeps
+ * only the source file's name, not its directory - so the directory is resolved from the known source
+ * roots a build uses by convention.
  *
- * <p>The default reuses ApprovalTests' source-file search, which already handles the common Java,
- * Kotlin, and Scala source roots. Keeping it behind this interface lets the backing implementation
- * change later without touching callers.
+ * <p>The default checks each configured root for the package directory that holds the test's source
+ * file, covering the standard {@code src/test/java}, {@code src/test/kotlin}, and {@code src/test/scala}
+ * roots. A project with a non-standard layout configures its own roots through {@link
+ * Strictland.Config#testSourceRoots(java.util.List)}. Resolution is a direct existence check against
+ * those roots, so it never scans the build tree and never depends on the working directory's contents.
  */
 @FunctionalInterface
 interface TestSourceDirectoryLocator {
 
+    /** The source roots a JVM build uses by convention, checked in order. */
+    List<String> DEFAULT_SOURCE_ROOTS = List.of("src/test/java", "src/test/kotlin", "src/test/scala");
+
     /**
      * Returns the directory holding the test class's source file, with its package path included.
      *
-     * @param testClass the test class whose source directory to find
+     * @param packageName the package of the test asking for the snapshot
+     * @param sourceFileName the test's source file name (for example {@code OrderTests.kt}), or {@code
+     *     null} when the JVM did not record it
      * @return the test's source directory
-     * @throws IllegalStateException when the directory cannot be located
+     * @throws IllegalStateException when no configured root holds the test's source
      */
-    Path locate(Class<?> testClass);
+    Path locate(String packageName, @Nullable String sourceFileName);
 
     /**
-     * The default locator, reusing ApprovalTests' {@code ClassUtils.find}. The search is rooted at
-     * {@code src} rather than the working directory so that compiled or formatted mirror copies under
-     * {@code build} cannot shadow the real sources. It returns the package directory of the test's
-     * source file.
+     * The default locator, checking the {@linkplain #DEFAULT_SOURCE_ROOTS conventional source roots}.
      *
-     * @return a locator backed by ApprovalTests
+     * @return a locator over the default source roots
      */
-    static TestSourceDirectoryLocator approvalTests() {
-        return testClass -> {
-            try {
-                // ApprovalTests locates the source file by the class's simple name, so a nested test class
-                // has to resolve through its top-level enclosing class, which names the file on disk.
-                var topLevel = testClass;
-                while (topLevel.getEnclosingClass() != null) {
-                    topLevel = topLevel.getEnclosingClass();
+    static TestSourceDirectoryLocator knownRoots() {
+        return knownRoots(DEFAULT_SOURCE_ROOTS);
+    }
+
+    /**
+     * A locator that checks the given source roots in order and returns the package directory of the
+     * first one that holds the test's source file. When the JVM did not record the source file name, it
+     * falls back to the first root whose package directory exists.
+     *
+     * @param sourceRoots the source roots to check, in order
+     * @return a locator over those roots
+     */
+    static TestSourceDirectoryLocator knownRoots(List<String> sourceRoots) {
+        return (packageName, sourceFileName) -> {
+            var packagePath = packageName.replace('.', '/');
+            for (var root : sourceRoots) {
+                var packageDir = Path.of(root, packagePath);
+                var holdsTheSource = sourceFileName != null
+                        ? Files.isRegularFile(packageDir.resolve(sourceFileName))
+                        : Files.isDirectory(packageDir);
+                if (holdsTheSource) {
+                    return packageDir.normalize();
                 }
-                var segments = new ArrayList<>(Arrays.asList(topLevel.getName().split("\\.")));
-                var last = segments.size() - 1;
-                segments.set(last, segments.get(last) + ".java");
-                var found = com.spun.util.ClassUtils.find(new File("src"), segments);
-                return requireNonNull(found).getParentFile().toPath().normalize();
-            } catch (RuntimeException e) {
-                throw new IllegalStateException(
-                        "Could not locate the test source directory for " + testClass.getName()
-                                + ". Register a finder with org.approvaltests.TestUtils.registerSourceDirectoryFinder(...).",
-                        e);
             }
+            throw new IllegalStateException("Could not locate the test source directory for package " + packageName
+                    + (sourceFileName != null ? " holding " + sourceFileName : "") + " under any of " + sourceRoots
+                    + ". Configure the roots with Strictland.defaults().testSourceRoots(...).");
         };
     }
 }

@@ -1,5 +1,7 @@
 package io.eventdriven.strictland;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Strictland is a contract-testing library for the messages your code sends and stores: events,
  * commands, queue messages, HTTP requests and responses, and anything else you serialize for someone
@@ -31,7 +33,7 @@ package io.eventdriven.strictland;
 public class MessageContract {
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final SnapshotKeys keys;
+    private final @Nullable SnapshotLocation location;
     private final MessageTypeMapper typeMapper;
 
     private MessageContract(SpecificationOptions options) {
@@ -39,11 +41,14 @@ public class MessageContract {
         var configuredStorage = options.storage();
         if (configuredStorage != null) {
             this.storage = configuredStorage;
-            this.keys = (type, variant) -> variant != null ? variant : type;
+            this.location = null;
         } else {
             var layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
             this.storage = new FileSnapshotStorage();
-            this.keys = new SnapshotLocation(layout, options.serializer().fileExtension());
+            this.location = new SnapshotLocation(
+                    layout,
+                    options.serializer().fileExtension(),
+                    TestSourceDirectoryLocator.knownRoots(Strictland.testSourceRoots()));
         }
         var configuredTypeMapper = options.typeMapper();
         this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.simpleName();
@@ -88,7 +93,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -103,7 +108,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -117,7 +122,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -131,7 +136,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByVariant snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, keys, typeMapper);
+        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -146,6 +151,6 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(null, instance, serializer, storage, keys, typeMapper);
+        return new GivenStep<>(null, instance, serializer, storage, location, typeMapper);
     }
 }

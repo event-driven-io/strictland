@@ -22,14 +22,14 @@ final class FileSnapshotStorageLayoutTests {
     private static final byte[] PAYLOAD = "{\"id\":1}".getBytes(UTF_8);
 
     private static SnapshotLocation anchoredAt(Path testSourceDir, SnapshotLayout layout, String extension) {
-        return new SnapshotLocation(layout, extension, testClass -> testSourceDir);
+        return new SnapshotLocation(layout, extension, (packageName, sourceFileName) -> testSourceDir);
     }
 
     @Test
     void globalRoot_perTestClass_resolvesUnderRootAndRoundTrips(@TempDir Path root) {
         var location = new SnapshotLocation(SnapshotLayout.globalRoot(root.toString()), ".json");
 
-        var key = location.resolve("OrderPlaced", null);
+        var key = location.resolve("OrderPlaced", "OrderPlaced");
 
         var expected = root.resolve(PACKAGE_PATH).resolve(CALLER).resolve("OrderPlaced.snap.approved.json");
         assertEquals(expected.toString(), key);
@@ -41,7 +41,7 @@ final class FileSnapshotStorageLayoutTests {
         var location = new SnapshotLocation(
                 SnapshotLayout.globalRoot(root.toString()).grouping(Grouping.PER_CONTRACT), ".json");
 
-        var key = location.resolve("OrderPlaced", null);
+        var key = location.resolve("OrderPlaced", "OrderPlaced");
 
         var expected = root.resolve(PACKAGE_PATH).resolve("OrderPlaced").resolve("OrderPlaced.snap.approved.json");
         assertEquals(expected.toString(), key);
@@ -52,7 +52,7 @@ final class FileSnapshotStorageLayoutTests {
     void nextToTest_perTestClass_anchorsOnTheTestSourceDir(@TempDir Path src) {
         var location = anchoredAt(src, SnapshotLayout.nextToTest(), ".json");
 
-        var key = location.resolve("OrderPlaced", null);
+        var key = location.resolve("OrderPlaced", "OrderPlaced");
 
         var expected = src.resolve("snapshots").resolve(CALLER).resolve("OrderPlaced.snap.approved.json");
         assertEquals(expected.toString(), key);
@@ -63,7 +63,7 @@ final class FileSnapshotStorageLayoutTests {
     void nextToTest_perContract_groupsUnderMessageType(@TempDir Path src) {
         var location = anchoredAt(src, SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT), ".json");
 
-        var key = location.resolve("OrderPlaced", null);
+        var key = location.resolve("OrderPlaced", "OrderPlaced");
 
         var expected = src.resolve("snapshots").resolve("OrderPlaced").resolve("OrderPlaced.snap.approved.json");
         assertEquals(expected.toString(), key);
@@ -71,7 +71,7 @@ final class FileSnapshotStorageLayoutTests {
     }
 
     @Test
-    void perContract_variantLabel_namesTheLeafAndReadsBackByLabel(@TempDir Path root) {
+    void perContract_aLeafDistinctFromTheGroup_namesTheFileAndReadsBack(@TempDir Path root) {
         var location = new SnapshotLocation(
                 SnapshotLayout.globalRoot(root.toString()).grouping(Grouping.PER_CONTRACT), ".json");
 
@@ -83,22 +83,22 @@ final class FileSnapshotStorageLayoutTests {
     }
 
     @Test
-    void flat_variantLabel_becomesTheLeafFileName(@TempDir Path src) {
+    void flat_usesTheLeafAsTheFileName(@TempDir Path src) {
         var location = anchoredAt(src, SnapshotLayout.flat(), ".json");
 
-        var key = location.resolve("OrderInitiated", "FlatVariantLeaf");
+        var key = location.resolve("OrderInitiated", "FlatLeaf");
 
-        assertEquals(src.resolve("FlatVariantLeaf.approved.txt").toString(), key);
+        assertEquals(src.resolve("FlatLeaf.approved.txt").toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
-    void flat_withoutVariant_keepsTheContractNameAsLeaf(@TempDir Path src) {
+    void flat_whenLeafEqualsTheGroup_keepsTheContractNameAsFileName(@TempDir Path src) {
         var location = anchoredAt(src, SnapshotLayout.flat(), ".json");
 
-        var key = location.resolve("FlatNoVariant", null);
+        var key = location.resolve("FlatContract", "FlatContract");
 
-        assertEquals(src.resolve("FlatNoVariant.approved.txt").toString(), key);
+        assertEquals(src.resolve("FlatContract.approved.txt").toString(), key);
         assertRoundTrips(key);
     }
 
@@ -106,7 +106,7 @@ final class FileSnapshotStorageLayoutTests {
     void usesSerializerExtensionInFileName(@TempDir Path root) {
         var location = new SnapshotLocation(SnapshotLayout.globalRoot(root.toString()), ".csv");
 
-        var key = location.resolve("OrderPlaced", null);
+        var key = location.resolve("OrderPlaced", "OrderPlaced");
 
         assertTrue(key.endsWith("OrderPlaced.snap.approved.csv"), key);
     }

@@ -15,7 +15,7 @@ public class ThenContractStep<S> {
     private final @Nullable Snapshot destination;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final SnapshotKeys keys;
+    private final @Nullable SnapshotLocation location;
     private final MessageTypeMapper typeMapper;
 
     ThenContractStep(
@@ -23,13 +23,13 @@ public class ThenContractStep<S> {
             @Nullable Snapshot destination,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            SnapshotKeys keys,
+            @Nullable SnapshotLocation location,
             MessageTypeMapper typeMapper) {
         this.instance = instance;
         this.destination = destination;
         this.serializer = serializer;
         this.storage = storage;
-        this.keys = keys;
+        this.location = location;
         this.typeMapper = typeMapper;
     }
 
@@ -55,11 +55,19 @@ public class ThenContractStep<S> {
 
     private String snapshotKey() {
         return switch (destination) {
-            case null -> keys.resolve(typeMapper.name(instance.getClass()), null);
-            case Snapshot.ByClass<?> b -> keys.resolve(typeMapper.name(b.sourceType()), null);
-            case Snapshot.ByMessageType b -> keys.resolve(b.messageType(), null);
-            case Snapshot.ByVariant b -> keys.resolve(typeMapper.name(instance.getClass()), b.label());
+            case null -> byContract(typeMapper.name(instance.getClass()));
+            case Snapshot.ByClass<?> b -> byContract(typeMapper.name(b.sourceType()));
+            case Snapshot.ByMessageType b -> byContract(b.messageType());
+            case Snapshot.ByVariant b -> key(typeMapper.name(instance.getClass()), b.label());
             case Snapshot.ByPath b -> b.path().toString();
         };
+    }
+
+    private String byContract(String contractName) {
+        return key(contractName, contractName);
+    }
+
+    private String key(String messageType, String snapshotName) {
+        return location != null ? location.resolve(messageType, snapshotName) : snapshotName;
     }
 }

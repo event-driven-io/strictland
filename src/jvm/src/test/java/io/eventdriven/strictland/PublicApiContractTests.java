@@ -1,6 +1,5 @@
 package io.eventdriven.strictland;
 
-import org.approvaltests.Approvals;
 import org.junit.jupiter.api.Test;
 
 final class PublicApiContractTests {
@@ -10,7 +9,7 @@ final class PublicApiContractTests {
         var api = PublicApiScanner.forPackage("io.eventdriven.strictland.tests.contracts.v1")
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 
     @Test
@@ -18,7 +17,7 @@ final class PublicApiContractTests {
         var api = PublicApiScanner.forPackage("io.eventdriven.strictland.tests.contracts.v2")
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 
     @Test
@@ -27,7 +26,7 @@ final class PublicApiContractTests {
                 .excludingMethods(m -> m.getName().equals("compareTo"))
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 
     @Test
@@ -36,7 +35,7 @@ final class PublicApiContractTests {
                 .excludeConstructors()
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 
     @Test
@@ -45,7 +44,7 @@ final class PublicApiContractTests {
                 .excludeStandardObjectMethods()
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 
     @Test
@@ -54,7 +53,7 @@ final class PublicApiContractTests {
                 .onlyGettersAndFields()
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 
     @Test
@@ -63,7 +62,7 @@ final class PublicApiContractTests {
                 .onlyGettersAndFields()
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 
     @Test
@@ -72,6 +71,6 @@ final class PublicApiContractTests {
                 .excludeStandardObjectMethods()
                 .generate();
 
-        Approvals.verify(api);
+        ApiSurfaceApproval.verify(api);
     }
 }

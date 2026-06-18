@@ -17,7 +17,7 @@ import org.jspecify.annotations.Nullable;
  * {@snippet :
  * SnapshotLayout layout = SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT);
  * Path path = layout.resolve(
- *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", null, ".json");
+ *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
  * // src/test/java/com/acme/orders/snapshots/OrderPlaced/OrderPlaced.snap.approved.json
  * }
  *
@@ -48,7 +48,7 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
         GLOBAL_ROOT,
 
         /**
-         * The original flat shape: {@code <testSourceDir>/<leaf>.approved.txt}, with no wrapper folder,
+         * The original flat shape: {@code <testSourceDir>/<snapshotName>.approved.txt}, with no wrapper folder,
          * no grouping, and a {@code .txt} extension regardless of the serializer's.
          */
         FLAT
@@ -62,7 +62,7 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * {@snippet :
      * SnapshotLayout layout = SnapshotLayout.nextToTest();
      * Path path = layout.resolve(
-     *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", null, ".json");
+     *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
      * // src/test/java/com/acme/orders/snapshots/OrderTests/OrderPlaced.snap.approved.json
      * }
      *
@@ -80,7 +80,7 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * {@snippet :
      * SnapshotLayout layout = SnapshotLayout.globalRoot("src/test/resources/snapshots");
      * Path path = layout.resolve(
-     *     null, "com.acme.orders", "OrderTests", "OrderPlaced", null, ".json");
+     *     null, "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
      * // src/test/resources/snapshots/com/acme/orders/OrderTests/OrderPlaced.snap.approved.json
      * }
      *
@@ -93,13 +93,13 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
 
     /**
      * The flat layout Strictland has always written, the original shape kept for projects that want
-     * today's behaviour. It puts {@code <leaf>.approved.txt} straight in the test's source directory,
+     * today's behaviour. It puts {@code <snapshotName>.approved.txt} straight in the test's source directory,
      * with no wrapper, no group folder, and a {@code .txt} extension whatever the serializer's is.
      *
      * {@snippet :
      * SnapshotLayout layout = SnapshotLayout.flat();
      * Path path = layout.resolve(
-     *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", null, ".json");
+     *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
      * // src/test/java/com/acme/orders/OrderPlaced.approved.txt
      * }
      *
@@ -141,20 +141,21 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
     }
 
     /**
-     * Resolves the committed approved-file path for a check, from the test that asks and the message it
-     * locks down. The result ends in {@code .snap.approved<fileExtension>}, except under {@link
+     * Resolves the committed approved-file path for a check, from the test that asks and the snapshot's
+     * identity. The result ends in {@code .snap.approved<fileExtension>}, except under {@link
      * Strategy#FLAT}, which always ends in {@code .approved.txt}.
      *
-     * <p>The leaf is the {@code variantLabel} when given, otherwise the {@code messageTypeName}. {@link
-     * Grouping#PER_TEST_CLASS} groups under the caller's simple name, {@link Grouping#PER_CONTRACT}
-     * groups under the message type. The {@code testSourceDir} anchors the test-relative strategies and
-     * already includes the caller's package path; {@link Strategy#GLOBAL_ROOT} ignores it and composes
-     * its own root from {@code rootPath} and the package.
+     * <p>The {@code snapshotName} names the file; {@code messageType} is what {@link
+     * Grouping#PER_CONTRACT} groups it under, while {@link Grouping#PER_TEST_CLASS} groups under the
+     * caller's simple name. For an ordinary snapshot the two are the same; they differ only when one
+     * message type has several snapshots that each need their own name. The {@code testSourceDir} anchors
+     * the test-relative strategies and already includes the caller's package path; {@link
+     * Strategy#GLOBAL_ROOT} ignores it and composes its own root from {@code rootPath} and the package.
      *
      * {@snippet :
-     * Path path = SnapshotLayout.nextToTest().resolve(
+     * Path path = SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT).resolve(
      *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "withCoupon", ".json");
-     * // src/test/java/com/acme/orders/snapshots/OrderTests/withCoupon.snap.approved.json
+     * // src/test/java/com/acme/orders/snapshots/OrderPlaced/withCoupon.snap.approved.json
      * }
      *
      * @param testSourceDir the test's source directory, package path included, anchoring {@link
@@ -162,8 +163,9 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      *     Strategy#GLOBAL_ROOT}, which does not use it
      * @param callerPackage the package of the test asking for the snapshot
      * @param callerSimpleName the simple name of the test class asking for the snapshot
-     * @param messageTypeName the logical name of the message being locked down
-     * @param variantLabel an optional label distinguishing one snapshot from another in the same test
+     * @param messageType the message type the snapshot belongs to, grouping it under {@link
+     *     Grouping#PER_CONTRACT}
+     * @param snapshotName the base name of the snapshot's file
      * @param fileExtension the extension the serializer writes, including the leading dot
      * @return the committed approved-file path
      */
@@ -171,17 +173,15 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
             @Nullable Path testSourceDir,
             String callerPackage,
             String callerSimpleName,
-            String messageTypeName,
-            @Nullable String variantLabel,
+            String messageType,
+            String snapshotName,
             String fileExtension) {
-        var leaf = variantLabel != null ? variantLabel : messageTypeName;
-
         if (strategy == Strategy.FLAT) {
-            return requireTestSourceDir(testSourceDir).resolve(leaf + FLAT_SUFFIX);
+            return requireTestSourceDir(testSourceDir).resolve(snapshotName + FLAT_SUFFIX);
         }
 
-        var groupFolder = grouping == Grouping.PER_CONTRACT ? messageTypeName : callerSimpleName;
-        var fileName = leaf + SNAP_APPROVED_SUFFIX + fileExtension;
+        var groupFolder = grouping == Grouping.PER_CONTRACT ? messageType : callerSimpleName;
+        var fileName = snapshotName + SNAP_APPROVED_SUFFIX + fileExtension;
         var root = strategy == Strategy.GLOBAL_ROOT
                 ? Path.of(rootPath, callerPackage.replace('.', '/'))
                 : requireTestSourceDir(testSourceDir).resolve(wrapperFolder);
