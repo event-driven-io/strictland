@@ -74,12 +74,6 @@ tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
 
 tasks.named<Javadoc>("javadoc") {
     (options as StandardJavadocDocletOptions).apply {
-        // ApprovalTests ships its .java sources inside its jars. With those on the
-        // compile classpath, javadoc would implicitly compile them while resolving
-        // our own API, failing because they import Gson, which we don't depend on.
-        // An empty sourcepath stops javadoc from reading those bundled sources; our
-        // own sources are still documented as they're passed as explicit file args.
-        addStringOption("sourcepath", "")
         // Treat javadoc warnings (e.g. missing comments on public API) as errors.
         addBooleanOption("Xwerror", true)
     }
@@ -92,7 +86,6 @@ dependencies {
     implementation(libs.classgraph)
     api(libs.jackson.databind)
     implementation(libs.jackson.datatype.jsr310)
-    implementation(libs.approvaltests)
     implementation(platform(libs.junit.bom))
     implementation(libs.junit.jupiter)
     errorprone(libs.errorprone.core)

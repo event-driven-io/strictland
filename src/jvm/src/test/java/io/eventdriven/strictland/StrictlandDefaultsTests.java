@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,27 @@ final class StrictlandDefaultsTests {
         Strictland.resetDefaults();
 
         assertTrue(Strictland.snapshotLayout().isEmpty());
+    }
+
+    @Test
+    void testSourceRoots_whenUnset_areTheConventionalRoots() {
+        assertEquals(TestSourceDirectoryLocator.DEFAULT_SOURCE_ROOTS, Strictland.testSourceRoots());
+    }
+
+    @Test
+    void testSourceRoots_whenSet_areReadBack() {
+        Strictland.defaults().testSourceRoots(List.of("modules/orders/src/test/java"));
+
+        assertEquals(List.of("modules/orders/src/test/java"), Strictland.testSourceRoots());
+    }
+
+    @Test
+    void testSourceRoots_whenReset_returnToTheConventionalRoots() {
+        Strictland.defaults().testSourceRoots(List.of("custom/root"));
+
+        Strictland.resetDefaults();
+
+        assertEquals(TestSourceDirectoryLocator.DEFAULT_SOURCE_ROOTS, Strictland.testSourceRoots());
     }
 
     @Test

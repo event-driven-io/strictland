@@ -1,5 +1,6 @@
 package io.eventdriven.strictland;
 
+import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
@@ -29,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 public final class Strictland {
 
     private static volatile @Nullable SnapshotLayout snapshotLayout;
+    private static volatile @Nullable List<String> testSourceRoots;
 
     private Strictland() {}
 
@@ -63,10 +65,16 @@ public final class Strictland {
      */
     public static void resetDefaults() {
         snapshotLayout = null;
+        testSourceRoots = null;
     }
 
     static Optional<SnapshotLayout> snapshotLayout() {
         return Optional.ofNullable(snapshotLayout);
+    }
+
+    static List<String> testSourceRoots() {
+        var configured = testSourceRoots;
+        return configured != null ? configured : TestSourceDirectoryLocator.DEFAULT_SOURCE_ROOTS;
     }
 
     /**
@@ -95,6 +103,25 @@ public final class Strictland {
          */
         public Config snapshotLayout(SnapshotLayout layout) {
             Strictland.snapshotLayout = layout;
+            return this;
+        }
+
+        /**
+         * Sets the source roots a test-relative layout searches to anchor a snapshot beside the test
+         * that owns it, for a project whose tests don't live under the conventional {@code
+         * src/test/java}, {@code src/test/kotlin}, or {@code src/test/scala}. The roots are checked in
+         * order, and the first one holding the calling test's source file anchors the snapshot. Pair it
+         * with {@link Strictland#resetDefaults()} in teardown so it doesn't outlive the test.
+         *
+         * {@snippet :
+         * Strictland.defaults().testSourceRoots(java.util.List.of("modules/orders/src/test/java"));
+         * }
+         *
+         * @param sourceRoots the source roots to search, in order
+         * @return this configuration, so you can chain further calls
+         */
+        public Config testSourceRoots(List<String> sourceRoots) {
+            Strictland.testSourceRoots = List.copyOf(sourceRoots);
             return this;
         }
     }

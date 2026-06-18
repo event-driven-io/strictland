@@ -31,7 +31,7 @@ public class ThenCompatibilityStep<S, T> {
     private final Class<T> targetType;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final SnapshotKeys keys;
+    private final @Nullable SnapshotLocation location;
     private final MessageTypeMapper typeMapper;
 
     ThenCompatibilityStep(
@@ -40,14 +40,14 @@ public class ThenCompatibilityStep<S, T> {
             Class<T> targetType,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            SnapshotKeys keys,
+            @Nullable SnapshotLocation location,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.targetType = targetType;
         this.serializer = serializer;
         this.storage = storage;
-        this.keys = keys;
+        this.location = location;
         this.typeMapper = typeMapper;
     }
 
@@ -207,11 +207,19 @@ public class ThenCompatibilityStep<S, T> {
 
     private String snapshotKey(Snapshot snapshot) {
         return switch (snapshot) {
-            case Snapshot.ByClass<?> s -> keys.resolve(typeMapper.name(s.sourceType()), null);
-            case Snapshot.ByMessageType s -> keys.resolve(s.messageType(), null);
-            case Snapshot.ByVariant s -> keys.resolve(variantName(s), s.label());
+            case Snapshot.ByClass<?> s -> byContract(typeMapper.name(s.sourceType()));
+            case Snapshot.ByMessageType s -> byContract(s.messageType());
+            case Snapshot.ByVariant s -> key(variantName(s), s.label());
             case Snapshot.ByPath s -> s.path().toString();
         };
+    }
+
+    private String byContract(String contractName) {
+        return key(contractName, contractName);
+    }
+
+    private String key(String messageType, String snapshotName) {
+        return location != null ? location.resolve(messageType, snapshotName) : snapshotName;
     }
 
     private String variantName(Snapshot.ByVariant variant) {

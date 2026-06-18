@@ -52,7 +52,7 @@ final class SnapshotLayoutTests {
     @Test
     void nextToTest_perTestClass_withoutVariant_groupsUnderTheTestClass() {
         var path = SnapshotLayout.nextToTest()
-                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION);
+                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(
                 Path.of("src/test/java", PACKAGE_PATH, "snapshots", "OrderTests", "OrderPlaced.snap.approved.json"),
@@ -73,7 +73,7 @@ final class SnapshotLayoutTests {
     void nextToTest_perContract_withoutVariant_groupsUnderTheMessageType() {
         var path = SnapshotLayout.nextToTest()
                 .grouping(Grouping.PER_CONTRACT)
-                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION);
+                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(
                 Path.of("src/test/java", PACKAGE_PATH, "snapshots", "OrderPlaced", "OrderPlaced.snap.approved.json"),
@@ -95,7 +95,7 @@ final class SnapshotLayoutTests {
     void nextToTest_wrapperFolderOverride_replacesTheWrapperSegment() {
         var path = SnapshotLayout.nextToTest()
                 .wrapperFolder("approved")
-                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION);
+                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(
                 Path.of("src/test/java", PACKAGE_PATH, "approved", "OrderTests", "OrderPlaced.snap.approved.json"),
@@ -108,13 +108,13 @@ final class SnapshotLayoutTests {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> layout.resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION));
+                () -> layout.resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION));
     }
 
     @Test
     void globalRoot_perTestClass_withoutVariant_rootsAtTheGivenRootPath() {
         var path = SnapshotLayout.globalRoot("src/test/resources/snapshots")
-                .resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION);
+                .resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(
                 Path.of("src/test/resources/snapshots", PACKAGE_PATH, "OrderTests", "OrderPlaced.snap.approved.json"),
@@ -136,7 +136,7 @@ final class SnapshotLayoutTests {
     void globalRoot_perContract_withoutVariant_leafDefaultsToMessageType() {
         var path = SnapshotLayout.globalRoot("snaps")
                 .grouping(Grouping.PER_CONTRACT)
-                .resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION);
+                .resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(Path.of("snaps", PACKAGE_PATH, "OrderPlaced", "OrderPlaced.snap.approved.json"), path);
     }
@@ -146,7 +146,7 @@ final class SnapshotLayoutTests {
         var expected = TEST_SOURCE_DIR.resolve(MESSAGE_TYPE + ".approved.txt");
 
         var path = SnapshotLayout.flat()
-                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION);
+                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(expected, path);
     }
@@ -167,6 +167,6 @@ final class SnapshotLayoutTests {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> layout.resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, null, EXTENSION));
+                () -> layout.resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION));
     }
 }

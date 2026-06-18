@@ -71,24 +71,24 @@ final class ManualVariantTests {
     }
 
     @Test
-    void underLegacy_theLabelBehavesLikeAForMessageTypeLeafName() throws Exception {
-        var leaf = Path.of("src/test/java/io/eventdriven/strictland/LegacyNullPromotion.approved.txt");
+    void underFlat_theLabelNamesTheFlatApprovedFile() throws Exception {
+        var snapshotFile = Path.of("src/test/java/io/eventdriven/strictland/FlatNullPromotion.approved.txt");
         try {
-            // LEGACY ignores grouping, so the label alone names the flat .approved.txt leaf.
+            // FLAT ignores grouping, so the label alone names the flat .approved.txt file.
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
-                    .whenSerialized(Snapshot.variant("LegacyNullPromotion"))
+                    .whenSerialized(Snapshot.variant("FlatNullPromotion"))
                     .thenContractIsUnchanged();
 
-            assertTrue(Files.exists(leaf), "expected the label to name the legacy leaf at " + leaf);
+            assertTrue(Files.exists(snapshotFile), "expected the label to name the flat file at " + snapshotFile);
 
             // Read it back by label alone, with no source class recorded on the variant.
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(Snapshot.variant("LegacyNullPromotion"))
+                    .given(Snapshot.variant("FlatNullPromotion"))
                     .whenDeserializedAs(OrderInitiated.class)
                     .thenBackwardCompatible(order -> assertEquals("NONE", order.promotion()));
         } finally {
-            Files.deleteIfExists(leaf);
+            Files.deleteIfExists(snapshotFile);
         }
     }
 

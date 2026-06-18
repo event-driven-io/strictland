@@ -51,6 +51,20 @@ final class SimpleBinaryMessageSerializerTests {
     }
 
     @Test
+    void givenCustomStorage_whenReadingASnapshotBackByType_thenItResolvesTheLeafKey(@TempDir Path tmp) {
+        var options = Binary.of(tmp);
+        MessageContract.specification(options)
+                .given(new OrderPlaced(FIXED_ID, "Alice"))
+                .whenSerialized(Snapshot.forMessageType("OrderPlaced"))
+                .thenContractIsUnchanged();
+
+        MessageContract.specification(options)
+                .given(Snapshot.forMessageType("OrderPlaced"))
+                .whenDeserializedAs(OrderPlaced.class)
+                .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
+    }
+
+    @Test
     void givenBinaryBytes_whenStoredAndReadBack_thenRecordRoundTripsThroughBase64(@TempDir Path tmp) {
         var serializer = new SimpleBinaryMessageSerializer();
         var storage = new Base64SnapshotStorage(tmp);
