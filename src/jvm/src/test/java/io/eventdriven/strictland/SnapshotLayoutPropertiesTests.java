@@ -70,7 +70,7 @@ final class SnapshotLayoutPropertiesTests {
         props.setProperty("strictland.layout.grouping", "perTestClass");
 
         assertEquals(
-                Grouping.PER_TEST_CLASS,
+                SnapshotGrouping.PER_TEST_CLASS,
                 SnapshotLayoutProperties.fromProperties(props).grouping());
     }
 
@@ -80,7 +80,7 @@ final class SnapshotLayoutPropertiesTests {
         props.setProperty("strictland.layout.grouping", "perContract");
 
         assertEquals(
-                Grouping.PER_CONTRACT,
+                SnapshotGrouping.PER_CONTRACT,
                 SnapshotLayoutProperties.fromProperties(props).grouping());
     }
 
@@ -112,7 +112,7 @@ final class SnapshotLayoutPropertiesTests {
         var layout = SnapshotLayoutProperties.fromProperties(props);
 
         assertEquals(Strategy.GLOBAL_ROOT, layout.strategy());
-        assertEquals(Grouping.PER_CONTRACT, layout.grouping());
+        assertEquals(SnapshotGrouping.PER_CONTRACT, layout.grouping());
         assertEquals("approved", layout.wrapperFolder());
         assertEquals("src/test/resources/snapshots", layout.rootPath());
     }
@@ -147,7 +147,7 @@ final class SnapshotLayoutPropertiesTests {
 
         assertTrue(layout.isPresent());
         assertEquals(Strategy.GLOBAL_ROOT, layout.get().strategy());
-        assertEquals(Grouping.PER_CONTRACT, layout.get().grouping());
+        assertEquals(SnapshotGrouping.PER_CONTRACT, layout.get().grouping());
         assertEquals("approved", layout.get().wrapperFolder());
         assertEquals("src/test/resources/snapshots", layout.get().rootPath());
     }

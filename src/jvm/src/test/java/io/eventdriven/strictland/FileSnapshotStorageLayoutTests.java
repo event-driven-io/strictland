@@ -39,7 +39,7 @@ final class FileSnapshotStorageLayoutTests {
     @Test
     void globalRoot_perContract_groupsUnderMessageType(@TempDir Path root) {
         var location = new SnapshotLocation(
-                SnapshotLayout.globalRoot(root.toString()).grouping(Grouping.PER_CONTRACT), ".json");
+                SnapshotLayout.globalRoot(root.toString()).grouping(SnapshotGrouping.PER_CONTRACT), ".json");
 
         var key = location.resolve("OrderPlaced", "OrderPlaced");
 
@@ -61,7 +61,7 @@ final class FileSnapshotStorageLayoutTests {
 
     @Test
     void nextToTest_perContract_groupsUnderMessageType(@TempDir Path src) {
-        var location = anchoredAt(src, SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT), ".json");
+        var location = anchoredAt(src, SnapshotLayout.nextToTest().grouping(SnapshotGrouping.PER_CONTRACT), ".json");
 
         var key = location.resolve("OrderPlaced", "OrderPlaced");
 
@@ -73,7 +73,7 @@ final class FileSnapshotStorageLayoutTests {
     @Test
     void perContract_aLeafDistinctFromTheGroup_namesTheFileAndReadsBack(@TempDir Path root) {
         var location = new SnapshotLocation(
-                SnapshotLayout.globalRoot(root.toString()).grouping(Grouping.PER_CONTRACT), ".json");
+                SnapshotLayout.globalRoot(root.toString()).grouping(SnapshotGrouping.PER_CONTRACT), ".json");
 
         var key = location.resolve("OrderInitiated", "WithPromotion");
 

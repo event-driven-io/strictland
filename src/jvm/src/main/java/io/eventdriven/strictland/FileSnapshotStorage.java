@@ -8,13 +8,14 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /**
- * File-backed snapshot storage. It is a thin sink: the DSL resolves a snapshot's committed path and
- * hands it in as the name, so this type only writes bytes there and reads them back. The layout, the
- * calling test, and any variant label are resolved before it is called.
+ * File-backed snapshot storage. It is a thin wrapper that reads and stores snapshots.
  *
  * <p>The first run writes the approved file for you to review and commit. A later run compares the
  * payload against it: a match passes, a difference writes a sibling {@code .received} file for diffing
- * and fails the check.
+ * and fails the check.</p>
+ *
+ * <p> `FileSnapshotStorage` is a thin wrapper that just writes bytes and reads them back.
+ * The path, layout, test variant label are resolved byt the caller (so test suite).</p>
  */
 class FileSnapshotStorage implements SnapshotStorage {
 
@@ -22,15 +23,15 @@ class FileSnapshotStorage implements SnapshotStorage {
     private static final String RECEIVED_MARKER = ".received.";
 
     @Override
-    public void store(String name, byte[] payload) {
-        var approved = Path.of(name);
+    public void store(String pathWithName, byte[] payload) {
+        var approved = Path.of(pathWithName);
         if (approved.getParent() == null) {
-            throw new IllegalArgumentException("Snapshot path must have a parent directory: " + name);
+            throw new IllegalArgumentException("Snapshot path must have a parent directory: " + pathWithName);
         }
-        if (!name.contains(APPROVED_MARKER)) {
-            throw new IllegalArgumentException("Snapshot path must end in .approved.<ext>: " + name);
+        if (!pathWithName.contains(APPROVED_MARKER)) {
+            throw new IllegalArgumentException("Snapshot path must end in .approved.<ext>: " + pathWithName);
         }
-        var received = Path.of(name.replace(APPROVED_MARKER, RECEIVED_MARKER));
+        var received = Path.of(pathWithName.replace(APPROVED_MARKER, RECEIVED_MARKER));
         try {
             if (!Files.exists(approved)) {
                 Files.createDirectories(approved.getParent());
@@ -45,16 +46,16 @@ class FileSnapshotStorage implements SnapshotStorage {
             Files.createDirectories(received.getParent());
             Files.write(received, payload);
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to store snapshot at " + name, e);
+            throw new UncheckedIOException("Failed to store snapshot at " + pathWithName, e);
         }
-        throw new AssertionError(
-                "Snapshot drift: " + name + " differs from the approved snapshot. See " + received + " to review.");
+        throw new AssertionError("Snapshot drift: " + pathWithName + " differs from the approved snapshot. See "
+                + received + " to review.");
     }
 
     @Override
-    public Optional<byte[]> read(String name) {
+    public Optional<byte[]> read(String pathWithName) {
         try {
-            return Optional.of(Files.readAllBytes(Path.of(name)));
+            return Optional.of(Files.readAllBytes(Path.of(pathWithName)));
         } catch (IOException e) {
             return Optional.empty();
         }

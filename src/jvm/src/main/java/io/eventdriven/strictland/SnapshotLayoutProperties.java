@@ -18,14 +18,14 @@ import org.jspecify.annotations.Nullable;
  * {@code flat}), {@code strictland.layout.grouping} ({@code perTestClass} or {@code perContract}),
  * {@code strictland.layout.wrapperFolder}, and {@code strictland.layout.rootPath} (read only when the
  * strategy is {@code globalRoot}). An unrecognised strategy or grouping value throws {@link
- * IllegalArgumentException} naming the key and the value.
+ * IllegalArgumentException} naming the key and the value.</p>
  *
- * {@snippet :
+ * <pre>
  * var props = new Properties();
  * props.setProperty("strictland.layout.strategy", "globalRoot");
  * props.setProperty("strictland.layout.rootPath", "src/test/resources/snapshots");
  * SnapshotLayout layout = SnapshotLayoutProperties.fromProperties(props);
- * }
+ * </pre>
  */
 public final class SnapshotLayoutProperties {
 
@@ -42,9 +42,9 @@ public final class SnapshotLayoutProperties {
      * empty when no such file is present. Use this to let a project opt into a layout by shipping the
      * file, while a project that doesn't keeps the {@link SnapshotLayout#nextToTest()} defaults.
      *
-     * {@snippet :
+     * <pre>
      * SnapshotLayout layout = SnapshotLayoutProperties.fromClasspath().orElseGet(SnapshotLayout::nextToTest);
-     * }
+     * </pre>
      *
      * @return the layout read from {@code strictland.properties}, or empty if the file is absent
      */
@@ -75,11 +75,11 @@ public final class SnapshotLayoutProperties {
      * {@link SnapshotLayout#nextToTest()} default. This is the pure core the classpath reader builds
      * on, handy when you hold the values yourself, for instance in a test.
      *
-     * {@snippet :
+     * <pre>
      * var props = new Properties();
      * props.setProperty("strictland.layout.grouping", "perContract");
      * SnapshotLayout layout = SnapshotLayoutProperties.fromProperties(props);
-     * }
+     * </pre>
      *
      * @param props the configuration to read the layout from
      * @return the layout the properties describe
@@ -113,10 +113,10 @@ public final class SnapshotLayoutProperties {
         };
     }
 
-    private static Grouping grouping(String grouping) {
+    private static SnapshotGrouping grouping(String grouping) {
         return switch (grouping) {
-            case "perTestClass" -> Grouping.PER_TEST_CLASS;
-            case "perContract" -> Grouping.PER_CONTRACT;
+            case "perTestClass" -> SnapshotGrouping.PER_TEST_CLASS;
+            case "perContract" -> SnapshotGrouping.PER_CONTRACT;
             default -> throw badValue(GROUPING_KEY, grouping);
         };
     }

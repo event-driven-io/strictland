@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * file, covering the standard {@code src/test/java}, {@code src/test/kotlin}, and {@code src/test/scala}
  * roots. A project with a non-standard layout configures its own roots through {@link
  * Strictland.Config#testSourceRoots(java.util.List)}. Resolution is a direct existence check against
- * those roots, so it never scans the build tree and never depends on the working directory's contents.
+ * those roots, so it never scans the build tree and never depends on the working directory's contents.</p>
  */
 @FunctionalInterface
 interface TestSourceDirectoryLocator {

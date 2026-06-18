@@ -11,7 +11,7 @@ import java.util.Set;
  *
  * <p>It takes a snapshot's identity as a {@code (messageType, snapshotName)} pair the DSL has already
  * settled: {@code messageType} groups it, {@code snapshotName} names its file. Higher-level notions such
- * as a variant are folded into the name before they reach here, so this type stays unaware of them.
+ * as a variant are folded into the name before they reach here, so this type stays unaware of them.</p>
  */
 final class SnapshotLocation {
 

@@ -10,25 +10,25 @@ import org.jspecify.annotations.Nullable;
  * <p>You write a small unit test that locks down a message's format. Later you rename a field, change
  * a type, or adjust how a value serializes; the code still compiles and your other tests pass, but
  * that one fails and points at what changed. You fix it in your build, before a consumer or a stored
- * event has hit the old format in production.
+ * event has hit the old format in production.</p>
  *
  * <p>When a message changes by accident, a snapshot check ({@link ThenContractStep}) shows you
  * exactly what moved. When you evolve a message on purpose, a compatibility check ({@link
- * ThenCompatibilityStep}) confirms an old and a new version can still read each other's data.
+ * ThenCompatibilityStep}) confirms an old and a new version can still read each other's data.</p>
  *
- * <p>Every check starts here and reads as a sentence:
+ * <p>Every check starts here and reads as a sentence:</p>
  *
- * {@snippet :
+ * <pre>
  * MessageContract.specification(Json.Jackson.defaults())
  *     .given(new OrderPlaced(orderId, "Alice", placedAt))
  *     .whenSerialized()
  *     .thenContractIsUnchanged();
- * }
+ * </pre>
  *
  * <p>The approved file each check compares against lives next to your test code and is committed to
  * your repository, so a contract change shows up in the same pull request as the code that caused it.
  * {@link Snapshot} picks which file backs a check, and {@link PublicApiScanner} renders a package's
- * public API as text so you can approval-test the surface itself.
+ * public API as text so you can approval-test the surface itself.</p>
  */
 public class MessageContract {
     private final MessageSerializer serializer;
@@ -63,14 +63,14 @@ public class MessageContract {
      * with the bytes you actually ship. If you're using JSON, you can plug in your own Jackson mapper
      * with {@link Json.Jackson#of(com.fasterxml.jackson.databind.ObjectMapper) Json.Jackson.of(mapper)},
      * or use Strictland's default with {@link Json.Jackson#defaults()}. For another format, implement
-     * {@link MessageSerializer} and pass it through {@link SpecificationOptions}.
+     * {@link MessageSerializer} and pass it through {@link SpecificationOptions}.</p>
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice", placedAt))
      *     .whenSerialized()
      *     .thenContractIsUnchanged();
-     * }
+     * </pre>
      *
      * @param options how a message is serialized, where its snapshot lives, and how its type is named
      * @return a specification you attach the message under test to with {@code given(...)}
@@ -86,7 +86,7 @@ public class MessageContract {
      * <p>Use it to check your current code still reads what an older version wrote. {@code
      * Snapshot.of(OrderPlaced.class)} loads the approved file for that type, which you then read as
      * today's type with {@link GivenStep#whenDeserializedAs(Class)}. {@link Snapshot} lists the other
-     * ways to locate one.
+     * ways to locate one.</p>
      *
      * @param snapshot the saved snapshot to read
      * @param <S> the message type the snapshot holds
@@ -102,7 +102,7 @@ public class MessageContract {
      *
      * <p>Useful when the saved name is a logical message type rather than a Java class, such as the
      * type your event store records, or when one class has several saved versions. {@code
-     * Snapshot.forMessageType("OrderPlaced_V1")} loads that file.
+     * Snapshot.forMessageType("OrderPlaced_V1")} loads that file.</p>
      *
      * @param snapshot the saved snapshot to read
      * @return the next step, where you choose what to check
@@ -116,7 +116,7 @@ public class MessageContract {
      * path.
      *
      * <p>Reach for it when the approved file lives somewhere other than next to your test. {@code
-     * Snapshot.at(path)} points straight at it.
+     * Snapshot.at(path)} points straight at it.</p>
      *
      * @param snapshot the saved snapshot to read
      * @return the next step, where you choose what to check
@@ -130,7 +130,7 @@ public class MessageContract {
      *
      * <p>Reach for it when one message type has several approved snapshots and you want to read just
      * one back by its label. {@code Snapshot.variant("WithPromotion", OrderInitiated.class)} loads that
-     * variant's file, which you then read as today's type with {@link GivenStep#whenDeserializedAs(Class)}.
+     * variant's file, which you then read as today's type with {@link GivenStep#whenDeserializedAs(Class)}.</p>
      *
      * @param snapshot the saved variant to read
      * @return the next step, where you choose what to check
@@ -144,7 +144,7 @@ public class MessageContract {
      *
      * <p>From here, lock its shape so accidental changes get caught with {@link
      * GivenStep#whenSerialized()}, or read it as another version to check the two are compatible with
-     * {@link GivenStep#whenDeserializedAs(Class)}.
+     * {@link GivenStep#whenDeserializedAs(Class)}.</p>
      *
      * @param instance the message to pin or read with another version
      * @param <S> the type of the message

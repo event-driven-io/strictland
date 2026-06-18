@@ -14,12 +14,12 @@ import java.util.stream.Collectors;
  * surface — a method gone, a parameter added, a return type changed — fails the build.
  *
  * <p>Point it at a package, optionally trim what you don't want to track, and call {@link #generate()}
- * for the text to hand to your approval check.
+ * for the text to hand to your approval check.</p>
  *
- * {@snippet :
+ * <pre>
  * String api = PublicApiScanner.forPackage("com.myapp.events.v1").generate();
  * // compare api against a committed approved file with your approval check of choice
- * }
+ * </pre>
  */
 public class PublicApiScanner {
     private final String packageName;

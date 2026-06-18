@@ -20,7 +20,7 @@ import org.jspecify.annotations.Nullable;
  * to confirm the newer version still reads a message the older one wrote - the events you stored last
  * year, a request already sent. Use {@link #thenForwardCompatible()} to confirm a reader that hasn't
  * upgraded yet still reads a message the newer version writes. Both compare the fields the two
- * versions share and fail if a required one is missing or a shared value changed.
+ * versions share and fail if a required one is missing or a shared value changed.</p>
  *
  * @param <S> the version you started from
  * @param <T> the version you check it against
@@ -56,12 +56,12 @@ public class ThenCompatibilityStep<S, T> {
      * can ship the new shape before everyone reading it has caught up. Fails when the newer version
      * drops or renames a field the older one needs, or writes a shared value differently.
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
      *     .whenDeserializedAs(OrderPlaced.class)
      *     .thenForwardCompatible();
-     * }
+     * </pre>
      */
     public void thenForwardCompatible() {
         verifySharedFields(t -> {});
@@ -73,12 +73,12 @@ public class ThenCompatibilityStep<S, T> {
      * fields. Fails when the newer version drops or renames a field the older one needs, or writes a
      * shared value differently.
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
      *     .whenDeserializedAs(OrderPlaced.class)
      *     .thenForwardCompatible(order -> assertEquals("Alice", order.customer()));
-     * }
+     * </pre>
      *
      * @param extra assertions to run on the deserialized message
      */
@@ -91,12 +91,12 @@ public class ThenCompatibilityStep<S, T> {
      * break on the events you've already stored or the messages still in flight. Fails when the newer
      * version needs a field the older one never wrote, or reads a shared value differently.
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice"))
      *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
      *     .thenBackwardCompatible();
-     * }
+     * </pre>
      */
     public void thenBackwardCompatible() {
         verifySharedFields(t -> {});
@@ -108,12 +108,12 @@ public class ThenCompatibilityStep<S, T> {
      * when the newer version needs a field the older one never wrote, or reads a shared value
      * differently.
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice"))
      *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
      *     .thenBackwardCompatible(order -> assertNull(order.couponCode()));
-     * }
+     * </pre>
      *
      * @param extra assertions to run on the deserialized message
      */

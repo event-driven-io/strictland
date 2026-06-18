@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>From here, lock its shape so accidental changes get caught with {@link #whenSerialized()} (or
  * {@link #whenSerialized(Snapshot)} to choose the snapshot), or read it as another version to confirm
- * the two are compatible with {@link #whenDeserializedAs(Class)}.
+ * the two are compatible with {@link #whenDeserializedAs(Class)}.</p>
  *
  * @param <S> the type of the message under test
  */
@@ -39,14 +39,14 @@ public class GivenStep<S> {
      *
      * <p>The next step, {@link ThenContractStep#thenContractIsUnchanged()}, compares this serialized
      * output against an approved snapshot, named after the message's class and saved beside your test,
-     * and fails the test if the format has changed.
+     * and fails the test if the format has changed.</p>
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice", placedAt))
      *     .whenSerialized()
      *     .thenContractIsUnchanged();
-     * }
+     * </pre>
      *
      * @return the step where you check the serialized result against the snapshot
      * @throws IllegalStateException if you started from a saved snapshot rather than a live instance,
@@ -62,14 +62,14 @@ public class GivenStep<S> {
      *
      * <p>Like {@link #whenSerialized()}, but you pick the approved file, by message-type name, by
      * class, or by path, instead of letting it default to the class name. Useful when one class
-     * produces several snapshots or the file lives elsewhere.
+     * produces several snapshots or the file lives elsewhere.</p>
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderInitiatedV2(id, null, initiatedAt))
      *     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
      *     .thenContractIsUnchanged();
-     * }
+     * </pre>
      *
      * @param destination the approved snapshot the {@code then} step compares against
      * @return the step where you check the serialized result against the snapshot
@@ -95,14 +95,14 @@ public class GivenStep<S> {
      * <p>The next {@code then} step compares the fields the two versions share and fails if a required
      * one is missing or a shared value changed. Pick the direction: {@link
      * ThenCompatibilityStep#thenForwardCompatible()} when an older reader takes newer data, {@link
-     * ThenCompatibilityStep#thenBackwardCompatible()} when a newer reader takes older data.
+     * ThenCompatibilityStep#thenBackwardCompatible()} when a newer reader takes older data.</p>
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlacedWithCoupon(orderId, "Alice", "SAVE10"))
      *     .whenDeserializedAs(OrderPlaced.class)
      *     .thenForwardCompatible();
-     * }
+     * </pre>
      *
      * @param targetType the version to read the data as
      * @param <T> the target message type

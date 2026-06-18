@@ -22,13 +22,13 @@ final class SnapshotLayoutTests {
     void factories_useTheDocumentedDefaults() {
         var nextToTest = SnapshotLayout.nextToTest();
         assertEquals(Strategy.NEXT_TO_TEST, nextToTest.strategy());
-        assertEquals(Grouping.PER_TEST_CLASS, nextToTest.grouping());
+        assertEquals(SnapshotGrouping.PER_TEST_CLASS, nextToTest.grouping());
         assertEquals("snapshots", nextToTest.wrapperFolder());
         assertEquals("", nextToTest.rootPath());
 
         var globalRoot = SnapshotLayout.globalRoot("src/test/resources/snapshots");
         assertEquals(Strategy.GLOBAL_ROOT, globalRoot.strategy());
-        assertEquals(Grouping.PER_TEST_CLASS, globalRoot.grouping());
+        assertEquals(SnapshotGrouping.PER_TEST_CLASS, globalRoot.grouping());
         assertEquals("snapshots", globalRoot.wrapperFolder());
         assertEquals("src/test/resources/snapshots", globalRoot.rootPath());
 
@@ -40,12 +40,12 @@ final class SnapshotLayoutTests {
     void withers_returnCopiesWithoutMutatingTheOriginal() {
         var original = SnapshotLayout.nextToTest();
 
-        var grouped = original.grouping(Grouping.PER_CONTRACT);
+        var grouped = original.grouping(SnapshotGrouping.PER_CONTRACT);
         var wrapped = original.wrapperFolder("approved");
 
-        assertEquals(Grouping.PER_CONTRACT, grouped.grouping());
+        assertEquals(SnapshotGrouping.PER_CONTRACT, grouped.grouping());
         assertEquals("approved", wrapped.wrapperFolder());
-        assertEquals(Grouping.PER_TEST_CLASS, original.grouping());
+        assertEquals(SnapshotGrouping.PER_TEST_CLASS, original.grouping());
         assertEquals("snapshots", original.wrapperFolder());
     }
 
@@ -72,7 +72,7 @@ final class SnapshotLayoutTests {
     @Test
     void nextToTest_perContract_withoutVariant_groupsUnderTheMessageType() {
         var path = SnapshotLayout.nextToTest()
-                .grouping(Grouping.PER_CONTRACT)
+                .grouping(SnapshotGrouping.PER_CONTRACT)
                 .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(
@@ -83,7 +83,7 @@ final class SnapshotLayoutTests {
     @Test
     void nextToTest_perContract_withVariant_usesTheVariantAsTheLeaf() {
         var path = SnapshotLayout.nextToTest()
-                .grouping(Grouping.PER_CONTRACT)
+                .grouping(SnapshotGrouping.PER_CONTRACT)
                 .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, VARIANT, EXTENSION);
 
         assertEquals(
@@ -124,7 +124,7 @@ final class SnapshotLayoutTests {
     @Test
     void globalRoot_perContract_withVariant_rootsAtTheGivenRootPath() {
         var path = SnapshotLayout.globalRoot("src/test/resources/snapshots")
-                .grouping(Grouping.PER_CONTRACT)
+                .grouping(SnapshotGrouping.PER_CONTRACT)
                 .resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, VARIANT, EXTENSION);
 
         assertEquals(
@@ -135,7 +135,7 @@ final class SnapshotLayoutTests {
     @Test
     void globalRoot_perContract_withoutVariant_leafDefaultsToMessageType() {
         var path = SnapshotLayout.globalRoot("snaps")
-                .grouping(Grouping.PER_CONTRACT)
+                .grouping(SnapshotGrouping.PER_CONTRACT)
                 .resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
         assertEquals(Path.of("snaps", PACKAGE_PATH, "OrderPlaced", "OrderPlaced.snap.approved.json"), path);
@@ -154,7 +154,7 @@ final class SnapshotLayoutTests {
     @Test
     void flat_ignoresExtensionAndWrapperAndGrouping_alwaysApprovedTxt() {
         var path = SnapshotLayout.flat()
-                .grouping(Grouping.PER_CONTRACT)
+                .grouping(SnapshotGrouping.PER_CONTRACT)
                 .wrapperFolder("approved")
                 .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, VARIANT, EXTENSION);
 

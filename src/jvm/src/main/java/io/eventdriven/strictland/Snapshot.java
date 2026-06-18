@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * #variant(String)} when one message type has several snapshots. Pass the result to a {@link
  * MessageContract#given(Snapshot.ByClass) given(...)} step to read an earlier version's data, or to
  * {@link GivenStep#whenSerialized(Snapshot)} to choose which snapshot a serialization check compares
- * against.
+ * against.</p>
  */
 public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageType, Snapshot.ByPath, Snapshot.ByVariant {
 
@@ -59,7 +59,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      *
      * <p>Use it to check your current code still reads what an older version wrote: pass the result to
      * {@link MessageContract#given(Snapshot.ByClass)}, then read it as today's type with {@link
-     * GivenStep#whenDeserializedAs(Class)}.
+     * GivenStep#whenDeserializedAs(Class)}.</p>
      *
      * @param sourceType the class whose name identifies the snapshot
      * @param <T> the message type the snapshot holds
@@ -123,14 +123,14 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * an epoch date.
      *
      * <p>Pass it to {@link GivenStep#whenSerialized(Snapshot)} to pin one variant of the message you
-     * gave the spec.
+     * gave the spec.</p>
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(options)
      *     .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
      *     .whenSerialized(Snapshot.variant("NoPromotion"))
      *     .thenContractIsUnchanged();
-     * }
+     * </pre>
      *
      * @param label the label naming the variant, used as the snapshot's leaf file name
      * @return the snapshot, ready for a {@code whenSerialized(...)} step
@@ -143,12 +143,12 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * Points at a snapshot by a variant label and records the class its data represents, so a {@code
      * given(...)} step can read that one variant back by its label.
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(options)
      *     .given(Snapshot.variant("WithPromotion", OrderInitiated.class))
      *     .whenDeserializedAs(OrderInitiated.class)
      *     .thenBackwardCompatible(order -> assertEquals("WELCOME", order.promotion()));
-     * }
+     * </pre>
      *
      * @param label the label naming the variant, used as the snapshot's leaf file name
      * @param sourceType the class the snapshot's data represents

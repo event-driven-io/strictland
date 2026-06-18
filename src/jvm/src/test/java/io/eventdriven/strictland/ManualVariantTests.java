@@ -27,7 +27,7 @@ final class ManualVariantTests {
 
     private static SpecificationOptions options() {
         return Json.Jackson.defaults()
-                .snapshotLayout(SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT));
+                .snapshotLayout(SnapshotLayout.nextToTest().grouping(SnapshotGrouping.PER_CONTRACT));
     }
 
     @Test

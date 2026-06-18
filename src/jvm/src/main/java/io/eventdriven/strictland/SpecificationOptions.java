@@ -14,9 +14,9 @@ import org.jspecify.annotations.Nullable;
  * default, then {@code strictland.properties}, then the built-in default, resolved once when the spec
  * builds its storage. You set one only when you want this spec to override that chain, with {@link
  * #snapshotStorage(SnapshotStorage)}, {@link #snapshotLayout(SnapshotLayout)}, or {@link
- * #messageTypeMapper(MessageTypeMapper)}. Each returns a new copy, so the options stay immutable.
+ * #messageTypeMapper(MessageTypeMapper)}. Each returns a new copy, so the options stay immutable.</p>
  *
- * {@snippet :
+ * <pre>
  * MessageContract.specification(
  *         SpecificationOptions.serializer(new CsvMessageSerializer())
  *             .snapshotLayout(SnapshotLayout.nextToTest())
@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
  *     .given(new MemberJoined(memberId, "Alice"))
  *     .whenDeserializedAs(MemberJoined.class)
  *     .thenBackwardCompatible();
- * }
+ * </pre>
  *
  * @param serializer turns a message into the bytes your application writes, and back
  * @param storage where approved snapshots are read from and written to, or null to resolve a layout
@@ -80,10 +80,10 @@ public record SpecificationOptions(
      * default and {@code strictland.properties} for this check alone. It takes effect only when no
      * explicit {@link #snapshotStorage(SnapshotStorage)} is set, since a store decides its own paths.
      *
-     * {@snippet :
+     * <pre>
      * SpecificationOptions options =
      *     Json.Jackson.defaults().snapshotLayout(SnapshotLayout.globalRoot("src/test/resources/snapshots"));
-     * }
+     * </pre>
      *
      * @param layout decides where this spec's snapshot file lives
      * @return a copy of these options using the given layout

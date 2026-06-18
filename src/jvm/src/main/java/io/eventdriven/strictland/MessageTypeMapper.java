@@ -8,12 +8,12 @@ import java.util.Optional;
  * not the Java class name, so checks find the right approved file.
  *
  * <p>Hand an implementation to {@link SpecificationOptions#messageTypeMapper(MessageTypeMapper)}; the
- * default {@link #simpleName()} uses the class's simple name.
+ * default {@link #simpleName()} uses the class's simple name.</p>
  *
- * {@snippet :
+ * <pre>
  * MessageTypeMapper byClassName = MessageTypeMapper.simpleName();
  * String name = byClassName.name(OrderPlaced.class); // "OrderPlaced"
- * }
+ * </pre>
  */
 public interface MessageTypeMapper {
 
@@ -41,10 +41,10 @@ public interface MessageTypeMapper {
      * you haven't registered logical message types. It maps a class to a name but, having no registry
      * to reverse, resolves no name back to a class.
      *
-     * {@snippet :
+     * <pre>
      * MessageTypeMapper mapper = MessageTypeMapper.simpleName();
      * String name = mapper.name(OrderPlaced.class); // "OrderPlaced"
-     * }
+     * </pre>
      *
      * @return a mapper keyed on the class's simple name
      */

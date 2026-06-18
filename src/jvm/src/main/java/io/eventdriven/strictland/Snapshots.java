@@ -5,14 +5,14 @@ package io.eventdriven.strictland;
  * {@link SnapshotStorage} yourself. {@link #files()} is the default, keeping each snapshot in a file
  * next to your test.
  *
- * {@snippet :
+ * <pre>
  * MessageContract.specification(
  *         SpecificationOptions.serializer(new CsvMessageSerializer())
  *             .snapshotStorage(Snapshots.files()))
  *     .given(new MemberJoined(memberId, "Alice"))
  *     .whenDeserializedAs(MemberJoined.class)
  *     .thenBackwardCompatible();
- * }
+ * </pre>
  */
 public interface Snapshots {
 

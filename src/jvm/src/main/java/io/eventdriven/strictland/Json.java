@@ -7,14 +7,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * and pass it to {@link MessageContract#specification(SpecificationOptions)}. For another format, write
  * a {@link MessageSerializer} and start from {@link SpecificationOptions#serializer(MessageSerializer)}.
  *
- * <p>{@link Jackson} is the only implementation today.
+ * <p>{@link Jackson} is the only implementation today.</p>
  *
- * {@snippet :
+ * <pre>
  * MessageContract.specification(Json.Jackson.defaults())
  *     .given(new OrderPlaced(orderId, "Alice", placedAt))
  *     .whenSerialized()
  *     .thenContractIsUnchanged();
- * }
+ * </pre>
  */
 public interface Json {
 
@@ -23,12 +23,12 @@ public interface Json {
      * mapper, checking the exact bytes you ship; {@link #defaults()} uses Strictland's default mapper
      * when you have none to reuse.
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.of(myObjectMapper))
      *     .given(new OrderPlaced(orderId, "Alice", placedAt))
      *     .whenSerialized()
      *     .thenContractIsUnchanged();
-     * }
+     * </pre>
      */
     interface Jackson {
 

@@ -10,19 +10,19 @@ import java.util.Optional;
  *
  * <p>The key the DSL hands in is already resolved: the layout, the calling test, and any variant label
  * are folded in before storage is called, so this extension point stays two methods and a custom
- * storage needs no concept of layouts or variants.
+ * storage needs no concept of layouts or variants.</p>
  *
  * <p>Pass your storage to {@link SpecificationOptions#snapshotStorage(SnapshotStorage)}, or take the
- * default from {@link Snapshots#files()}.
+ * default from {@link Snapshots#files()}.</p>
  *
- * {@snippet :
+ * <pre>
  * MessageContract.specification(
  *         SpecificationOptions.serializer(new JacksonMessageSerializer(mapper))
  *             .snapshotStorage(Snapshots.files()))
  *     .given(new OrderPlaced(orderId, "Alice", placedAt))
  *     .whenSerialized()
  *     .thenContractIsUnchanged();
- * }
+ * </pre>
  */
 public interface SnapshotStorage {
 
