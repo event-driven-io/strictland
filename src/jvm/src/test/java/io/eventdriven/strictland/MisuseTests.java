@@ -63,7 +63,7 @@ final class MisuseTests {
                 IllegalArgumentException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
                         .given(new OrderPlaced(FIXED_ID, "Alice", OffsetDateTime.parse("2024-01-01T12:00:00Z")))
-                        .whenSerialized(Snapshot.at(path))
+                        .whenSerializedAs(Snapshot.at(path))
                         .thenContractIsUnchanged());
 
         assertTrue(requireNonNull(exception.getMessage()).contains("parent directory"));

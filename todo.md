@@ -42,7 +42,7 @@ only when the build is green.
 ## Phase 2: multiple snapshots per contract
 
 - [x] **Step 6: manual variant labels**
-  - [x] `Snapshot.variant(String)` (and `Snapshot.ByVariant`)
+  - [x] `SnapshotVariant.named(String)` (and `Snapshot.ByVariant`)
   - [x] label folds into snapshotName on serialize + deserialize read; storage stays variant-unaware
   - [x] tests: two variants, no overwrite, read one by label, label recorded (`ManualVariantTests`)
 

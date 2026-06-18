@@ -369,7 +369,7 @@ You are working in src/jvm. Read CONTRIBUTING.md; full coverage, Javadoc
 Task: support manually labelled snapshot variants.
 
 1. Snapshot API: add a factory for a labelled variant, e.g.
-   Snapshot.variant(String label) returning a Snapshot the serialize path
+   SnapshotVariant.named(String label) returning a Snapshot the serialize path
    understands. The DSL folds the label into snapshotName (Step 2 resolver's leaf).
 
 2. Thread the label through resolution, not through storage:

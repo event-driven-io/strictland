@@ -36,7 +36,7 @@ final class SimpleBinaryMessageSerializerTests {
     void givenBinarySerializerAndCustomStorage_whenSerialized_thenContractIsUnchanged() {
         MessageContract.specification(Binary.defaults())
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerialized(Snapshot.forMessageType("OrderPlaced"))
+                .whenSerializedAs(Snapshot.forMessageType("OrderPlaced"))
                 .thenContractIsUnchanged();
     }
 
@@ -44,10 +44,10 @@ final class SimpleBinaryMessageSerializerTests {
     void givenCustomStorageAndAVariant_whenSerialized_theLabelKeysTheSnapshot(@TempDir Path tmp) {
         MessageContract.specification(Binary.of(tmp))
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerialized(Snapshot.variant("AliceVariant"))
+                .whenSerializedAs(SnapshotVariant.named("AliceVariant"))
                 .thenContractIsUnchanged();
 
-        assertTrue(java.nio.file.Files.exists(tmp.resolve("AliceVariant.approved.txt")));
+        assertTrue(java.nio.file.Files.exists(tmp.resolve("OrderPlaced.AliceVariant.approved.txt")));
     }
 
     @Test
@@ -55,11 +55,25 @@ final class SimpleBinaryMessageSerializerTests {
         var options = Binary.of(tmp);
         MessageContract.specification(options)
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerialized(Snapshot.forMessageType("OrderPlaced"))
+                .whenSerializedAs(Snapshot.forMessageType("OrderPlaced"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options)
                 .given(Snapshot.forMessageType("OrderPlaced"))
+                .whenDeserializedAs(OrderPlaced.class)
+                .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
+    }
+
+    @Test
+    void givenCustomStorage_whenReadingASnapshotBackByTypeAndVariant_thenItResolvesTheVariant(@TempDir Path tmp) {
+        var options = Binary.of(tmp);
+        MessageContract.specification(options)
+                .given(new OrderPlaced(FIXED_ID, "Alice"))
+                .whenSerializedAs(Snapshot.forMessageType("OrderPlaced").variant("Alice"))
+                .thenContractIsUnchanged();
+
+        MessageContract.specification(options)
+                .given(Snapshot.forMessageType("OrderPlaced").variant("Alice"))
                 .whenDeserializedAs(OrderPlaced.class)
                 .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
     }

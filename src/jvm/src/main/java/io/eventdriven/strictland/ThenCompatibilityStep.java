@@ -207,23 +207,18 @@ public class ThenCompatibilityStep<S, T> {
 
     private String snapshotKey(Snapshot snapshot) {
         return switch (snapshot) {
-            case Snapshot.ByClass<?> s -> byContract(typeMapper.name(s.messageClass()));
-            case Snapshot.ByMessageType s -> byContract(s.messageType());
-            case Snapshot.ByVariant s -> key(variantName(s), s.label());
+            case Snapshot.ByClass<?> s -> byContract(typeMapper.name(s.messageClass()), s.variant());
+            case Snapshot.ByMessageType s -> byContract(s.messageType(), s.variant());
             case Snapshot.ByPath s -> s.path().toString();
         };
     }
 
-    private String byContract(String contractName) {
-        return key(contractName, contractName);
+    private String byContract(String contractName, @Nullable String variant) {
+        var snapshotName = variant != null ? contractName + "." + variant : contractName;
+        return key(contractName, snapshotName);
     }
 
     private String key(String messageType, String snapshotName) {
         return location != null ? location.resolve(messageType, snapshotName) : snapshotName;
-    }
-
-    private String variantName(Snapshot.ByVariant variant) {
-        var sourceType = variant.messageClass();
-        return sourceType != null ? typeMapper.name(sourceType) : variant.label();
     }
 }

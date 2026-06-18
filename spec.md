@@ -255,7 +255,7 @@ overwrite.
 ```java
 MessageContract.specification(options)
     .given(new OrderInitiated(orderId, null, initiatedAt))
-    .whenSerialized(Snapshot.variant("NullPromotion"))
+    .whenSerialized(SnapshotVariant.named("NullPromotion"))
     .thenContractIsUnchanged();
 ```
 
