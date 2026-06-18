@@ -132,7 +132,7 @@ final class BackwardCompatibilityTests {
         @Test
         void givenAStoredEventNamedByItsMessageType_whenReadByTheEvolvedType_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(Snapshot.forMessageType("AccountOpenedV1", AccountOpenedV1.class))
+                    .given(Snapshot.forMessageType("AccountOpenedV1"))
                     .whenDeserializedAs(AccountOpenedV2.class)
                     .thenBackwardCompatible(event -> assertNull(event.currency()));
         }
@@ -147,7 +147,7 @@ final class BackwardCompatibilityTests {
             var path = Path.of("src/test/java/io/eventdriven/strictland/ShoppingCartConfirmedV1.approved.txt");
 
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(Snapshot.at(path, ShoppingCartConfirmed.class))
+                    .given(Snapshot.at(path))
                     .whenDeserializedAs(ShoppingCartConfirmed.class)
                     .thenBackwardCompatible();
         }
@@ -164,7 +164,7 @@ final class BackwardCompatibilityTests {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(Snapshot.at(path, InvoiceIssued.class))
+                            .given(Snapshot.at(path))
                             .whenDeserializedAs(InvoiceIssued.class)
                             .thenBackwardCompatible());
 
@@ -223,7 +223,7 @@ final class BackwardCompatibilityTests {
             assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(Snapshot.at(path, InvoiceStatusChanged.class))
+                            .given(Snapshot.at(path))
                             .whenDeserializedAs(InvoiceStatusChanged.class)
                             .thenBackwardCompatible());
         }
@@ -290,7 +290,7 @@ final class BackwardCompatibilityTests {
             assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(Snapshot.at(path, ShipmentEvent.class))
+                            .given(Snapshot.at(path))
                             .whenDeserializedAs(ShipmentEvent.class)
                             .thenBackwardCompatible());
         }

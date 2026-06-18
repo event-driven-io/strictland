@@ -207,7 +207,7 @@ public class ThenCompatibilityStep<S, T> {
 
     private String snapshotKey(Snapshot snapshot) {
         return switch (snapshot) {
-            case Snapshot.ByClass<?> s -> byContract(typeMapper.name(s.sourceType()));
+            case Snapshot.ByClass<?> s -> byContract(typeMapper.name(s.messageClass()));
             case Snapshot.ByMessageType s -> byContract(s.messageType());
             case Snapshot.ByVariant s -> key(variantName(s), s.label());
             case Snapshot.ByPath s -> s.path().toString();
@@ -223,7 +223,7 @@ public class ThenCompatibilityStep<S, T> {
     }
 
     private String variantName(Snapshot.ByVariant variant) {
-        var sourceType = variant.sourceType();
+        var sourceType = variant.messageClass();
         return sourceType != null ? typeMapper.name(sourceType) : variant.label();
     }
 }

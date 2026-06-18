@@ -56,7 +56,7 @@ public class ThenContractStep<S> {
     private String snapshotKey() {
         return switch (destination) {
             case null -> byContract(typeMapper.name(instance.getClass()));
-            case Snapshot.ByClass<?> b -> byContract(typeMapper.name(b.sourceType()));
+            case Snapshot.ByClass<?> b -> byContract(typeMapper.name(b.messageClass()));
             case Snapshot.ByMessageType b -> byContract(b.messageType());
             case Snapshot.ByVariant b -> key(typeMapper.name(instance.getClass()), b.label());
             case Snapshot.ByPath b -> b.path().toString();
