@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
  * The version you put under contract with {@code given(...)}, ready for you to check.
  *
  * <p>From here, lock its shape so accidental changes get caught with {@link #whenSerialized()} (or
- * {@link #whenSerialized(Snapshot)} to choose the snapshot), or read it as another version to confirm
+ * {@link #whenSerializedAs(Snapshot)} to choose the snapshot), or read it as another version to confirm
  * the two are compatible with {@link #whenDeserializedAs(Class)}.</p>
  *
  * @param <S> the type of the message under test
@@ -67,7 +67,7 @@ public class GivenStep<S> {
      * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderInitiatedV2(id, null, initiatedAt))
-     *     .whenSerialized(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
+     *     .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
      *     .thenContractIsUnchanged();
      * </pre>
      *
@@ -76,9 +76,35 @@ public class GivenStep<S> {
      * @throws IllegalStateException if you started from a saved snapshot rather than a live instance,
      *     since there's nothing to serialize
      */
-    public ThenContractStep<S> whenSerialized(Snapshot destination) {
+    public ThenContractStep<S> whenSerializedAs(Snapshot destination) {
         var instance = requireInstance();
         return new ThenContractStep<>(instance, destination, serializer, storage, location, typeMapper);
+    }
+
+    /**
+     * Serializes the message, with the {@code then} step checking it against a snapshot you choose.
+     *
+     * <p>Like {@link #whenSerialized()}, but you pick the approved file, by message-type name, by
+     * class, or by path, instead of letting it default to the class name. Useful when one class
+     * produces several snapshots or the file lives elsewhere.</p>
+     *
+     * <pre>
+     * MessageContract.specification(Json.Jackson.defaults())
+     *     .given(new OrderInitiatedV2(id, null, initiatedAt))
+     *     .whenSerializedAs(SnapshotVariant.named("OrderInitiatedV2_NullField"))
+     *     .thenContractIsUnchanged();
+     * </pre>
+     *
+     * @param variant the named snapshot variant for the specific set of test data
+     * @return the step where you check the serialized result against the snapshot
+     * @throws IllegalStateException if you started from a saved snapshot rather than a live instance,
+     *     since there's nothing to serialize
+     */
+    public ThenContractStep<S> whenSerializedAs(SnapshotVariant variant) {
+        var instance = requireInstance();
+        var label = ((SnapshotVariant.ByLabel) variant).name();
+        return new ThenContractStep<>(
+                instance, Snapshot.of(instance.getClass()).variant(label), serializer, storage, location, typeMapper);
     }
 
     private S requireInstance() {

@@ -36,7 +36,7 @@ final class CsvMessageSerializerTests {
     void given_csvEvent_whenSerialized_shapeIsPinned() {
         MessageContract.specification(Csv.defaults())
                 .given(new OrderPlacedCsv(FIXED_ID, "Alice"))
-                .whenSerialized(Snapshot.forMessageType("OrderPlacedCsv"))
+                .whenSerializedAs(Snapshot.forMessageType("OrderPlacedCsv"))
                 .thenContractIsUnchanged();
     }
 

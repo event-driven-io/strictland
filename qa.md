@@ -130,8 +130,8 @@ own ~30 snapshots get relocated as part of this work.
 ## Q10. DSL surface: variant labels and auto-generation entrypoint?
 
 **Answer:**
-- Manual labelled variant via the Snapshot route: `Snapshot.variant("IsoDate")`,
-  used in `whenSerialized(Snapshot.variant("IsoDate"))`.
+- Manual labelled variant via the Snapshot route: `SnapshotVariant.named("IsoDate")`,
+  used in `whenSerialized(SnapshotVariant.named("IsoDate"))`.
 - Auto-generation reuses `Snapshot.ByClass<S>` with a fluent `.variant(...)`:
   `Snapshot.of(OrderPlaced.class).variant(variant)`. The variant is an **enum**
   for the predefined canonical ones (e.g. `Variant.REQUIRED_ONLY`,

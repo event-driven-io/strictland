@@ -126,20 +126,6 @@ public class MessageContract {
     }
 
     /**
-     * Defines the version under contract: an earlier one you saved as a labelled variant snapshot.
-     *
-     * <p>Reach for it when one message type has several approved snapshots and you want to read just
-     * one back by its label. {@code Snapshot.variant("WithPromotion", OrderInitiated.class)} loads that
-     * variant's file, which you then read as today's type with {@link GivenStep#whenDeserializedAs(Class)}.</p>
-     *
-     * @param snapshot the saved variant to read
-     * @return the next step, where you choose what to check
-     */
-    public GivenStep<Object> given(Snapshot.ByVariant snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
-    }
-
-    /**
      * Defines the version under contract: the message as your current code builds it.
      *
      * <p>From here, lock its shape so accidental changes get caught with {@link

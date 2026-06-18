@@ -34,12 +34,12 @@ final class ManualVariantTests {
     void twoVariantsOfOneType_writeTwoDistinctFiles_neitherOverwritingTheOther() {
         MessageContract.specification(options())
                 .given(new OrderInitiated(ORDER_ID, "Alice", "WELCOME"))
-                .whenSerialized(Snapshot.variant("WithPromotion"))
+                .whenSerializedAs(SnapshotVariant.named("WithPromotion"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options())
                 .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
-                .whenSerialized(Snapshot.variant("NoPromotion"))
+                .whenSerializedAs(SnapshotVariant.named("NoPromotion"))
                 .thenContractIsUnchanged();
 
         var withPromotion = VARIANTS_DIR.resolve("WithPromotion.snap.approved.json");
@@ -61,30 +61,31 @@ final class ManualVariantTests {
     void aLabelledVariant_canBeReadBackByItsLabel() {
         MessageContract.specification(options())
                 .given(new OrderInitiated(ORDER_ID, "Alice", "WELCOME"))
-                .whenSerialized(Snapshot.variant("WithPromotion"))
+                .whenSerializedAs(SnapshotVariant.named("WithPromotion"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options())
-                .given(Snapshot.variant("WithPromotion", OrderInitiated.class))
+                .given(Snapshot.of(OrderInitiated.class).variant("WithPromotion"))
                 .whenDeserializedAs(OrderInitiated.class)
                 .thenBackwardCompatible(order -> assertEquals("WELCOME", order.promotion()));
     }
 
     @Test
     void underFlat_theLabelNamesTheFlatApprovedFile() throws Exception {
-        var snapshotFile = Path.of("src/test/java/io/eventdriven/strictland/FlatNullPromotion.approved.txt");
+        var snapshotFile =
+                Path.of("src/test/java/io/eventdriven/strictland/OrderInitiated.FlatNullPromotion.approved.txt");
         try {
             // FLAT ignores grouping, so the label alone names the flat .approved.txt file.
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
-                    .whenSerialized(Snapshot.variant("FlatNullPromotion"))
+                    .whenSerializedAs(SnapshotVariant.named("FlatNullPromotion"))
                     .thenContractIsUnchanged();
 
             assertTrue(Files.exists(snapshotFile), "expected the label to name the flat file at " + snapshotFile);
 
             // Read it back by label alone, with no source class recorded on the variant.
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(Snapshot.variant("FlatNullPromotion"))
+                    .given(Snapshot.of(OrderInitiated.class).variant("FlatNullPromotion"))
                     .whenDeserializedAs(OrderInitiated.class)
                     .thenBackwardCompatible(order -> assertEquals("NONE", order.promotion()));
         } finally {
@@ -96,7 +97,7 @@ final class ManualVariantTests {
     void theLabelIsRecordedAsTheLeafFileName() {
         MessageContract.specification(options())
                 .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
-                .whenSerialized(Snapshot.variant("NoPromotion"))
+                .whenSerializedAs(SnapshotVariant.named("NoPromotion"))
                 .thenContractIsUnchanged();
 
         // The label, not the message type, names the leaf file - so it reads as documentation.
