@@ -13,9 +13,9 @@ import org.jspecify.annotations.Nullable;
  * <p>These sit between a per-spec {@link SpecificationOptions} value and what {@code
  * strictland.properties} ships. A spec that sets nothing takes the global default; a spec that sets a
  * value overrides it for that setting alone. Each setting is independent: setting one leaves the
- * others unset.
+ * others unset.</p>
  *
- * {@snippet :
+ * <pre>
  * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest());
  * try {
  *     MessageContract.specification(Json.Jackson.defaults())
@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
  * } finally {
  *     Strictland.resetDefaults();
  * }
- * }
+ * </pre>
  */
 public final class Strictland {
 
@@ -40,9 +40,9 @@ public final class Strictland {
      * value you never set stays unset, and a spec that needs it falls through to the file level and
      * then the built-in default.
      *
-     * {@snippet :
+     * <pre>
      * Strictland.defaults().snapshotLayout(SnapshotLayout.globalRoot("src/test/resources/snapshots"));
-     * }
+     * </pre>
      *
      * @return the global configuration to set defaults on
      */
@@ -54,14 +54,14 @@ public final class Strictland {
      * Clears every global default, restoring the built-in behaviour. Call this in test teardown so a
      * default one test sets can't leak into the next, which would make the suite order-dependent.
      *
-     * {@snippet :
+     * <pre>
      * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest());
      * try {
      *     // a check that relies on the global default
      * } finally {
      *     Strictland.resetDefaults();
      * }
-     * }
+     * </pre>
      */
     public static void resetDefaults() {
         snapshotLayout = null;
@@ -82,9 +82,9 @@ public final class Strictland {
      * one default and returns this same instance so calls chain, and each setting is independent: one
      * you don't set stays unset.
      *
-     * {@snippet :
+     * <pre>
      * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest());
-     * }
+     * </pre>
      */
     public static final class Config {
 
@@ -94,9 +94,9 @@ public final class Strictland {
          * Sets the global default snapshot layout, used by any specification that doesn't set its own.
          * Pair it with {@link Strictland#resetDefaults()} in teardown so it doesn't outlive the test.
          *
-         * {@snippet :
+         * <pre>
          * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT));
-         * }
+         * </pre>
          *
          * @param layout the layout to fall back to when a spec sets none
          * @return this configuration, so you can chain further calls
@@ -113,9 +113,9 @@ public final class Strictland {
          * order, and the first one holding the calling test's source file anchors the snapshot. Pair it
          * with {@link Strictland#resetDefaults()} in teardown so it doesn't outlive the test.
          *
-         * {@snippet :
+         * <pre>
          * Strictland.defaults().testSourceRoots(java.util.List.of("modules/orders/src/test/java"));
-         * }
+         * </pre>
          *
          * @param sourceRoots the source roots to search, in order
          * @return this configuration, so you can chain further calls

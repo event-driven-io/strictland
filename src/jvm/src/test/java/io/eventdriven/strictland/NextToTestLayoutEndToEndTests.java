@@ -15,7 +15,7 @@ final class NextToTestLayoutEndToEndTests {
 
     private static SpecificationOptions options() {
         return Json.Jackson.defaults()
-                .snapshotLayout(SnapshotLayout.nextToTest().grouping(Grouping.PER_TEST_CLASS));
+                .snapshotLayout(SnapshotLayout.nextToTest().grouping(SnapshotGrouping.PER_TEST_CLASS));
     }
 
     @Test

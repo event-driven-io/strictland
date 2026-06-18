@@ -8,14 +8,14 @@ package io.eventdriven.strictland;
  *
  * <p>Pass your application's serializer to {@link SpecificationOptions#serializer(MessageSerializer)}.
  * If you're using JSON then you can use the built-in {@link Json.Jackson#of} instead of writing your
- * own.
+ * own.</p>
  *
- * {@snippet :
+ * <pre>
  * MessageContract.specification(SpecificationOptions.serializer(new CsvMessageSerializer()))
  *     .given(new MemberJoined(memberId, "Alice"))
  *     .whenDeserializedAs(MemberJoined.class)
  *     .thenBackwardCompatible();
- * }
+ * </pre>
  */
 public interface MessageSerializer {
 
@@ -45,9 +45,9 @@ public interface MessageSerializer {
      * format and your approved files read at a glance. The leading dot is part of the contract: return
      * {@code ".json"}, not {@code "json"}.
      *
-     * {@snippet :
+     * <pre>
      * assertEquals(".csv", new CsvMessageSerializer().fileExtension());
-     * }
+     * </pre>
      *
      * @return the snapshot file extension, including the leading dot
      */

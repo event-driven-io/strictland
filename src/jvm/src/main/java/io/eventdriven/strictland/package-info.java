@@ -6,16 +6,16 @@
  * <p>You write a small unit test that locks down a message's format. Later you rename a field, change
  * a type, or adjust how a value serializes; the code still compiles and your other tests pass, but
  * that one fails and points at what changed. You fix it in your build, before a consumer or a stored
- * event has hit the old format in production.
+ * event has hit the old format in production.</p>
  *
  * <p>When a message changes by accident, a snapshot check ({@link
  * io.eventdriven.strictland.ThenContractStep}) shows you exactly what moved. When you evolve a message
  * on purpose, a compatibility check ({@link io.eventdriven.strictland.ThenCompatibilityStep}) confirms
- * an old and a new version can still read each other's data.
+ * an old and a new version can still read each other's data.</p>
  *
- * <p>Both start from {@link io.eventdriven.strictland.MessageContract} and read as a sentence:
+ * <p>Both start from {@link io.eventdriven.strictland.MessageContract} and read as a sentence:</p>
  *
- * {@snippet :
+ * <pre>
  * // Lock a message's format, so any accidental change to it fails the build:
  * MessageContract.specification(Json.Jackson.defaults())
  *     .given(new OrderPlaced(orderId, "Alice", placedAt))
@@ -27,13 +27,13 @@
  *     .given(new OrderPlaced(orderId, "Alice"))
  *     .whenDeserializedAs(OrderPlacedWithCoupon.class)
  *     .thenBackwardCompatible();
- * }
+ * </pre>
  *
  * <p>The approved file each check compares against lives next to your test code and is committed to
  * your repository, so a contract change shows up in the same pull request as the code that caused it.
  * {@link io.eventdriven.strictland.Snapshot} picks which file backs a check, and {@link
  * io.eventdriven.strictland.PublicApiScanner} renders a package's public API as text so you can
- * approval-test the surface itself.
+ * approval-test the surface itself.</p>
  */
 @NullMarked
 package io.eventdriven.strictland;

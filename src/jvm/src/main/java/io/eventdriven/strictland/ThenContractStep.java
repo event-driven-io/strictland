@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
  * The check that the message's serialized format still matches what you approved.
  *
  * <p>Reached after {@link GivenStep#whenSerialized()}. Call {@link #thenContractIsUnchanged()} to
- * compare the output against the approved snapshot and fail the test when it has drifted.
+ * compare the output against the approved snapshot and fail the test when it has drifted.</p>
  *
  * @param <S> the type of the message under test
  */
@@ -40,14 +40,14 @@ public class ThenContractStep<S> {
      *
      * <p>The first run creates the approved file from the current message for you to review and
      * commit; it lives next to your test, so a later change to the format shows up in the same pull
-     * request as the code that caused it.
+     * request as the code that caused it.</p>
      *
-     * {@snippet :
+     * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderPlaced(orderId, "Alice", placedAt))
      *     .whenSerialized()
      *     .thenContractIsUnchanged();
-     * }
+     * </pre>
      */
     public void thenContractIsUnchanged() {
         storage.store(snapshotKey(), serializer.serialize(instance));

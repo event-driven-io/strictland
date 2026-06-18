@@ -11,22 +11,22 @@ import org.jspecify.annotations.Nullable;
  * <p>Start from a strategy that says where the tree is rooted, then refine it. {@link #nextToTest()}
  * keeps snapshots beside your test sources, {@link #globalRoot(String)} gathers them under one
  * directory, and {@link #flat()} keeps the original flat shape Strictland has always written. The
- * {@link Grouping} chooses the folder under that root, and {@link #wrapperFolder(String)} renames the
- * segment that holds the groups. Each refinement returns a copy, so a layout stays immutable.
+ * {@link SnapshotGrouping} chooses the folder under that root, and {@link #wrapperFolder(String)} renames the
+ * segment that holds the groups. Each refinement returns a copy, so a layout stays immutable.</p>
  *
- * {@snippet :
+ * <pre>
  * SnapshotLayout layout = SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT);
  * Path path = layout.resolve(
  *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
  * // src/test/java/com/acme/orders/snapshots/OrderPlaced/OrderPlaced.snap.approved.json
- * }
+ * </pre>
  *
  * @param strategy where the snapshot tree is rooted
  * @param grouping the folder a snapshot is grouped into under that root
  * @param wrapperFolder the segment that holds the group folders, ignored by {@link Strategy#FLAT}
  * @param rootPath the directory {@link Strategy#GLOBAL_ROOT} roots the tree at, empty otherwise
  */
-public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrapperFolder, String rootPath) {
+public record SnapshotLayout(Strategy strategy, SnapshotGrouping grouping, String wrapperFolder, String rootPath) {
 
     private static final String DEFAULT_WRAPPER_FOLDER = "snapshots";
     private static final String SNAP_APPROVED_SUFFIX = ".snap.approved";
@@ -35,10 +35,10 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
     /**
      * Where {@link SnapshotLayout} roots the snapshot tree.
      *
-     * {@snippet :
+     * <pre>
      * SnapshotLayout layout = SnapshotLayout.flat();
      * boolean flat = layout.strategy() == SnapshotLayout.Strategy.FLAT;
-     * }
+     * </pre>
      */
     public enum Strategy {
         /** Beside your test sources, under {@code <testSourceDir>/<wrapperFolder>}. */
@@ -59,17 +59,17 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * snapshots} folder. The approved file sits next to the test that owns it, so a contract change
      * shows up in the same place as the code that caused it.
      *
-     * {@snippet :
+     * <pre>
      * SnapshotLayout layout = SnapshotLayout.nextToTest();
      * Path path = layout.resolve(
      *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
      * // src/test/java/com/acme/orders/snapshots/OrderTests/OrderPlaced.snap.approved.json
-     * }
+     * </pre>
      *
      * @return a next-to-test layout, grouped per test class
      */
     public static SnapshotLayout nextToTest() {
-        return new SnapshotLayout(Strategy.NEXT_TO_TEST, Grouping.PER_TEST_CLASS, DEFAULT_WRAPPER_FOLDER, "");
+        return new SnapshotLayout(Strategy.NEXT_TO_TEST, SnapshotGrouping.PER_TEST_CLASS, DEFAULT_WRAPPER_FOLDER, "");
     }
 
     /**
@@ -77,18 +77,19 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * it. Use it to keep approved files out of your source folders, for instance under {@code
      * src/test/resources}.
      *
-     * {@snippet :
+     * <pre>
      * SnapshotLayout layout = SnapshotLayout.globalRoot("src/test/resources/snapshots");
      * Path path = layout.resolve(
      *     null, "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
      * // src/test/resources/snapshots/com/acme/orders/OrderTests/OrderPlaced.snap.approved.json
-     * }
+     * </pre>
      *
      * @param rootPath the directory the snapshot tree is rooted at
      * @return a global-root layout rooted at {@code rootPath}, grouped per test class
      */
     public static SnapshotLayout globalRoot(String rootPath) {
-        return new SnapshotLayout(Strategy.GLOBAL_ROOT, Grouping.PER_TEST_CLASS, DEFAULT_WRAPPER_FOLDER, rootPath);
+        return new SnapshotLayout(
+                Strategy.GLOBAL_ROOT, SnapshotGrouping.PER_TEST_CLASS, DEFAULT_WRAPPER_FOLDER, rootPath);
     }
 
     /**
@@ -96,31 +97,31 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * today's behaviour. It puts {@code <snapshotName>.approved.txt} straight in the test's source directory,
      * with no wrapper, no group folder, and a {@code .txt} extension whatever the serializer's is.
      *
-     * {@snippet :
+     * <pre>
      * SnapshotLayout layout = SnapshotLayout.flat();
      * Path path = layout.resolve(
      *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "OrderPlaced", ".json");
      * // src/test/java/com/acme/orders/OrderPlaced.approved.txt
-     * }
+     * </pre>
      *
      * @return the flat layout
      */
     public static SnapshotLayout flat() {
-        return new SnapshotLayout(Strategy.FLAT, Grouping.PER_TEST_CLASS, DEFAULT_WRAPPER_FOLDER, "");
+        return new SnapshotLayout(Strategy.FLAT, SnapshotGrouping.PER_TEST_CLASS, DEFAULT_WRAPPER_FOLDER, "");
     }
 
     /**
      * Returns a copy with a different grouping, for choosing whether snapshots sit together by test
      * class or by message contract. {@link Strategy#FLAT} ignores grouping, since its layout is flat.
      *
-     * {@snippet :
+     * <pre>
      * SnapshotLayout byContract = SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT);
-     * }
+     * </pre>
      *
      * @param grouping the folder a snapshot is grouped into
      * @return a copy of this layout using the given grouping
      */
-    public SnapshotLayout grouping(Grouping grouping) {
+    public SnapshotLayout grouping(SnapshotGrouping grouping) {
         return new SnapshotLayout(strategy, grouping, wrapperFolder, rootPath);
     }
 
@@ -129,9 +130,9 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * default is {@code snapshots}; set it to match your convention. {@link Strategy#FLAT} ignores it,
      * since its layout is flat.
      *
-     * {@snippet :
+     * <pre>
      * SnapshotLayout underApproved = SnapshotLayout.nextToTest().wrapperFolder("approved");
-     * }
+     * </pre>
      *
      * @param wrapperFolder the segment that holds the group folders
      * @return a copy of this layout using the given wrapper folder
@@ -146,17 +147,17 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * Strategy#FLAT}, which always ends in {@code .approved.txt}.
      *
      * <p>The {@code snapshotName} names the file; {@code messageType} is what {@link
-     * Grouping#PER_CONTRACT} groups it under, while {@link Grouping#PER_TEST_CLASS} groups under the
+     * SnapshotGrouping#PER_CONTRACT} groups it under, while {@link SnapshotGrouping#PER_TEST_CLASS} groups under the
      * caller's simple name. For an ordinary snapshot the two are the same; they differ only when one
      * message type has several snapshots that each need their own name. The {@code testSourceDir} anchors
      * the test-relative strategies and already includes the caller's package path; {@link
-     * Strategy#GLOBAL_ROOT} ignores it and composes its own root from {@code rootPath} and the package.
+     * Strategy#GLOBAL_ROOT} ignores it and composes its own root from {@code rootPath} and the package.</p>
      *
-     * {@snippet :
+     * <pre>
      * Path path = SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT).resolve(
      *     Path.of("src/test/java/com/acme/orders"), "com.acme.orders", "OrderTests", "OrderPlaced", "withCoupon", ".json");
      * // src/test/java/com/acme/orders/snapshots/OrderPlaced/withCoupon.snap.approved.json
-     * }
+     * </pre>
      *
      * @param testSourceDir the test's source directory, package path included, anchoring {@link
      *     Strategy#NEXT_TO_TEST} and {@link Strategy#FLAT}; may be {@code null} for {@link
@@ -164,7 +165,7 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
      * @param callerPackage the package of the test asking for the snapshot
      * @param callerSimpleName the simple name of the test class asking for the snapshot
      * @param messageType the message type the snapshot belongs to, grouping it under {@link
-     *     Grouping#PER_CONTRACT}
+     *     SnapshotGrouping#PER_CONTRACT}
      * @param snapshotName the base name of the snapshot's file
      * @param fileExtension the extension the serializer writes, including the leading dot
      * @return the committed approved-file path
@@ -180,7 +181,7 @@ public record SnapshotLayout(Strategy strategy, Grouping grouping, String wrappe
             return requireTestSourceDir(testSourceDir).resolve(snapshotName + FLAT_SUFFIX);
         }
 
-        var groupFolder = grouping == Grouping.PER_CONTRACT ? messageType : callerSimpleName;
+        var groupFolder = grouping == SnapshotGrouping.PER_CONTRACT ? messageType : callerSimpleName;
         var fileName = snapshotName + SNAP_APPROVED_SUFFIX + fileExtension;
         var root = strategy == Strategy.GLOBAL_ROOT
                 ? Path.of(rootPath, callerPackage.replace('.', '/'))

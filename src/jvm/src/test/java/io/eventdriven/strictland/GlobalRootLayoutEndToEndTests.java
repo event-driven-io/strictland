@@ -19,7 +19,7 @@ final class GlobalRootLayoutEndToEndTests {
     void setGlobalDefault() {
         Strictland.defaults()
                 .snapshotLayout(SnapshotLayout.globalRoot("src/test/resources/snapshots")
-                        .grouping(Grouping.PER_CONTRACT));
+                        .grouping(SnapshotGrouping.PER_CONTRACT));
     }
 
     @AfterEach

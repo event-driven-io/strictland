@@ -75,7 +75,7 @@ final class SnapshotLayoutResolverTests {
                 () -> SnapshotLayoutProperties.fromClasspath("fixtures/layout-sample.properties"));
 
         assertEquals(SnapshotLayout.Strategy.GLOBAL_ROOT, resolved.strategy());
-        assertEquals(Grouping.PER_CONTRACT, resolved.grouping());
+        assertEquals(SnapshotGrouping.PER_CONTRACT, resolved.grouping());
         assertEquals("src/test/resources/snapshots", resolved.rootPath());
     }
 }

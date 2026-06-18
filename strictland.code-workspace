@@ -48,7 +48,8 @@
       "**/*.tsbuildinfo": true,
     },
     "files.watcherExclude": {
-      "**/target/**": true
+      "**/target/**": true,
+      "**/target": true
     }
   }
 }
