@@ -140,11 +140,11 @@ Settled and orthogonal to folder layout.
 - Committed baseline: `<base>.snap.approved.<ext>`
 - Transient on mismatch: `<base>.snap.received.<ext>`
 
-`<ext>` is the **format extension declared by the serializer** (see below). The
-`approved`/`received` verbs and the diff/promote workflow stay as ApprovalTests
-provides them. ApprovalTests 24.0.0 supports this via
-`Options.forFile().withExtension(".json").withBaseName("<base>.snap")`; the
-`.txt` default is not mandatory.
+`<ext>` is the **format extension declared by the serializer** (see below).
+Strictland's own file storage owns the approved/received workflow with no external
+approval tool: the first run writes the `approved` baseline for you to review and
+commit, a later run compares the payload against it, and a mismatch writes the
+`<base>.snap.received.<ext>` sibling and fails the check.
 
 `<base>` is the leaf name from the grouping/variant rules below.
 
@@ -218,9 +218,13 @@ beside a `src/test/kotlin` or `src/test/scala` test without configuration, since
 it never hard-codes the source root.
 
 That directory is found through a small internal locator, behind a one-method
-seam, whose default delegates to ApprovalTests' own source-file resolution. The
-seam reuses a maintained guesser today and leaves room to replace it later
-without changing how layouts resolve.
+seam. The default is clean-room and depends on no external tool: it resolves the
+test's package directory against the conventional source roots (`src/test/java`,
+`src/test/kotlin`, `src/test/scala`), matching on the source file name the JVM
+records for the calling frame. It performs no filesystem tree scan, so a formatted
+or compiled mirror under `build/` can never shadow the real sources. A project
+whose tests live elsewhere configures the roots with
+`Strictland.defaults().testSourceRoots(...)`.
 
 `GlobalRoot` does not anchor on the test file. It roots the tree at the
 `rootPath` you name and lays the test's package path beneath it, taken from the
@@ -232,6 +236,12 @@ class at runtime, so it resolves the same regardless of source set.
   label, when supplied, becomes the leaf.
 - `PerContract` grouping: the folder is the message type. The leaf is the
   variant label, defaulting to the message type name when none is given.
+
+The DSL settles this leaf before resolution. The identity reaching the layout and
+storage is a `(messageType, snapshotName)` pair, where `snapshotName` is the
+variant label when one is given and the message type otherwise. "Variant" is a
+test-authoring concept; it is folded into `snapshotName` in the DSL and never
+reaches the layout or storage.
 
 ## Multiple snapshots per contract
 
@@ -387,12 +397,16 @@ dumb/nullability-driven pair.
   `read(name)`. The variant is folded into the resolved identity before storage
   is called, so the public extension point gains no `variantLabel` overloads and
   a custom storage needs no concept of variants.
-- `FileSnapshotStorage`: write and read at the identity the step resolved, with
-  no hard-coded `src/test/java/<package>` and no ApprovalTests duplicate-tracker
-  workarounds.
+- `FileSnapshotStorage`: a plain sink. It writes and compares bytes at the
+  resolved approved-file path - first run writes the baseline, later runs compare
+  and write a `<base>.snap.received.<ext>` sibling on drift - with no hard-coded
+  `src/test/java/<package>`, no ApprovalTests, and no duplicate-tracker workaround.
+- Source-directory locator: a clean-room, ApprovalTests-free one-method seam that
+  resolves the test's package directory against configurable source roots (default
+  `src/test/java`, `src/test/kotlin`, `src/test/scala`) without scanning the tree.
 - New `Strictland` global config holder: a process-wide fluent default for every
-  setting (layout, value generator, requiredness policy), with `defaults()` and
-  `resetDefaults()`.
+  setting (layout, source roots via `testSourceRoots(...)`, value generator,
+  requiredness policy), with `defaults()` and `resetDefaults()`.
 - Config loader: read `strictland.properties` from the test classpath.
 - A single resolution point that merges the four levels per setting (per-spec >
   global > file > built-in) when a specification builds its storage.
