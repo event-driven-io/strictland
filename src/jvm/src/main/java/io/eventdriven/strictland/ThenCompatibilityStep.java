@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
@@ -28,22 +29,25 @@ import org.jspecify.annotations.Nullable;
 public class ThenCompatibilityStep<S, T> {
     private final @Nullable Snapshot snapshot;
     private final @Nullable S instance;
+    private final String version;
     private final Class<T> targetType;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final @Nullable SnapshotLocation location;
+    private final SnapshotLocation location;
     private final MessageTypeMapper typeMapper;
 
     ThenCompatibilityStep(
             @Nullable Snapshot snapshot,
             @Nullable S instance,
+            String version,
             Class<T> targetType,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            @Nullable SnapshotLocation location,
+            SnapshotLocation location,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
+        this.version = version;
         this.targetType = targetType;
         this.serializer = serializer;
         this.storage = storage;
@@ -122,7 +126,12 @@ public class ThenCompatibilityStep<S, T> {
     }
 
     private void verifySharedFields(Consumer<T> extra) {
-        var sourceBytes = resolveSourceBytes();
+        for (var sourceBytes : resolveSourceBytesList()) {
+            verifyOne(sourceBytes, extra);
+        }
+    }
+
+    private void verifyOne(byte[] sourceBytes, Consumer<T> extra) {
         var jsonMapper = (serializer instanceof JacksonMessageSerializer j) ? j.mapper() : null;
         T deserialized;
         Map<String, Object> sourceMap;
@@ -189,10 +198,10 @@ public class ThenCompatibilityStep<S, T> {
         return mapper.readValue(bytes, new TypeReference<>() {});
     }
 
-    private byte[] resolveSourceBytes() {
+    private List<byte[]> resolveSourceBytesList() {
         if (instance != null) {
             try {
-                return serializer.serialize(instance);
+                return List.of(serializer.serialize(instance));
             } catch (UncheckedIOException e) {
                 throw new RuntimeException(
                         "Serialization of " + instance.getClass().getSimpleName() + " failed", e);
@@ -201,24 +210,30 @@ public class ThenCompatibilityStep<S, T> {
         if (snapshot == null) {
             throw new IllegalStateException("Either a snapshot or an instance is required");
         }
-        var key = snapshotKey(snapshot);
-        return storage.read(key).orElseThrow(() -> new RuntimeException("Cannot read snapshot file: " + key));
-    }
-
-    private String snapshotKey(Snapshot snapshot) {
         return switch (snapshot) {
-            case Snapshot.ByClass<?> s -> byContract(typeMapper.name(s.messageClass()), s.variant());
-            case Snapshot.ByMessageType s -> byContract(s.messageType(), s.variant());
-            case Snapshot.ByPath s -> s.path().toString();
+            case Snapshot.ByPath byPath -> {
+                var key = byPath.path().toString();
+                var bytes =
+                        storage.read(key).orElseThrow(() -> new RuntimeException("Cannot read snapshot file: " + key));
+                yield List.of(bytes);
+            }
+            case Snapshot.ByClass<?> s ->
+                readAll(location.resolveForRead(
+                        typeMapper.name(s.messageClass()), resolveVersion(s.version()), s.variant()));
+            case Snapshot.ByMessageType s ->
+                readAll(location.resolveForRead(s.messageType(), resolveVersion(s.version()), s.variant()));
         };
     }
 
-    private String byContract(String contractName, @Nullable String variant) {
-        var snapshotName = variant != null ? contractName + "." + variant : contractName;
-        return key(contractName, snapshotName);
+    private List<byte[]> readAll(SnapshotReadLocation readLocation) {
+        var payloads = storage.readAll(readLocation);
+        if (payloads.isEmpty()) {
+            throw new RuntimeException("Cannot read snapshot file: " + readLocation.prefix());
+        }
+        return payloads;
     }
 
-    private String key(String messageType, String snapshotName) {
-        return location != null ? location.resolve(messageType, snapshotName) : snapshotName;
+    private String resolveVersion(String snapshotVersion) {
+        return snapshotVersion.equals(Snapshot.DEFAULT_VERSION) ? version : snapshotVersion;
     }
 }

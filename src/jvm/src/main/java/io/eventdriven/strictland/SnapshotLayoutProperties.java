@@ -14,15 +14,16 @@ import org.jspecify.annotations.Nullable;
  * you already hold the values and want a pure, testable conversion.
  *
  * <p>Every key is optional and falls back to the {@link SnapshotLayout#nextToTest()} defaults. The
- * recognised keys are {@code strictland.layout.strategy} ({@code nextToTest}, {@code globalRoot}, or
- * {@code flat}), {@code strictland.layout.grouping} ({@code perTestClass} or {@code perContract}),
- * {@code strictland.layout.wrapperFolder}, and {@code strictland.layout.rootPath} (read only when the
- * strategy is {@code globalRoot}). An unrecognised strategy or grouping value throws {@link
+ * recognised keys are {@code strictland.layout.location} ({@code nextToTest} or {@code globalRoot}),
+ * {@code strictland.layout.grouping} ({@code perTestClass}, {@code perContract}, or {@code none}),
+ * {@code strictland.layout.wrapperFolder}, {@code strictland.layout.rootPath} (read only when the
+ * location is {@code globalRoot}), and {@code strictland.layout.testClassNaming} ({@code simple} or
+ * {@code full}). An unrecognised location, grouping, or test-class-naming value throws {@link
  * IllegalArgumentException} naming the key and the value.</p>
  *
  * <pre>
  * var props = new Properties();
- * props.setProperty("strictland.layout.strategy", "globalRoot");
+ * props.setProperty("strictland.layout.location", "globalRoot");
  * props.setProperty("strictland.layout.rootPath", "src/test/resources/snapshots");
  * SnapshotLayout layout = SnapshotLayoutProperties.fromProperties(props);
  * </pre>
@@ -30,10 +31,11 @@ import org.jspecify.annotations.Nullable;
 public final class SnapshotLayoutProperties {
 
     private static final String DEFAULT_RESOURCE = "strictland.properties";
-    private static final String STRATEGY_KEY = "strictland.layout.strategy";
+    private static final String LOCATION_KEY = "strictland.layout.location";
     private static final String GROUPING_KEY = "strictland.layout.grouping";
     private static final String WRAPPER_FOLDER_KEY = "strictland.layout.wrapperFolder";
     private static final String ROOT_PATH_KEY = "strictland.layout.rootPath";
+    private static final String TEST_CLASS_NAMING_KEY = "strictland.layout.testClassNaming";
 
     private SnapshotLayoutProperties() {}
 
@@ -83,10 +85,10 @@ public final class SnapshotLayoutProperties {
      *
      * @param props the configuration to read the layout from
      * @return the layout the properties describe
-     * @throws IllegalArgumentException if a strategy or grouping value is not recognised
+     * @throws IllegalArgumentException if a location or grouping value is not recognised
      */
     public static SnapshotLayout fromProperties(Properties props) {
-        var layout = startingLayout(props.getProperty(STRATEGY_KEY), props.getProperty(ROOT_PATH_KEY));
+        var layout = startingLayout(props.getProperty(LOCATION_KEY), props.getProperty(ROOT_PATH_KEY));
 
         var grouping = props.getProperty(GROUPING_KEY);
         if (grouping != null) {
@@ -98,18 +100,22 @@ public final class SnapshotLayoutProperties {
             layout = layout.wrapperFolder(wrapperFolder);
         }
 
+        var testClassNaming = props.getProperty(TEST_CLASS_NAMING_KEY);
+        if (testClassNaming != null) {
+            layout = layout.testClassNaming(testClassNaming(testClassNaming));
+        }
+
         return layout;
     }
 
-    private static SnapshotLayout startingLayout(@Nullable String strategy, @Nullable String rootPath) {
-        if (strategy == null) {
+    private static SnapshotLayout startingLayout(@Nullable String location, @Nullable String rootPath) {
+        if (location == null) {
             return SnapshotLayout.nextToTest();
         }
-        return switch (strategy) {
+        return switch (location) {
             case "nextToTest" -> SnapshotLayout.nextToTest();
             case "globalRoot" -> SnapshotLayout.globalRoot(rootPath != null ? rootPath : "");
-            case "flat" -> SnapshotLayout.flat();
-            default -> throw badValue(STRATEGY_KEY, strategy);
+            default -> throw badValue(LOCATION_KEY, location);
         };
     }
 
@@ -117,7 +123,16 @@ public final class SnapshotLayoutProperties {
         return switch (grouping) {
             case "perTestClass" -> SnapshotGrouping.PER_TEST_CLASS;
             case "perContract" -> SnapshotGrouping.PER_CONTRACT;
+            case "none" -> SnapshotGrouping.NONE;
             default -> throw badValue(GROUPING_KEY, grouping);
+        };
+    }
+
+    private static TestClassNaming testClassNaming(String testClassNaming) {
+        return switch (testClassNaming) {
+            case "simple" -> TestClassNaming.SIMPLE;
+            case "full" -> TestClassNaming.FULL;
+            default -> throw badValue(TEST_CLASS_NAMING_KEY, testClassNaming);
         };
     }
 

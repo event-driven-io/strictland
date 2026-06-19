@@ -144,7 +144,8 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredOldEvent_whenReadByTheCurrentType_thenBackwardCompatible() {
-            var path = Path.of("src/test/java/io/eventdriven/strictland/ShoppingCartConfirmedV1.approved.txt");
+            var path = Path.of(
+                    "src/test/java/io/eventdriven/strictland/snapshots/ReadingAStoredOldEvent/ShoppingCartConfirmedV1.reference.snap.approved.json");
 
             MessageContract.specification(Json.Jackson.defaults())
                     .given(Snapshot.at(path))
@@ -159,7 +160,8 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAnOldEpochTimestampEvent_whenReadByTheCurrentIsoType_thenNotBackwardCompatible() {
-            var path = Path.of("src/test/java/io/eventdriven/strictland/InvoiceIssuedV1_EpochTimestamp.approved.txt");
+            var path = Path.of(
+                    "src/test/java/io/eventdriven/strictland/snapshots/WhenTheSerializerDateFormatChanged/InvoiceIssuedV1_EpochTimestamp.reference.snap.approved.json");
 
             var error = assertThrows(
                     AssertionError.class,
@@ -218,7 +220,8 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredEventWithARemovedStatus_whenReadByTheCurrentEnum_thenNotBackwardCompatible() {
-            var path = Path.of("src/test/java/io/eventdriven/strictland/InvoiceWithStatusIssuedV1.approved.txt");
+            var path = Path.of(
+                    "src/test/java/io/eventdriven/strictland/snapshots/RemovingAnEnumConstant/InvoiceWithStatusIssuedV1.reference.snap.approved.json");
 
             assertThrows(
                     RuntimeException.class,
@@ -285,7 +288,8 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredEventForARemovedVariant_whenReadByTheSmallerHierarchy_thenNotBackwardCompatible() {
-            var path = Path.of("src/test/java/io/eventdriven/strictland/ShipmentCancelledEvent.approved.txt");
+            var path = Path.of(
+                    "src/test/java/io/eventdriven/strictland/snapshots/EvolvingASealedHierarchy/ShipmentCancelledEvent.reference.snap.approved.json");
 
             assertThrows(
                     RuntimeException.class,

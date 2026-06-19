@@ -13,20 +13,23 @@ import org.jspecify.annotations.Nullable;
 public class ThenContractStep<S> {
     private final S instance;
     private final @Nullable Snapshot destination;
+    private final String version;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final @Nullable SnapshotLocation location;
+    private final SnapshotLocation location;
     private final MessageTypeMapper typeMapper;
 
     ThenContractStep(
             S instance,
             @Nullable Snapshot destination,
+            String version,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            @Nullable SnapshotLocation location,
+            SnapshotLocation location,
             MessageTypeMapper typeMapper) {
         this.instance = instance;
         this.destination = destination;
+        this.version = version;
         this.serializer = serializer;
         this.storage = storage;
         this.location = location;
@@ -55,19 +58,16 @@ public class ThenContractStep<S> {
 
     private String snapshotKey() {
         return switch (destination) {
-            case null -> byContract(typeMapper.name(instance.getClass()), null);
-            case Snapshot.ByClass<?> b -> byContract(typeMapper.name(b.messageClass()), b.variant());
-            case Snapshot.ByMessageType b -> byContract(b.messageType(), b.variant());
+            case null -> location.resolveForWrite(typeMapper.name(instance.getClass()), version, null);
+            case Snapshot.ByClass<?> b ->
+                location.resolveForWrite(typeMapper.name(b.messageClass()), resolveVersion(b.version()), b.variant());
+            case Snapshot.ByMessageType b ->
+                location.resolveForWrite(b.messageType(), resolveVersion(b.version()), b.variant());
             case Snapshot.ByPath b -> b.path().toString();
         };
     }
 
-    private String byContract(String contractName, @Nullable String variant) {
-        var snapshotName = variant != null ? contractName + "." + variant : contractName;
-        return key(contractName, snapshotName);
-    }
-
-    private String key(String messageType, String snapshotName) {
-        return location != null ? location.resolve(messageType, snapshotName) : snapshotName;
+    private String resolveVersion(String snapshotVersion) {
+        return snapshotVersion.equals(Snapshot.DEFAULT_VERSION) ? version : snapshotVersion;
     }
 }

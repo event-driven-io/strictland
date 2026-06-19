@@ -3,7 +3,6 @@ package io.eventdriven.strictland;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import io.eventdriven.strictland.SnapshotLayout.Strategy;
 import java.nio.file.Path;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
@@ -21,19 +20,18 @@ final class SnapshotLayoutTests {
     @Test
     void factories_useTheDocumentedDefaults() {
         var nextToTest = SnapshotLayout.nextToTest();
-        assertEquals(Strategy.NEXT_TO_TEST, nextToTest.strategy());
+        assertEquals(SnapshotRoot.NEXT_TO_TEST, nextToTest.location());
         assertEquals(SnapshotGrouping.PER_TEST_CLASS, nextToTest.grouping());
         assertEquals("snapshots", nextToTest.wrapperFolder());
         assertEquals("", nextToTest.rootPath());
+        assertEquals(TestClassNaming.SIMPLE, nextToTest.testClassNaming());
 
         var globalRoot = SnapshotLayout.globalRoot("src/test/resources/snapshots");
-        assertEquals(Strategy.GLOBAL_ROOT, globalRoot.strategy());
+        assertEquals(SnapshotRoot.GLOBAL_ROOT, globalRoot.location());
         assertEquals(SnapshotGrouping.PER_TEST_CLASS, globalRoot.grouping());
         assertEquals("snapshots", globalRoot.wrapperFolder());
         assertEquals("src/test/resources/snapshots", globalRoot.rootPath());
-
-        var flat = SnapshotLayout.flat();
-        assertEquals(Strategy.FLAT, flat.strategy());
+        assertEquals(TestClassNaming.SIMPLE, globalRoot.testClassNaming());
     }
 
     @Test
@@ -42,11 +40,14 @@ final class SnapshotLayoutTests {
 
         var grouped = original.grouping(SnapshotGrouping.PER_CONTRACT);
         var wrapped = original.wrapperFolder("approved");
+        var qualified = original.testClassNaming(TestClassNaming.FULL);
 
         assertEquals(SnapshotGrouping.PER_CONTRACT, grouped.grouping());
         assertEquals("approved", wrapped.wrapperFolder());
+        assertEquals(TestClassNaming.FULL, qualified.testClassNaming());
         assertEquals(SnapshotGrouping.PER_TEST_CLASS, original.grouping());
         assertEquals("snapshots", original.wrapperFolder());
+        assertEquals(TestClassNaming.SIMPLE, original.testClassNaming());
     }
 
     @Test
@@ -142,31 +143,39 @@ final class SnapshotLayoutTests {
     }
 
     @Test
-    void flat_matchesTodaysFileSnapshotStoragePathShape() {
-        var expected = TEST_SOURCE_DIR.resolve(MESSAGE_TYPE + ".approved.txt");
-
-        var path = SnapshotLayout.flat()
+    void nextToTest_noneGrouping_emptyWrapper_putsTheFileStraightInTheTestSourceDir() {
+        var path = SnapshotLayout.nextToTest()
+                .grouping(SnapshotGrouping.NONE)
+                .wrapperFolder("")
                 .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
-        assertEquals(expected, path);
+        assertEquals(TEST_SOURCE_DIR.resolve(MESSAGE_TYPE + ".snap.approved.json"), path);
     }
 
     @Test
-    void flat_ignoresExtensionAndWrapperAndGrouping_alwaysApprovedTxt() {
-        var path = SnapshotLayout.flat()
-                .grouping(SnapshotGrouping.PER_CONTRACT)
-                .wrapperFolder("approved")
+    void nextToTest_noneGrouping_keepsTheWrapperButDropsTheGroupFolder() {
+        var path = SnapshotLayout.nextToTest()
+                .grouping(SnapshotGrouping.NONE)
                 .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, VARIANT, EXTENSION);
 
-        assertEquals(TEST_SOURCE_DIR.resolve("withCoupon.approved.txt"), path);
+        assertEquals(Path.of("src/test/java", PACKAGE_PATH, "snapshots", "withCoupon.snap.approved.json"), path);
     }
 
     @Test
-    void flat_withoutATestSourceDir_isRejected() {
-        var layout = SnapshotLayout.flat();
+    void nextToTest_emptyWrapper_addsNoEmptySegment() {
+        var path = SnapshotLayout.nextToTest()
+                .wrapperFolder("")
+                .resolve(TEST_SOURCE_DIR, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> layout.resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION));
+        assertEquals(Path.of("src/test/java", PACKAGE_PATH, "OrderTests", "OrderPlaced.snap.approved.json"), path);
+    }
+
+    @Test
+    void globalRoot_noneGrouping_putsTheFileDirectlyUnderThePackagePath() {
+        var path = SnapshotLayout.globalRoot("src/test/resources/snapshots")
+                .grouping(SnapshotGrouping.NONE)
+                .resolve(null, CALLER_PACKAGE, CALLER_SIMPLE_NAME, MESSAGE_TYPE, MESSAGE_TYPE, EXTENSION);
+
+        assertEquals(Path.of("src/test/resources/snapshots", PACKAGE_PATH, "OrderPlaced.snap.approved.json"), path);
     }
 }

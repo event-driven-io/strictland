@@ -1,7 +1,5 @@
 package io.eventdriven.strictland;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * Strictland is a contract-testing library for the messages your code sends and stores: events,
  * commands, queue messages, HTTP requests and responses, and anything else you serialize for someone
@@ -33,22 +31,22 @@ import org.jspecify.annotations.Nullable;
 public class MessageContract {
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final @Nullable SnapshotLocation location;
+    private final SnapshotLocation location;
     private final MessageTypeMapper typeMapper;
 
     private MessageContract(SpecificationOptions options) {
         this.serializer = options.serializer();
+        var sourceLocator = TestSourceDirectoryLocator.knownRoots(Strictland.testSourceRoots());
         var configuredStorage = options.storage();
         if (configuredStorage != null) {
             this.storage = configuredStorage;
-            this.location = null;
+            this.location = new SnapshotLocation(
+                    null, options.serializer().fileExtension(), TestClassNaming.SIMPLE, sourceLocator);
         } else {
             var layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
             this.storage = new FileSnapshotStorage();
             this.location = new SnapshotLocation(
-                    layout,
-                    options.serializer().fileExtension(),
-                    TestSourceDirectoryLocator.knownRoots(Strictland.testSourceRoots()));
+                    layout, options.serializer().fileExtension(), layout.testClassNaming(), sourceLocator);
         }
         var configuredTypeMapper = options.typeMapper();
         this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.simpleName();
@@ -93,7 +91,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
+        return new GivenStep<>(snapshot, null, snapshot.version(), serializer, storage, location, typeMapper);
     }
 
     /**
@@ -108,7 +106,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
+        return new GivenStep<>(snapshot, null, snapshot.version(), serializer, storage, location, typeMapper);
     }
 
     /**
@@ -122,7 +120,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(snapshot, null, serializer, storage, location, typeMapper);
+        return new GivenStep<>(snapshot, null, Snapshot.DEFAULT_VERSION, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -137,6 +135,23 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(null, instance, serializer, storage, location, typeMapper);
+        return new GivenStep<>(null, instance, Snapshot.DEFAULT_VERSION, serializer, storage, location, typeMapper);
+    }
+
+    /**
+     * Defines the version under contract: the message as your current code builds it, pinned to a
+     * snapshot version you name.
+     *
+     * <p>Like {@link #given(Object)}, but the snapshot's name carries the {@code version} you give
+     * rather than the default, so several versions of one message type keep distinct snapshots. A {@code
+     * whenSerializedAs(...)} snapshot that pins its own version overrides this one.</p>
+     *
+     * @param instance the message to pin or read with another version
+     * @param version the snapshot version the check pins to
+     * @param <S> the type of the message
+     * @return the next step, where you choose what to check
+     */
+    public <S> GivenStep<S> given(S instance, String version) {
+        return new GivenStep<>(null, instance, version, serializer, storage, location, typeMapper);
     }
 }

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.eventdriven.strictland.SnapshotLayout.Strategy;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -25,42 +24,33 @@ final class SnapshotLayoutPropertiesTests {
     }
 
     @Test
-    void strategyNextToTest_isParsed() {
+    void locationNextToTest_isParsed() {
         var props = new Properties();
-        props.setProperty("strictland.layout.strategy", "nextToTest");
+        props.setProperty("strictland.layout.location", "nextToTest");
 
         assertEquals(
-                Strategy.NEXT_TO_TEST,
-                SnapshotLayoutProperties.fromProperties(props).strategy());
+                SnapshotRoot.NEXT_TO_TEST,
+                SnapshotLayoutProperties.fromProperties(props).location());
     }
 
     @Test
-    void strategyGlobalRoot_isParsed() {
+    void locationGlobalRoot_isParsed() {
         var props = new Properties();
-        props.setProperty("strictland.layout.strategy", "globalRoot");
+        props.setProperty("strictland.layout.location", "globalRoot");
 
         assertEquals(
-                Strategy.GLOBAL_ROOT,
-                SnapshotLayoutProperties.fromProperties(props).strategy());
+                SnapshotRoot.GLOBAL_ROOT,
+                SnapshotLayoutProperties.fromProperties(props).location());
     }
 
     @Test
-    void strategyFlat_mapsToFlat() {
+    void locationGlobalRoot_withoutRootPath_defaultsToEmptyRoot() {
         var props = new Properties();
-        props.setProperty("strictland.layout.strategy", "flat");
-
-        assertEquals(
-                Strategy.FLAT, SnapshotLayoutProperties.fromProperties(props).strategy());
-    }
-
-    @Test
-    void strategyGlobalRoot_withoutRootPath_defaultsToEmptyRoot() {
-        var props = new Properties();
-        props.setProperty("strictland.layout.strategy", "globalRoot");
+        props.setProperty("strictland.layout.location", "globalRoot");
 
         var layout = SnapshotLayoutProperties.fromProperties(props);
 
-        assertEquals(Strategy.GLOBAL_ROOT, layout.strategy());
+        assertEquals(SnapshotRoot.GLOBAL_ROOT, layout.location());
         assertEquals("", layout.rootPath());
     }
 
@@ -85,6 +75,16 @@ final class SnapshotLayoutPropertiesTests {
     }
 
     @Test
+    void groupingNone_isParsed() {
+        var props = new Properties();
+        props.setProperty("strictland.layout.grouping", "none");
+
+        assertEquals(
+                SnapshotGrouping.NONE,
+                SnapshotLayoutProperties.fromProperties(props).grouping());
+    }
+
+    @Test
     void wrapperFolder_isParsed() {
         var props = new Properties();
         props.setProperty("strictland.layout.wrapperFolder", "approved");
@@ -93,39 +93,73 @@ final class SnapshotLayoutPropertiesTests {
     }
 
     @Test
-    void rootPath_isParsed_whenStrategyIsGlobalRoot() {
+    void rootPath_isParsed_whenLocationIsGlobalRoot() {
         var props = new Properties();
-        props.setProperty("strictland.layout.strategy", "globalRoot");
+        props.setProperty("strictland.layout.location", "globalRoot");
         props.setProperty("strictland.layout.rootPath", "snaps");
 
         assertEquals("snaps", SnapshotLayoutProperties.fromProperties(props).rootPath());
     }
 
     @Test
-    void allKeysTogether_buildTheFullLayout() {
+    void testClassNamingSimple_isParsed() {
         var props = new Properties();
-        props.setProperty("strictland.layout.strategy", "globalRoot");
-        props.setProperty("strictland.layout.grouping", "perContract");
-        props.setProperty("strictland.layout.wrapperFolder", "approved");
-        props.setProperty("strictland.layout.rootPath", "src/test/resources/snapshots");
+        props.setProperty("strictland.layout.testClassNaming", "simple");
 
-        var layout = SnapshotLayoutProperties.fromProperties(props);
-
-        assertEquals(Strategy.GLOBAL_ROOT, layout.strategy());
-        assertEquals(SnapshotGrouping.PER_CONTRACT, layout.grouping());
-        assertEquals("approved", layout.wrapperFolder());
-        assertEquals("src/test/resources/snapshots", layout.rootPath());
+        assertEquals(
+                TestClassNaming.SIMPLE,
+                SnapshotLayoutProperties.fromProperties(props).testClassNaming());
     }
 
     @Test
-    void unknownStrategy_throwsNamingTheKeyAndValue() {
+    void testClassNamingFull_isParsed() {
         var props = new Properties();
-        props.setProperty("strictland.layout.strategy", "sideways");
+        props.setProperty("strictland.layout.testClassNaming", "full");
+
+        assertEquals(
+                TestClassNaming.FULL,
+                SnapshotLayoutProperties.fromProperties(props).testClassNaming());
+    }
+
+    @Test
+    void unknownTestClassNaming_throwsNamingTheKeyAndValue() {
+        var props = new Properties();
+        props.setProperty("strictland.layout.testClassNaming", "sideways");
 
         var exception =
                 assertThrows(IllegalArgumentException.class, () -> SnapshotLayoutProperties.fromProperties(props));
         var message = requireNonNull(exception.getMessage());
-        assertTrue(message.contains("strictland.layout.strategy"));
+        assertTrue(message.contains("strictland.layout.testClassNaming"));
+        assertTrue(message.contains("sideways"));
+    }
+
+    @Test
+    void allKeysTogether_buildTheFullLayout() {
+        var props = new Properties();
+        props.setProperty("strictland.layout.location", "globalRoot");
+        props.setProperty("strictland.layout.grouping", "perContract");
+        props.setProperty("strictland.layout.wrapperFolder", "approved");
+        props.setProperty("strictland.layout.rootPath", "src/test/resources/snapshots");
+        props.setProperty("strictland.layout.testClassNaming", "full");
+
+        var layout = SnapshotLayoutProperties.fromProperties(props);
+
+        assertEquals(SnapshotRoot.GLOBAL_ROOT, layout.location());
+        assertEquals(SnapshotGrouping.PER_CONTRACT, layout.grouping());
+        assertEquals("approved", layout.wrapperFolder());
+        assertEquals("src/test/resources/snapshots", layout.rootPath());
+        assertEquals(TestClassNaming.FULL, layout.testClassNaming());
+    }
+
+    @Test
+    void unknownLocation_throwsNamingTheKeyAndValue() {
+        var props = new Properties();
+        props.setProperty("strictland.layout.location", "sideways");
+
+        var exception =
+                assertThrows(IllegalArgumentException.class, () -> SnapshotLayoutProperties.fromProperties(props));
+        var message = requireNonNull(exception.getMessage());
+        assertTrue(message.contains("strictland.layout.location"));
         assertTrue(message.contains("sideways"));
     }
 
@@ -146,7 +180,7 @@ final class SnapshotLayoutPropertiesTests {
         Optional<SnapshotLayout> layout = SnapshotLayoutProperties.fromClasspath("fixtures/layout-sample.properties");
 
         assertTrue(layout.isPresent());
-        assertEquals(Strategy.GLOBAL_ROOT, layout.get().strategy());
+        assertEquals(SnapshotRoot.GLOBAL_ROOT, layout.get().location());
         assertEquals(SnapshotGrouping.PER_CONTRACT, layout.get().grouping());
         assertEquals("approved", layout.get().wrapperFolder());
         assertEquals("src/test/resources/snapshots", layout.get().rootPath());

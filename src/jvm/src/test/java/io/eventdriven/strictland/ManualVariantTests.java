@@ -30,6 +30,13 @@ final class ManualVariantTests {
                 .snapshotLayout(SnapshotLayout.nextToTest().grouping(SnapshotGrouping.PER_CONTRACT));
     }
 
+    private static SpecificationOptions flatOptions() {
+        return Json.Jackson.defaults()
+                .snapshotLayout(SnapshotLayout.nextToTest()
+                        .grouping(SnapshotGrouping.NONE)
+                        .wrapperFolder(""));
+    }
+
     @Test
     void twoVariantsOfOneType_writeTwoDistinctFiles_neitherOverwritingTheOther() {
         MessageContract.specification(options())
@@ -42,8 +49,10 @@ final class ManualVariantTests {
                 .whenSerializedAs(SnapshotVariant.named("NoPromotion"))
                 .thenContractIsUnchanged();
 
-        var withPromotion = VARIANTS_DIR.resolve("WithPromotion.snap.approved.json");
-        var noPromotion = VARIANTS_DIR.resolve("NoPromotion.snap.approved.json");
+        var withPromotion = VARIANTS_DIR.resolve(
+                "OrderInitiated.1.ManualVariantTests.twoVariantsOfOneType_writeTwoDistinctFiles_neitherOverwritingTheOther.WithPromotion.snap.approved.json");
+        var noPromotion = VARIANTS_DIR.resolve(
+                "OrderInitiated.1.ManualVariantTests.twoVariantsOfOneType_writeTwoDistinctFiles_neitherOverwritingTheOther.NoPromotion.snap.approved.json");
 
         assertTrue(Files.exists(withPromotion), "expected snapshot at " + withPromotion);
         assertTrue(Files.exists(noPromotion), "expected snapshot at " + noPromotion);
@@ -72,19 +81,18 @@ final class ManualVariantTests {
 
     @Test
     void underFlat_theLabelNamesTheFlatApprovedFile() throws Exception {
-        var snapshotFile =
-                Path.of("src/test/java/io/eventdriven/strictland/OrderInitiated.FlatNullPromotion.approved.txt");
+        var snapshotFile = Path.of(
+                "src/test/java/io/eventdriven/strictland/OrderInitiated.1.ManualVariantTests.underFlat_theLabelNamesTheFlatApprovedFile.FlatNullPromotion.snap.approved.json");
         try {
-            // FLAT ignores grouping, so the label alone names the flat .approved.txt file.
-            MessageContract.specification(Json.Jackson.defaults())
+            MessageContract.specification(flatOptions())
                     .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
                     .whenSerializedAs(SnapshotVariant.named("FlatNullPromotion"))
                     .thenContractIsUnchanged();
 
-            assertTrue(Files.exists(snapshotFile), "expected the label to name the flat file at " + snapshotFile);
+            assertTrue(Files.exists(snapshotFile), "expected the flat file at " + snapshotFile);
 
-            // Read it back by label alone, with no source class recorded on the variant.
-            MessageContract.specification(Json.Jackson.defaults())
+            // Read it back by label, with the source class recorded on the variant.
+            MessageContract.specification(flatOptions())
                     .given(Snapshot.of(OrderInitiated.class).variant("FlatNullPromotion"))
                     .whenDeserializedAs(OrderInitiated.class)
                     .thenBackwardCompatible(order -> assertEquals("NONE", order.promotion()));
@@ -100,8 +108,9 @@ final class ManualVariantTests {
                 .whenSerializedAs(SnapshotVariant.named("NoPromotion"))
                 .thenContractIsUnchanged();
 
-        // The label, not the message type, names the leaf file - so it reads as documentation.
-        var leaf = VARIANTS_DIR.resolve("NoPromotion.snap.approved.json");
+        // The label is the trailing segment of the leaf file name, so it reads as documentation.
+        var leaf = VARIANTS_DIR.resolve(
+                "OrderInitiated.1.ManualVariantTests.theLabelIsRecordedAsTheLeafFileName.NoPromotion.snap.approved.json");
         assertTrue(Files.exists(leaf), "expected the label to name the leaf at " + leaf);
     }
 

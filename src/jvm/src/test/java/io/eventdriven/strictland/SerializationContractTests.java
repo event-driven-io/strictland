@@ -74,7 +74,7 @@ final class SerializationContractTests {
         void given_eventWithNullField_whenSerialized_nullRendersByDefault() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2"))
                     .thenContractIsUnchanged();
         }
 
@@ -105,7 +105,7 @@ final class SerializationContractTests {
         void given_customMapper_whenSerialized_thatMapperDrivesTheOutput() {
             MessageContract.specification(Json.Jackson.of(timestampMapper))
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1_CustomMapperEpoch"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1"))
                     .thenContractIsUnchanged();
         }
     }
@@ -124,13 +124,14 @@ final class SerializationContractTests {
         void given_event_whenSerialized_goldenFileNamedByMessageType() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new MemberJoined(FIXED_ID, "alice@example.com"))
-                    .whenSerializedAs(Snapshot.forMessageType("MemberJoined_ByMessageType"))
+                    .whenSerializedAs(Snapshot.forMessageType("MemberJoined"))
                     .thenContractIsUnchanged();
         }
 
         @Test
         void given_event_whenSerialized_goldenFileAtAnExplicitPath() {
-            var path = Path.of("src/test/java/io/eventdriven/strictland/MemberJoined_ByPath.approved.txt");
+            var path = Path.of(
+                    "src/test/java/io/eventdriven/strictland/snapshots/WhereTheGoldenFileLives/MemberJoined_ByPath.snap.approved.json");
 
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new MemberJoined(FIXED_ID, "alice@example.com"))
@@ -172,7 +173,7 @@ final class SerializationContractTests {
         void given_isoMapper_whenSerialized_datesAreIsoStrings() {
             MessageContract.specification(Json.Jackson.of(isoMapper))
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1_IsoDate"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1"))
                     .thenContractIsUnchanged();
         }
 
@@ -180,7 +181,7 @@ final class SerializationContractTests {
         void given_epochMapper_whenSerialized_datesAreEpochNumbers() {
             MessageContract.specification(Json.Jackson.of(epochMapper))
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1_EpochDate"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1"))
                     .thenContractIsUnchanged();
         }
 
@@ -188,7 +189,7 @@ final class SerializationContractTests {
         void given_nullInclusion_whenSerialized_nullFieldIsPresent() {
             MessageContract.specification(Json.Jackson.of(includeNullsMapper))
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2_NullsIncluded"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2"))
                     .thenContractIsUnchanged();
         }
 
@@ -196,7 +197,7 @@ final class SerializationContractTests {
         void given_nullExclusion_whenSerialized_nullFieldIsOmitted() {
             MessageContract.specification(Json.Jackson.of(omitNullsMapper))
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2_NullsOmitted"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2"))
                     .thenContractIsUnchanged();
         }
 
@@ -204,7 +205,7 @@ final class SerializationContractTests {
         void given_snakeCaseMapper_whenSerialized_keysAreSnakeCase() {
             MessageContract.specification(Json.Jackson.of(snakeCaseMapper))
                     .given(new ShipmentScheduledV1(FIXED_ID, "Alice Smith", FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("ShipmentScheduledV1_SnakeCase"))
+                    .whenSerializedAs(Snapshot.forMessageType("ShipmentScheduledV1"))
                     .thenContractIsUnchanged();
         }
 
@@ -212,7 +213,7 @@ final class SerializationContractTests {
         void given_enumByName_whenSerialized_enumIsAString() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV3_EnumByName"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV3"))
                     .thenContractIsUnchanged();
         }
 
@@ -220,7 +221,7 @@ final class SerializationContractTests {
         void given_enumByIndex_whenSerialized_enumIsANumber() {
             MessageContract.specification(Json.Jackson.of(enumIndexMapper))
                     .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV3_EnumByIndex"))
+                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV3"))
                     .thenContractIsUnchanged();
         }
 
@@ -228,7 +229,7 @@ final class SerializationContractTests {
         void given_jsonPropertyRename_whenSerialized_logicalFieldNamesAreCaught() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new UserOnboardedV2(FIXED_ID, "alice@example.com"))
-                    .whenSerializedAs(Snapshot.forMessageType("UserOnboardedV2_JsonProperty"))
+                    .whenSerializedAs(Snapshot.forMessageType("UserOnboardedV2"))
                     .thenContractIsUnchanged();
         }
     }
