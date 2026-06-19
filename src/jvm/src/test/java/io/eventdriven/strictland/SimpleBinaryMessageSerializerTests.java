@@ -47,7 +47,10 @@ final class SimpleBinaryMessageSerializerTests {
                 .whenSerializedAs(SnapshotVariant.named("AliceVariant"))
                 .thenContractIsUnchanged();
 
-        assertTrue(java.nio.file.Files.exists(tmp.resolve("OrderPlaced.AliceVariant.approved.txt")));
+        assertTrue(
+                java.nio.file.Files.exists(
+                        tmp.resolve(
+                                "OrderPlaced.1.SimpleBinaryMessageSerializerTests.givenCustomStorageAndAVariant_whenSerialized_theLabelKeysTheSnapshot.AliceVariant.approved.txt")));
     }
 
     @Test

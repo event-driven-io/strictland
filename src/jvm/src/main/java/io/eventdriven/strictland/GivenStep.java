@@ -14,20 +14,23 @@ import org.jspecify.annotations.Nullable;
 public class GivenStep<S> {
     final @Nullable Snapshot snapshot;
     final @Nullable S instance;
+    final String version;
     final MessageSerializer serializer;
     final SnapshotStorage storage;
-    final @Nullable SnapshotLocation location;
+    final SnapshotLocation location;
     final MessageTypeMapper typeMapper;
 
     GivenStep(
             @Nullable Snapshot snapshot,
             @Nullable S instance,
+            String version,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            @Nullable SnapshotLocation location,
+            SnapshotLocation location,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
+        this.version = version;
         this.serializer = serializer;
         this.storage = storage;
         this.location = location;
@@ -54,7 +57,7 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerialized() {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, null, serializer, storage, location, typeMapper);
+        return new ThenContractStep<>(instance, null, version, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -78,7 +81,7 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerializedAs(Snapshot destination) {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, destination, serializer, storage, location, typeMapper);
+        return new ThenContractStep<>(instance, destination, version, serializer, storage, location, typeMapper);
     }
 
     /**
@@ -104,7 +107,13 @@ public class GivenStep<S> {
         var instance = requireInstance();
         var label = ((SnapshotVariant.ByLabel) variant).name();
         return new ThenContractStep<>(
-                instance, Snapshot.of(instance.getClass()).variant(label), serializer, storage, location, typeMapper);
+                instance,
+                Snapshot.of(instance.getClass()).variant(label),
+                version,
+                serializer,
+                storage,
+                location,
+                typeMapper);
     }
 
     private S requireInstance() {
@@ -135,6 +144,7 @@ public class GivenStep<S> {
      * @return the step where you check compatibility, choosing the direction
      */
     public <T> ThenCompatibilityStep<S, T> whenDeserializedAs(Class<T> targetType) {
-        return new ThenCompatibilityStep<>(snapshot, instance, targetType, serializer, storage, location, typeMapper);
+        return new ThenCompatibilityStep<>(
+                snapshot, instance, version, targetType, serializer, storage, location, typeMapper);
     }
 }

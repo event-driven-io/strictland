@@ -42,10 +42,10 @@ final class SnapshotLayoutResolverTests {
     }
 
     @Test
-    void builtInDefaultIsFlat_whenEverythingUnset() {
+    void builtInDefaultIsNextToTest_whenEverythingUnset() {
         var resolved = SnapshotLayoutResolver.resolve(null, Optional.empty(), Optional::empty);
 
-        assertEquals(SnapshotLayout.Strategy.FLAT, resolved.strategy());
+        assertEquals(SnapshotLayout.nextToTest(), resolved);
     }
 
     @Test
@@ -64,7 +64,7 @@ final class SnapshotLayoutResolverTests {
 
         var resolved = SnapshotLayoutResolver.resolve(null);
 
-        assertEquals(SnapshotLayout.Strategy.FLAT, resolved.strategy());
+        assertEquals(SnapshotLayout.nextToTest(), resolved);
     }
 
     @Test
@@ -74,8 +74,19 @@ final class SnapshotLayoutResolverTests {
                 Optional.empty(),
                 () -> SnapshotLayoutProperties.fromClasspath("fixtures/layout-sample.properties"));
 
-        assertEquals(SnapshotLayout.Strategy.GLOBAL_ROOT, resolved.strategy());
+        assertEquals(SnapshotRoot.GLOBAL_ROOT, resolved.location());
         assertEquals(SnapshotGrouping.PER_CONTRACT, resolved.grouping());
         assertEquals("src/test/resources/snapshots", resolved.rootPath());
+        assertEquals(TestClassNaming.SIMPLE, resolved.testClassNaming());
+    }
+
+    @Test
+    void perSpec_layoutWithFullTestClassNaming_isThreadedThrough() {
+        var qualified = SnapshotLayout.nextToTest().testClassNaming(TestClassNaming.FULL);
+
+        var resolved = SnapshotLayoutResolver.resolve(qualified, Optional.of(global), () -> Optional.of(file));
+
+        assertSame(qualified, resolved);
+        assertEquals(TestClassNaming.FULL, resolved.testClassNaming());
     }
 }

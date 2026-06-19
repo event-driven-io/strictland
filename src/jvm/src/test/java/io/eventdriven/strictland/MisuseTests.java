@@ -71,7 +71,8 @@ final class MisuseTests {
 
     @Test
     void given_malformedStoredSnapshot_whenDeserialized_thenFailsBecauseDeserializationFailed() {
-        var path = Path.of("src/test/java/io/eventdriven/strictland/Malformed.approved.txt");
+        var path = Path.of(
+                "src/test/java/io/eventdriven/strictland/snapshots/MisuseTests/Malformed.reference.snap.approved.json");
 
         var exception = assertThrows(
                 RuntimeException.class,
@@ -86,7 +87,8 @@ final class MisuseTests {
 
     @Test
     void given_storedSnapshotWithNullBody_whenDeserialized_thenFailsBecauseItDeserializedToEmpty() {
-        var path = Path.of("src/test/java/io/eventdriven/strictland/NullBody.approved.txt");
+        var path = Path.of(
+                "src/test/java/io/eventdriven/strictland/snapshots/MisuseTests/NullBody.reference.snap.approved.json");
 
         var exception = assertThrows(
                 AssertionError.class,

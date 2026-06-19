@@ -4,8 +4,13 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * File-backed snapshot storage. It is a thin wrapper that reads and stores snapshots.
@@ -21,6 +26,7 @@ class FileSnapshotStorage implements SnapshotStorage {
 
     private static final String APPROVED_MARKER = ".approved.";
     private static final String RECEIVED_MARKER = ".received.";
+    private static final String SNAP_APPROVED_MARKER = ".snap.approved.";
 
     @Override
     public void store(String pathWithName, byte[] payload) {
@@ -59,5 +65,39 @@ class FileSnapshotStorage implements SnapshotStorage {
         } catch (IOException e) {
             return Optional.empty();
         }
+    }
+
+    @Override
+    public List<byte[]> readAll(SnapshotReadLocation location) {
+        var folder = location.folder();
+        if (folder == null || !Files.isDirectory(folder)) {
+            return List.of();
+        }
+        try (Stream<Path> files = Files.list(folder)) {
+            var matches = files.filter(path -> {
+                        var name = path.getFileName().toString();
+                        return name.startsWith(location.prefix())
+                                && name.contains(APPROVED_MARKER)
+                                && matchesVariant(name, location.variant());
+                    })
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                    .toList();
+            var payloads = new ArrayList<byte[]>(matches.size());
+            for (var match : matches) {
+                payloads.add(Files.readAllBytes(match));
+            }
+            return List.copyOf(payloads);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to list snapshots in " + folder, e);
+        }
+    }
+
+    private static boolean matchesVariant(String fileName, @Nullable String variant) {
+        if (variant == null) {
+            return true;
+        }
+        var markerAt = fileName.indexOf(SNAP_APPROVED_MARKER);
+        var base = markerAt < 0 ? fileName : fileName.substring(0, markerAt);
+        return base.endsWith("." + variant);
     }
 }

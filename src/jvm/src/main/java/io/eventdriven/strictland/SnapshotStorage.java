@@ -1,5 +1,6 @@
 package io.eventdriven.strictland;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -45,4 +46,19 @@ public interface SnapshotStorage {
      * @return the stored payload, or {@link Optional#empty()} when nothing has been approved yet
      */
     Optional<byte[]> read(String name);
+
+    /**
+     * Reads every approved snapshot at a read-location, the matches sharing a stable name prefix, in a
+     * deterministic order. A compatibility check replays them all, so a snapshot one test wrote can be
+     * read by another.
+     *
+     * <p>The default reads by the location's {@code prefix} as an exact name, enough for a custom store
+     * that keys snapshots by that name. File-backed storage overrides it to glob the location's folder.</p>
+     *
+     * @param location the folder and name prefix the matching snapshots share
+     * @return the matching payloads in a deterministic order, empty when nothing matches
+     */
+    default List<byte[]> readAll(SnapshotReadLocation location) {
+        return read(location.prefix()).map(List::of).orElseGet(List::of);
+    }
 }

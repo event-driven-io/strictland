@@ -69,7 +69,7 @@ final class StrictlandDefaultsTests {
 
         assertSame(config, returned);
         assertEquals(
-                SnapshotLayout.Strategy.NEXT_TO_TEST,
-                Strictland.snapshotLayout().orElseThrow().strategy());
+                SnapshotRoot.NEXT_TO_TEST,
+                Strictland.snapshotLayout().orElseThrow().location());
     }
 }

@@ -13,6 +13,12 @@ package io.eventdriven.strictland;
 public enum SnapshotGrouping {
 
     /**
+     * Stores snapshots straight under the root, with no group folder. Pair it with an empty wrapper
+     * folder and a next-to-test root to keep snapshots flat in the test's source directory.
+     */
+    NONE,
+
+    /**
      * Stores snapshot in a folder per message contract, named after the message type.
      * All of the message type's snapshots sit together, which makes it easier to navigate and locate different message snapshots.
      */

@@ -87,7 +87,9 @@ final class SpecificationOptionsTests {
                 .whenSerialized()
                 .thenContractIsUnchanged();
 
-        assertEquals("MemberJoined", captured[0]);
+        assertEquals(
+                "MemberJoined.1.SpecificationOptionsTests.givenACustomTypeMapper_whenContractBuilt_thenItNamesTheStoredSnapshot",
+                captured[0]);
     }
 
     @Test

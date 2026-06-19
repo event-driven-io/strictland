@@ -19,21 +19,35 @@ import org.jspecify.annotations.Nullable;
  */
 public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageType, Snapshot.ByPath {
 
+    /** The version a snapshot carries when you don't pin one. */
+    String DEFAULT_VERSION = "1";
+
     /**
      * A snapshot found by its message class, named after the class's simple name.
      *
      * @param <T> the message type the snapshot holds
      * @param messageClass the class whose name identifies the snapshot
+     * @param version the version label the snapshot is pinned to, defaulting to {@value #DEFAULT_VERSION}
      * @param variant the label naming the variant of the message type data that will be snapshotted
      */
-    record ByClass<T>(Class<T> messageClass, @Nullable String variant) implements Snapshot {
+    record ByClass<T>(
+            Class<T> messageClass, String version, @Nullable String variant) implements Snapshot {
         /**
          * Points at a snapthot's variant and records for the a {@link #messageClass()}.
          * @param variant the label naming the variant, used as the snapshot's leaf file name
          * @return snapshot variant for specific {@link #messageClass()}
          */
         public ByClass<T> variant(String variant) {
-            return new ByClass<>(messageClass, variant);
+            return new ByClass<>(messageClass, version, variant);
+        }
+
+        /**
+         * Pins the snapshot to a message type version.
+         * @param version the version label the snapshot is pinned to
+         * @return snapshot pinned to {@code version} for the same {@link #messageClass()}
+         */
+        public ByClass<T> version(String version) {
+            return new ByClass<>(messageClass, version, variant);
         }
     }
 
@@ -42,16 +56,28 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * event store or message bus records - rather than a Java class.
      *
      * @param messageType the name identifying the snapshot
+     * @param version the version label the snapshot is pinned to, defaulting to {@value #DEFAULT_VERSION}
      * @param variant the label naming the variant of the message type data that will be snapshotted
      */
-    record ByMessageType(String messageType, @Nullable String variant) implements Snapshot {
+    record ByMessageType(
+            String messageType, String version, @Nullable String variant) implements Snapshot {
         /**
          * Points at a snapthot's variant and records for the a {@link #messageType()}.
          * @param variant the label naming the variant, used as the snapshot's leaf file name
          * @return snapshot variant for specific {@link #messageType()}
          */
         public ByMessageType variant(String variant) {
-            return new ByMessageType(messageType, variant);
+            return new ByMessageType(messageType, version, variant);
+        }
+
+        /**
+         * Pins the snapshot to a version, the segment that lets several versions of one message type
+         * keep distinct snapshots.
+         * @param version the version label the snapshot is pinned to
+         * @return snapshot pinned to {@code version} for the same {@link #messageType()}
+         */
+        public ByMessageType version(String version) {
+            return new ByMessageType(messageType, version, variant);
         }
     }
 
@@ -74,7 +100,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * @return the snapshot, ready for a {@code given(...)} step
      */
     static <T> ByClass<T> of(Class<T> sourceType) {
-        return new ByClass<>(sourceType, null);
+        return new ByClass<>(sourceType, DEFAULT_VERSION, null);
     }
 
     /**
@@ -95,6 +121,6 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
      * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step
      */
     static ByMessageType forMessageType(String messageType) {
-        return new ByMessageType(messageType, null);
+        return new ByMessageType(messageType, DEFAULT_VERSION, null);
     }
 }

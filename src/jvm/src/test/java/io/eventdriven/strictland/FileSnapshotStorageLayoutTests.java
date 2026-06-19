@@ -83,22 +83,24 @@ final class FileSnapshotStorageLayoutTests {
     }
 
     @Test
-    void flat_usesTheLeafAsTheFileName(@TempDir Path src) {
-        var location = anchoredAt(src, SnapshotLayout.flat(), ".json");
+    void noneGrouping_emptyWrapper_usesTheLeafAsTheFileName(@TempDir Path src) {
+        var location = anchoredAt(
+                src, SnapshotLayout.nextToTest().grouping(SnapshotGrouping.NONE).wrapperFolder(""), ".json");
 
         var key = location.resolve("OrderInitiated", "FlatLeaf");
 
-        assertEquals(src.resolve("FlatLeaf.approved.txt").toString(), key);
+        assertEquals(src.resolve("FlatLeaf.snap.approved.json").toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
-    void flat_whenLeafEqualsTheGroup_keepsTheContractNameAsFileName(@TempDir Path src) {
-        var location = anchoredAt(src, SnapshotLayout.flat(), ".json");
+    void noneGrouping_emptyWrapper_whenLeafEqualsTheGroup_keepsTheContractNameAsFileName(@TempDir Path src) {
+        var location = anchoredAt(
+                src, SnapshotLayout.nextToTest().grouping(SnapshotGrouping.NONE).wrapperFolder(""), ".json");
 
         var key = location.resolve("FlatContract", "FlatContract");
 
-        assertEquals(src.resolve("FlatContract.approved.txt").toString(), key);
+        assertEquals(src.resolve("FlatContract.snap.approved.json").toString(), key);
         assertRoundTrips(key);
     }
 
@@ -177,6 +179,155 @@ final class FileSnapshotStorageLayoutTests {
         var key = blocker.resolve("child.snap.approved.json").toString();
 
         assertThrows(UncheckedIOException.class, () -> storage.store(key, PAYLOAD));
+    }
+
+    @Test
+    void readAll_whenNothingMatchesThePrefix_returnsEmpty(@TempDir Path dir) {
+        var storage = new FileSnapshotStorage();
+
+        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1."));
+
+        assertTrue(payloads.isEmpty());
+    }
+
+    @Test
+    void readAll_whenFolderDoesNotExist_returnsEmpty(@TempDir Path dir) {
+        var storage = new FileSnapshotStorage();
+
+        var payloads = storage.readAll(new SnapshotReadLocation(dir.resolve("missing"), "OrderPlaced.1."));
+
+        assertTrue(payloads.isEmpty());
+    }
+
+    @Test
+    void readAll_whenTheFolderCannotBeListed_wrapsTheIoFailure(@TempDir Path dir) throws Exception {
+        var unreadable = Files.createDirectory(dir.resolve("unreadable"));
+        try {
+            Files.setPosixFilePermissions(
+                    unreadable, java.nio.file.attribute.PosixFilePermissions.fromString("-wx------"));
+        } catch (UnsupportedOperationException e) {
+            org.junit.jupiter.api.Assumptions.abort("POSIX permissions are not supported here");
+        }
+        org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(unreadable), "directory is still readable");
+        var storage = new FileSnapshotStorage();
+        try {
+            assertThrows(
+                    UncheckedIOException.class,
+                    () -> storage.readAll(new SnapshotReadLocation(unreadable, "OrderPlaced.1.")));
+        } finally {
+            Files.setPosixFilePermissions(
+                    unreadable, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));
+        }
+    }
+
+    @Test
+    void readAll_whenFolderIsNull_returnsEmpty() {
+        var storage = new FileSnapshotStorage();
+
+        var payloads = storage.readAll(new SnapshotReadLocation(null, "OrderPlaced.1."));
+
+        assertTrue(payloads.isEmpty());
+    }
+
+    @Test
+    void resolve_whenNoLayoutIsConfigured_failsBecauseTheLocationCannotPlaceTheFile() {
+        var location = new SnapshotLocation(
+                null, ".json", TestClassNaming.SIMPLE, (packageName, sourceFileName) -> Path.of(""));
+
+        assertThrows(IllegalStateException.class, () -> location.resolve("OrderPlaced", "OrderPlaced"));
+    }
+
+    @Test
+    void defaultReadAll_readsTheExactPrefixName_forACustomStoreKeyedByName() {
+        var stored = "{\"id\":7}".getBytes(UTF_8);
+        var storage = new SnapshotStorage() {
+            @Override
+            public void store(String name, byte[] payload) {}
+
+            @Override
+            public java.util.Optional<byte[]> read(String name) {
+                return name.equals("OrderPlaced.1.") ? java.util.Optional.of(stored) : java.util.Optional.empty();
+            }
+        };
+
+        var payloads = storage.readAll(new SnapshotReadLocation(null, "OrderPlaced.1."));
+
+        assertEquals(1, payloads.size());
+        assertArrayEquals(stored, payloads.get(0));
+    }
+
+    @Test
+    void defaultReadAll_whenTheExactPrefixNameIsAbsent_returnsEmpty() {
+        var storage = new SnapshotStorage() {
+            @Override
+            public void store(String name, byte[] payload) {}
+
+            @Override
+            public java.util.Optional<byte[]> read(String name) {
+                return java.util.Optional.empty();
+            }
+        };
+
+        assertTrue(storage.readAll(new SnapshotReadLocation(null, "Missing.1.")).isEmpty());
+    }
+
+    @Test
+    void readAll_returnsEveryMatchingApprovedFile_sortedByName(@TempDir Path dir) throws Exception {
+        var first = "{\"id\":1}".getBytes(UTF_8);
+        var second = "{\"id\":2}".getBytes(UTF_8);
+        var other = "{\"id\":9}".getBytes(UTF_8);
+        Files.write(dir.resolve("OrderPlaced.1.B.snap.approved.json"), second);
+        Files.write(dir.resolve("OrderPlaced.1.A.snap.approved.json"), first);
+        Files.write(dir.resolve("OrderShipped.1.A.snap.approved.json"), other);
+        Files.write(dir.resolve("OrderPlaced.1.A.snap.received.json"), other);
+        var storage = new FileSnapshotStorage();
+
+        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1."));
+
+        assertEquals(2, payloads.size());
+        assertArrayEquals(first, payloads.get(0));
+        assertArrayEquals(second, payloads.get(1));
+    }
+
+    @Test
+    void readAll_withVariant_returnsOnlyTheMatchingVariantFile(@TempDir Path dir) throws Exception {
+        var withPromotion = "{\"id\":1}".getBytes(UTF_8);
+        var noPromotion = "{\"id\":2}".getBytes(UTF_8);
+        Files.write(dir.resolve("OrderPlaced.1.SomeTest.someTest.WithPromotion.snap.approved.json"), withPromotion);
+        Files.write(dir.resolve("OrderPlaced.1.SomeTest.someTest.NoPromotion.snap.approved.json"), noPromotion);
+        var storage = new FileSnapshotStorage();
+
+        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1.", "WithPromotion"));
+
+        assertEquals(1, payloads.size());
+        assertArrayEquals(withPromotion, payloads.get(0));
+    }
+
+    @Test
+    void readAll_withVariant_thatMatchesNothing_isEmpty(@TempDir Path dir) throws Exception {
+        Files.write(
+                dir.resolve("OrderPlaced.1.SomeTest.someTest.WithPromotion.snap.approved.json"),
+                "{\"id\":1}".getBytes(UTF_8));
+        Files.write(
+                dir.resolve("OrderPlaced.1.SomeTest.someTest.NoPromotion.snap.approved.json"),
+                "{\"id\":2}".getBytes(UTF_8));
+        var storage = new FileSnapshotStorage();
+
+        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1.", "DoesNotExist"));
+
+        assertTrue(payloads.isEmpty());
+    }
+
+    @Test
+    void readAll_withVariant_whenNoSnapMarker_matchesAgainstTheWholeFileName(@TempDir Path dir) throws Exception {
+        var payload = "{\"id\":1}".getBytes(UTF_8);
+        Files.write(dir.resolve("OrderPlaced.1.SomeTest.approved.json.WithPromotion"), payload);
+        var storage = new FileSnapshotStorage();
+
+        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1.", "WithPromotion"));
+
+        assertEquals(1, payloads.size());
+        assertArrayEquals(payload, payloads.get(0));
     }
 
     private static void assertRoundTrips(String key) {
