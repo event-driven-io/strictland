@@ -33,7 +33,7 @@ public class ThenCompatibilityStep<S, T> {
     private final Class<T> targetType;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final SnapshotLocation location;
+    private final @Nullable SnapshotLayout layout;
     private final MessageTypeMapper typeMapper;
 
     ThenCompatibilityStep(
@@ -43,7 +43,7 @@ public class ThenCompatibilityStep<S, T> {
             Class<T> targetType,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            SnapshotLocation location,
+            @Nullable SnapshotLayout layout,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
@@ -51,7 +51,7 @@ public class ThenCompatibilityStep<S, T> {
         this.targetType = targetType;
         this.serializer = serializer;
         this.storage = storage;
-        this.location = location;
+        this.layout = layout;
         this.typeMapper = typeMapper;
     }
 
@@ -218,17 +218,17 @@ public class ThenCompatibilityStep<S, T> {
                 yield List.of(bytes);
             }
             case Snapshot.ByClass<?> s ->
-                readAll(location.resolveForRead(
-                        typeMapper.name(s.messageClass()), resolveVersion(s.version()), s.variant()));
+                readAll(SnapshotName.of(typeMapper.name(s.messageClass()), resolveVersion(s.version()), s.variant()));
             case Snapshot.ByMessageType s ->
-                readAll(location.resolveForRead(s.messageType(), resolveVersion(s.version()), s.variant()));
+                readAll(SnapshotName.of(s.messageType(), resolveVersion(s.version()), s.variant()));
         };
     }
 
-    private List<byte[]> readAll(SnapshotReadLocation readLocation) {
-        var payloads = storage.readAll(readLocation);
+    private List<byte[]> readAll(SnapshotName name) {
+        var folder = layout == null ? null : name.folder(layout);
+        var payloads = storage.readAll(folder, name.readPrefix(), name.variant());
         if (payloads.isEmpty()) {
-            throw new RuntimeException("Cannot read snapshot file: " + readLocation.prefix());
+            throw new RuntimeException("Cannot read snapshot file: " + name.readPrefix());
         }
         return payloads;
     }

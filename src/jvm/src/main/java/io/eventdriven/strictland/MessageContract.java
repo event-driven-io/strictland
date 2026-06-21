@@ -1,5 +1,7 @@
 package io.eventdriven.strictland;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Strictland is a contract-testing library for the messages your code sends and stores: events,
  * commands, queue messages, HTTP requests and responses, and anything else you serialize for someone
@@ -24,7 +26,7 @@ package io.eventdriven.strictland;
  * </pre>
  *
  * <p>The approved file each check compares against lives in a committed contract registry, under
- * {@code src/test/resources/contract-snapshots} by default, so a contract change shows up in the same
+ * {@code src/test/resources/contract-registry} by default, so a contract change shows up in the same
  * pull request as the code that caused it.
  * {@link Snapshot} picks which file backs a check, and {@link PublicApiScanner} renders a package's
  * public API as text so you can approval-test the surface itself.</p>
@@ -32,7 +34,7 @@ package io.eventdriven.strictland;
 public class MessageContract {
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final SnapshotLocation location;
+    private final @Nullable SnapshotLayout layout;
     private final MessageTypeMapper typeMapper;
 
     private MessageContract(SpecificationOptions options) {
@@ -40,12 +42,10 @@ public class MessageContract {
         var configuredStorage = options.storage();
         if (configuredStorage != null) {
             this.storage = configuredStorage;
-            this.location = new SnapshotLocation(null, options.serializer().fileExtension(), TestClassNaming.SIMPLE);
+            this.layout = null;
         } else {
-            var layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
+            this.layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
             this.storage = new FileSnapshotStorage();
-            this.location =
-                    new SnapshotLocation(layout, options.serializer().fileExtension(), layout.testClassNaming());
         }
         var configuredTypeMapper = options.typeMapper();
         this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.fullyQualifiedName();
@@ -90,7 +90,15 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(snapshot, null, snapshot.version(), serializer, storage, location, typeMapper);
+        return new GivenStep<>(
+                snapshot,
+                null,
+                snapshot.version(),
+                serializer,
+                storage,
+                layout,
+                serializer.fileExtension(),
+                typeMapper);
     }
 
     /**
@@ -105,7 +113,15 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(snapshot, null, snapshot.version(), serializer, storage, location, typeMapper);
+        return new GivenStep<>(
+                snapshot,
+                null,
+                snapshot.version(),
+                serializer,
+                storage,
+                layout,
+                serializer.fileExtension(),
+                typeMapper);
     }
 
     /**
@@ -119,7 +135,15 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(snapshot, null, Snapshot.DEFAULT_VERSION, serializer, storage, location, typeMapper);
+        return new GivenStep<>(
+                snapshot,
+                null,
+                Snapshot.DEFAULT_VERSION,
+                serializer,
+                storage,
+                layout,
+                serializer.fileExtension(),
+                typeMapper);
     }
 
     /**
@@ -134,7 +158,15 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(null, instance, Snapshot.DEFAULT_VERSION, serializer, storage, location, typeMapper);
+        return new GivenStep<>(
+                null,
+                instance,
+                Snapshot.DEFAULT_VERSION,
+                serializer,
+                storage,
+                layout,
+                serializer.fileExtension(),
+                typeMapper);
     }
 
     /**
@@ -151,6 +183,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance, String version) {
-        return new GivenStep<>(null, instance, version, serializer, storage, location, typeMapper);
+        return new GivenStep<>(
+                null, instance, version, serializer, storage, layout, serializer.fileExtension(), typeMapper);
     }
 }

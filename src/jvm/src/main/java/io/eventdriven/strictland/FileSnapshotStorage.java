@@ -20,13 +20,13 @@ import org.jspecify.annotations.Nullable;
  * and fails the check.</p>
  *
  * <p> `FileSnapshotStorage` is a thin wrapper that just writes bytes and reads them back.
- * The path, layout, test variant label are resolved byt the caller (so test suite).</p>
+ * The path, layout, and variant are resolved by the caller before the bytes reach storage.</p>
  */
 class FileSnapshotStorage implements SnapshotStorage {
 
     private static final String APPROVED_MARKER = ".approved.";
     private static final String RECEIVED_MARKER = ".received.";
-    private static final String SNAP_APPROVED_MARKER = ".snap.approved.";
+    static final String SNAP_APPROVED_MARKER = ".snap.approved.";
 
     @Override
     public void store(String pathWithName, byte[] payload) {
@@ -68,17 +68,16 @@ class FileSnapshotStorage implements SnapshotStorage {
     }
 
     @Override
-    public List<byte[]> readAll(SnapshotReadLocation location) {
-        var folder = location.folder();
+    public List<byte[]> readAll(@Nullable Path folder, String prefix, @Nullable String variant) {
         if (folder == null || !Files.isDirectory(folder)) {
             return List.of();
         }
         try (Stream<Path> files = Files.list(folder)) {
             var matches = files.filter(path -> {
                         var name = path.getFileName().toString();
-                        return name.startsWith(location.prefix())
+                        return name.startsWith(prefix)
                                 && name.contains(APPROVED_MARKER)
-                                && matchesVariant(name, location.variant());
+                                && matchesVariant(name, variant);
                     })
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
                     .toList();

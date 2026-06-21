@@ -16,7 +16,8 @@ public class ThenContractStep<S> {
     private final String version;
     private final MessageSerializer serializer;
     private final SnapshotStorage storage;
-    private final SnapshotLocation location;
+    private final @Nullable SnapshotLayout layout;
+    private final String fileExtension;
     private final MessageTypeMapper typeMapper;
 
     ThenContractStep(
@@ -25,14 +26,16 @@ public class ThenContractStep<S> {
             String version,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            SnapshotLocation location,
+            @Nullable SnapshotLayout layout,
+            String fileExtension,
             MessageTypeMapper typeMapper) {
         this.instance = instance;
         this.destination = destination;
         this.version = version;
         this.serializer = serializer;
         this.storage = storage;
-        this.location = location;
+        this.layout = layout;
+        this.fileExtension = fileExtension;
         this.typeMapper = typeMapper;
     }
 
@@ -58,13 +61,19 @@ public class ThenContractStep<S> {
 
     private String snapshotKey() {
         return switch (destination) {
-            case null -> location.resolveForWrite(typeMapper.name(instance.getClass()), version, null);
+            case null -> writePath(SnapshotName.of(typeMapper.name(instance.getClass()), version, null));
             case Snapshot.ByClass<?> b ->
-                location.resolveForWrite(typeMapper.name(b.messageClass()), resolveVersion(b.version()), b.variant());
+                writePath(SnapshotName.of(typeMapper.name(b.messageClass()), resolveVersion(b.version()), b.variant()));
             case Snapshot.ByMessageType b ->
-                location.resolveForWrite(b.messageType(), resolveVersion(b.version()), b.variant());
+                writePath(SnapshotName.of(b.messageType(), resolveVersion(b.version()), b.variant()));
             case Snapshot.ByPath b -> b.path().toString();
         };
+    }
+
+    private String writePath(SnapshotName name) {
+        return layout == null
+                ? name.base()
+                : name.resolve(layout, fileExtension).toString();
     }
 
     private String resolveVersion(String snapshotVersion) {

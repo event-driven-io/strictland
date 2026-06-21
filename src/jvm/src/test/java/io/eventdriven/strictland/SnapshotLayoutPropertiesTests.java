@@ -40,49 +40,15 @@ final class SnapshotLayoutPropertiesTests {
     }
 
     @Test
-    void testClassNamingSimple_isParsed() {
-        var props = new Properties();
-        props.setProperty("strictland.layout.testClassNaming", "simple");
-
-        assertEquals(
-                TestClassNaming.SIMPLE,
-                SnapshotLayoutProperties.fromProperties(props).testClassNaming());
-    }
-
-    @Test
-    void testClassNamingFull_isParsed() {
-        var props = new Properties();
-        props.setProperty("strictland.layout.testClassNaming", "full");
-
-        assertEquals(
-                TestClassNaming.FULL,
-                SnapshotLayoutProperties.fromProperties(props).testClassNaming());
-    }
-
-    @Test
-    void unknownTestClassNaming_throwsNamingTheKeyAndValue() {
-        var props = new Properties();
-        props.setProperty("strictland.layout.testClassNaming", "sideways");
-
-        var exception =
-                assertThrows(IllegalArgumentException.class, () -> SnapshotLayoutProperties.fromProperties(props));
-        var message = requireNonNull(exception.getMessage());
-        assertTrue(message.contains("strictland.layout.testClassNaming"));
-        assertTrue(message.contains("sideways"));
-    }
-
-    @Test
     void allKeysTogether_buildTheFullLayout() {
         var props = new Properties();
         props.setProperty("strictland.layout.rootPath", "src/test/resources");
         props.setProperty("strictland.layout.wrapperFolder", "approved");
-        props.setProperty("strictland.layout.testClassNaming", "full");
 
         var layout = SnapshotLayoutProperties.fromProperties(props);
 
         assertEquals("src/test/resources", layout.rootPath());
         assertEquals("approved", layout.wrapperFolder());
-        assertEquals(TestClassNaming.FULL, layout.testClassNaming());
     }
 
     @Test
@@ -92,7 +58,6 @@ final class SnapshotLayoutPropertiesTests {
         assertTrue(layout.isPresent());
         assertEquals("src/test/resources", layout.get().rootPath());
         assertEquals("approved", layout.get().wrapperFolder());
-        assertEquals(TestClassNaming.SIMPLE, layout.get().testClassNaming());
     }
 
     @Test

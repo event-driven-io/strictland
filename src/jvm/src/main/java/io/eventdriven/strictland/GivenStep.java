@@ -17,7 +17,8 @@ public class GivenStep<S> {
     final String version;
     final MessageSerializer serializer;
     final SnapshotStorage storage;
-    final SnapshotLocation location;
+    final @Nullable SnapshotLayout layout;
+    final String fileExtension;
     final MessageTypeMapper typeMapper;
 
     GivenStep(
@@ -26,14 +27,16 @@ public class GivenStep<S> {
             String version,
             MessageSerializer serializer,
             SnapshotStorage storage,
-            SnapshotLocation location,
+            @Nullable SnapshotLayout layout,
+            String fileExtension,
             MessageTypeMapper typeMapper) {
         this.snapshot = snapshot;
         this.instance = instance;
         this.version = version;
         this.serializer = serializer;
         this.storage = storage;
-        this.location = location;
+        this.layout = layout;
+        this.fileExtension = fileExtension;
         this.typeMapper = typeMapper;
     }
 
@@ -57,7 +60,7 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerialized() {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, null, version, serializer, storage, location, typeMapper);
+        return new ThenContractStep<>(instance, null, version, serializer, storage, layout, fileExtension, typeMapper);
     }
 
     /**
@@ -81,7 +84,8 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerializedAs(Snapshot destination) {
         var instance = requireInstance();
-        return new ThenContractStep<>(instance, destination, version, serializer, storage, location, typeMapper);
+        return new ThenContractStep<>(
+                instance, destination, version, serializer, storage, layout, fileExtension, typeMapper);
     }
 
     /**
@@ -112,7 +116,8 @@ public class GivenStep<S> {
                 version,
                 serializer,
                 storage,
-                location,
+                layout,
+                fileExtension,
                 typeMapper);
     }
 
@@ -145,6 +150,6 @@ public class GivenStep<S> {
      */
     public <T> ThenCompatibilityStep<S, T> whenDeserializedAs(Class<T> targetType) {
         return new ThenCompatibilityStep<>(
-                snapshot, instance, version, targetType, serializer, storage, location, typeMapper);
+                snapshot, instance, version, targetType, serializer, storage, layout, typeMapper);
     }
 }
