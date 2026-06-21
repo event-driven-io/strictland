@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @NullMarked
-final class GlobalRootLayoutEndToEndTests {
+final class RegistryLayoutOverrideEndToEndTests {
 
     private static final UUID SHIPMENT_ID = UUID.fromString("00000000-0000-0000-0000-000000000020");
 
@@ -18,8 +18,9 @@ final class GlobalRootLayoutEndToEndTests {
     @BeforeEach
     void setGlobalDefault() {
         Strictland.defaults()
-                .snapshotLayout(SnapshotLayout.globalRoot("src/test/resources/snapshots")
-                        .grouping(SnapshotGrouping.PER_CONTRACT));
+                .snapshotLayout(SnapshotLayout.registry()
+                        .rootPath("src/test/resources")
+                        .wrapperFolder("contract-snapshots-override"));
     }
 
     @AfterEach

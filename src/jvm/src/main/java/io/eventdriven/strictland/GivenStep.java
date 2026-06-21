@@ -41,7 +41,7 @@ public class GivenStep<S> {
      * Serializes the message you defined with {@code given(...)}.
      *
      * <p>The next step, {@link ThenContractStep#thenContractIsUnchanged()}, compares this serialized
-     * output against an approved snapshot, named after the message's class and saved beside your test,
+     * output against an approved snapshot, named after the message's type and saved in the contract registry,
      * and fails the test if the format has changed.</p>
      *
      * <pre>

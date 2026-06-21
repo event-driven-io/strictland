@@ -13,28 +13,24 @@ import org.jspecify.annotations.Nullable;
  * #fromClasspath()} to honour a file a project ships, and {@link #fromProperties(Properties)} when
  * you already hold the values and want a pure, testable conversion.
  *
- * <p>Every key is optional and falls back to the {@link SnapshotLayout#nextToTest()} defaults. The
- * recognised keys are {@code strictland.layout.location} ({@code nextToTest} or {@code globalRoot}),
- * {@code strictland.layout.grouping} ({@code perTestClass}, {@code perContract}, or {@code none}),
- * {@code strictland.layout.wrapperFolder}, {@code strictland.layout.rootPath} (read only when the
- * location is {@code globalRoot}), and {@code strictland.layout.testClassNaming} ({@code simple} or
- * {@code full}). An unrecognised location, grouping, or test-class-naming value throws {@link
- * IllegalArgumentException} naming the key and the value.</p>
+ * <p>Every key is optional and falls back to the {@link SnapshotLayout#registry()} defaults. The
+ * recognised keys are {@code strictland.layout.rootPath}, {@code strictland.layout.wrapperFolder}, and
+ * {@code strictland.layout.testClassNaming} ({@code simple} or {@code full}). An unrecognised
+ * {@code testClassNaming} value throws {@link IllegalArgumentException} naming the key and the
+ * value.</p>
  *
  * <pre>
  * var props = new Properties();
- * props.setProperty("strictland.layout.location", "globalRoot");
- * props.setProperty("strictland.layout.rootPath", "src/test/resources/snapshots");
+ * props.setProperty("strictland.layout.rootPath", "src/test/resources");
+ * props.setProperty("strictland.layout.wrapperFolder", "contract-snapshots");
  * SnapshotLayout layout = SnapshotLayoutProperties.fromProperties(props);
  * </pre>
  */
 public final class SnapshotLayoutProperties {
 
     private static final String DEFAULT_RESOURCE = "strictland.properties";
-    private static final String LOCATION_KEY = "strictland.layout.location";
-    private static final String GROUPING_KEY = "strictland.layout.grouping";
-    private static final String WRAPPER_FOLDER_KEY = "strictland.layout.wrapperFolder";
     private static final String ROOT_PATH_KEY = "strictland.layout.rootPath";
+    private static final String WRAPPER_FOLDER_KEY = "strictland.layout.wrapperFolder";
     private static final String TEST_CLASS_NAMING_KEY = "strictland.layout.testClassNaming";
 
     private SnapshotLayoutProperties() {}
@@ -42,10 +38,10 @@ public final class SnapshotLayoutProperties {
     /**
      * Reads {@code strictland.properties} from the classpath, returning the layout it describes, or
      * empty when no such file is present. Use this to let a project opt into a layout by shipping the
-     * file, while a project that doesn't keeps the {@link SnapshotLayout#nextToTest()} defaults.
+     * file, while a project that doesn't keeps the {@link SnapshotLayout#registry()} defaults.
      *
      * <pre>
-     * SnapshotLayout layout = SnapshotLayoutProperties.fromClasspath().orElseGet(SnapshotLayout::nextToTest);
+     * SnapshotLayout layout = SnapshotLayoutProperties.fromClasspath().orElseGet(SnapshotLayout::registry);
      * </pre>
      *
      * @return the layout read from {@code strictland.properties}, or empty if the file is absent
@@ -74,25 +70,25 @@ public final class SnapshotLayoutProperties {
 
     /**
      * Converts properties into a {@link SnapshotLayout}, with any absent key falling back to the
-     * {@link SnapshotLayout#nextToTest()} default. This is the pure core the classpath reader builds
+     * {@link SnapshotLayout#registry()} default. This is the pure core the classpath reader builds
      * on, handy when you hold the values yourself, for instance in a test.
      *
      * <pre>
      * var props = new Properties();
-     * props.setProperty("strictland.layout.grouping", "perContract");
+     * props.setProperty("strictland.layout.wrapperFolder", "approved");
      * SnapshotLayout layout = SnapshotLayoutProperties.fromProperties(props);
      * </pre>
      *
      * @param props the configuration to read the layout from
      * @return the layout the properties describe
-     * @throws IllegalArgumentException if a location or grouping value is not recognised
+     * @throws IllegalArgumentException if a test-class-naming value is not recognised
      */
     public static SnapshotLayout fromProperties(Properties props) {
-        var layout = startingLayout(props.getProperty(LOCATION_KEY), props.getProperty(ROOT_PATH_KEY));
+        var layout = SnapshotLayout.registry();
 
-        var grouping = props.getProperty(GROUPING_KEY);
-        if (grouping != null) {
-            layout = layout.grouping(grouping(grouping));
+        var rootPath = props.getProperty(ROOT_PATH_KEY);
+        if (rootPath != null) {
+            layout = layout.rootPath(rootPath);
         }
 
         var wrapperFolder = props.getProperty(WRAPPER_FOLDER_KEY);
@@ -106,26 +102,6 @@ public final class SnapshotLayoutProperties {
         }
 
         return layout;
-    }
-
-    private static SnapshotLayout startingLayout(@Nullable String location, @Nullable String rootPath) {
-        if (location == null) {
-            return SnapshotLayout.nextToTest();
-        }
-        return switch (location) {
-            case "nextToTest" -> SnapshotLayout.nextToTest();
-            case "globalRoot" -> SnapshotLayout.globalRoot(rootPath != null ? rootPath : "");
-            default -> throw badValue(LOCATION_KEY, location);
-        };
-    }
-
-    private static SnapshotGrouping grouping(String grouping) {
-        return switch (grouping) {
-            case "perTestClass" -> SnapshotGrouping.PER_TEST_CLASS;
-            case "perContract" -> SnapshotGrouping.PER_CONTRACT;
-            case "none" -> SnapshotGrouping.NONE;
-            default -> throw badValue(GROUPING_KEY, grouping);
-        };
     }
 
     private static TestClassNaming testClassNaming(String testClassNaming) {

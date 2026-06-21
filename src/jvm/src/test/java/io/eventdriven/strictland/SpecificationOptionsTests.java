@@ -42,8 +42,8 @@ final class SpecificationOptionsTests {
     void givenWithers_whenApplied_thenAccessorsReturnWhatWasSet() {
         MessageSerializer serializer = new CustomMessageSerializer(new JsonMapper());
         SnapshotStorage storage = new FileSnapshotStorage();
-        MessageTypeMapper typeMapper = MessageTypeMapper.simpleName();
-        SnapshotLayout layout = SnapshotLayout.nextToTest();
+        MessageTypeMapper typeMapper = MessageTypeMapper.fullyQualifiedName();
+        SnapshotLayout layout = SnapshotLayout.registry();
 
         var options = SpecificationOptions.serializer(serializer)
                 .snapshotStorage(storage)
@@ -82,7 +82,7 @@ final class SpecificationOptionsTests {
 
         MessageContract.specification(SpecificationOptions.serializer(new CustomMessageSerializer(new JsonMapper()))
                         .snapshotStorage(storage)
-                        .messageTypeMapper(MessageTypeMapper.simpleName()))
+                        .messageTypeMapper(MessageTypeMapper.fullyQualifiedName()))
                 .given(new MemberJoined(FIXED_ID, "Alice"))
                 .whenSerialized()
                 .thenContractIsUnchanged();
@@ -98,11 +98,20 @@ final class SpecificationOptionsTests {
     }
 
     @Test
-    void givenSimpleNameMapper_whenQueried_thenItNamesByClassAndResolvesNoName() {
-        var mapper = MessageTypeMapper.simpleName();
+    void givenFullyQualifiedNameMapper_whenQueried_thenItNamesByClassAndResolvesNoName() {
+        var mapper = MessageTypeMapper.fullyQualifiedName();
 
-        assertEquals("String", mapper.name(String.class));
+        assertEquals("java.lang.String", mapper.name(String.class));
         assertTrue(mapper.type("anything").isEmpty());
+    }
+
+    @Test
+    void givenFullyQualifiedNameMapper_whenNamingALocalClassWithNoCanonicalName_thenItFallsBackToTheBinaryName() {
+        record LocalEvent() {}
+        var mapper = MessageTypeMapper.fullyQualifiedName();
+
+        assertNull(LocalEvent.class.getCanonicalName());
+        assertEquals(LocalEvent.class.getTypeName(), mapper.name(LocalEvent.class));
     }
 
     @Test

@@ -17,100 +17,86 @@ import org.junit.jupiter.api.io.TempDir;
 @NullMarked
 final class FileSnapshotStorageLayoutTests {
 
-    private static final String PACKAGE_PATH = "io/eventdriven/strictland";
     private static final String CALLER = "FileSnapshotStorageLayoutTests";
+    private static final String MESSAGE_TYPE = "io.eventdriven.strictland.OrderPlaced";
     private static final byte[] PAYLOAD = "{\"id\":1}".getBytes(UTF_8);
 
-    private static SnapshotLocation anchoredAt(Path testSourceDir, SnapshotLayout layout, String extension) {
-        return new SnapshotLocation(layout, extension, (packageName, sourceFileName) -> testSourceDir);
+    private static Path registryFolder(Path root) {
+        return root.resolve("contract-snapshots").resolve("io/eventdriven/strictland/OrderPlaced");
     }
 
     @Test
-    void globalRoot_perTestClass_resolvesUnderRootAndRoundTrips(@TempDir Path root) {
-        var location = new SnapshotLocation(SnapshotLayout.globalRoot(root.toString()), ".json");
+    void registry_resolvesUnderTheNamespaceFolderAndRoundTrips(@TempDir Path root) {
+        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".json");
 
-        var key = location.resolve("OrderPlaced", "OrderPlaced");
+        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
 
-        var expected = root.resolve(PACKAGE_PATH).resolve(CALLER).resolve("OrderPlaced.snap.approved.json");
+        var expected = registryFolder(root)
+                .resolve("OrderPlaced.1." + CALLER
+                        + ".registry_resolvesUnderTheNamespaceFolderAndRoundTrips.snap.approved.json");
         assertEquals(expected.toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
-    void globalRoot_perContract_groupsUnderMessageType(@TempDir Path root) {
+    void registry_aDotlessType_resolvesWithNoNamespaceFolderAndRoundTrips(@TempDir Path root) {
+        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".json");
+
+        var key = location.resolveForWrite("OrderPlaced", "1", null);
+
+        var expected = root.resolve("contract-snapshots")
+                .resolve("OrderPlaced")
+                .resolve("OrderPlaced.1." + CALLER
+                        + ".registry_aDotlessType_resolvesWithNoNamespaceFolderAndRoundTrips.snap.approved.json");
+        assertEquals(expected.toString(), key);
+        assertRoundTrips(key);
+    }
+
+    @Test
+    void registry_wrapperFolderOverride_replacesTheWrapperSegment(@TempDir Path root) {
         var location = new SnapshotLocation(
-                SnapshotLayout.globalRoot(root.toString()).grouping(SnapshotGrouping.PER_CONTRACT), ".json");
+                SnapshotLayout.registry().rootPath(root.toString()).wrapperFolder("approved"), ".json");
 
-        var key = location.resolve("OrderPlaced", "OrderPlaced");
+        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
 
-        var expected = root.resolve(PACKAGE_PATH).resolve("OrderPlaced").resolve("OrderPlaced.snap.approved.json");
+        var expected = root.resolve("approved")
+                .resolve("io/eventdriven/strictland/OrderPlaced")
+                .resolve("OrderPlaced.1." + CALLER
+                        + ".registry_wrapperFolderOverride_replacesTheWrapperSegment.snap.approved.json");
         assertEquals(expected.toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
-    void nextToTest_perTestClass_anchorsOnTheTestSourceDir(@TempDir Path src) {
-        var location = anchoredAt(src, SnapshotLayout.nextToTest(), ".json");
+    void registry_aVariant_namesTheFileAndReadsBack(@TempDir Path root) {
+        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".json");
 
-        var key = location.resolve("OrderPlaced", "OrderPlaced");
+        var key = location.resolveForWrite(MESSAGE_TYPE, "1", "WithPromotion");
 
-        var expected = src.resolve("snapshots").resolve(CALLER).resolve("OrderPlaced.snap.approved.json");
+        var expected = registryFolder(root)
+                .resolve("OrderPlaced.1." + CALLER
+                        + ".registry_aVariant_namesTheFileAndReadsBack.WithPromotion.snap.approved.json");
         assertEquals(expected.toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
-    void nextToTest_perContract_groupsUnderMessageType(@TempDir Path src) {
-        var location = anchoredAt(src, SnapshotLayout.nextToTest().grouping(SnapshotGrouping.PER_CONTRACT), ".json");
+    void resolveForWrite_customStorage_returnsABareBaseNameWithNoFolder() {
+        var location = new SnapshotLocation(null, ".json", TestClassNaming.SIMPLE);
 
-        var key = location.resolve("OrderPlaced", "OrderPlaced");
+        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
 
-        var expected = src.resolve("snapshots").resolve("OrderPlaced").resolve("OrderPlaced.snap.approved.json");
-        assertEquals(expected.toString(), key);
-        assertRoundTrips(key);
-    }
-
-    @Test
-    void perContract_aLeafDistinctFromTheGroup_namesTheFileAndReadsBack(@TempDir Path root) {
-        var location = new SnapshotLocation(
-                SnapshotLayout.globalRoot(root.toString()).grouping(SnapshotGrouping.PER_CONTRACT), ".json");
-
-        var key = location.resolve("OrderInitiated", "WithPromotion");
-
-        var expected = root.resolve(PACKAGE_PATH).resolve("OrderInitiated").resolve("WithPromotion.snap.approved.json");
-        assertEquals(expected.toString(), key);
-        assertRoundTrips(key);
-    }
-
-    @Test
-    void noneGrouping_emptyWrapper_usesTheLeafAsTheFileName(@TempDir Path src) {
-        var location = anchoredAt(
-                src, SnapshotLayout.nextToTest().grouping(SnapshotGrouping.NONE).wrapperFolder(""), ".json");
-
-        var key = location.resolve("OrderInitiated", "FlatLeaf");
-
-        assertEquals(src.resolve("FlatLeaf.snap.approved.json").toString(), key);
-        assertRoundTrips(key);
-    }
-
-    @Test
-    void noneGrouping_emptyWrapper_whenLeafEqualsTheGroup_keepsTheContractNameAsFileName(@TempDir Path src) {
-        var location = anchoredAt(
-                src, SnapshotLayout.nextToTest().grouping(SnapshotGrouping.NONE).wrapperFolder(""), ".json");
-
-        var key = location.resolve("FlatContract", "FlatContract");
-
-        assertEquals(src.resolve("FlatContract.snap.approved.json").toString(), key);
-        assertRoundTrips(key);
+        assertEquals(
+                "OrderPlaced.1." + CALLER + ".resolveForWrite_customStorage_returnsABareBaseNameWithNoFolder", key);
     }
 
     @Test
     void usesSerializerExtensionInFileName(@TempDir Path root) {
-        var location = new SnapshotLocation(SnapshotLayout.globalRoot(root.toString()), ".csv");
+        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".csv");
 
-        var key = location.resolve("OrderPlaced", "OrderPlaced");
+        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
 
-        assertTrue(key.endsWith("OrderPlaced.snap.approved.csv"), key);
+        assertTrue(key.endsWith(".snap.approved.csv"), key);
     }
 
     @Test
@@ -227,14 +213,6 @@ final class FileSnapshotStorageLayoutTests {
         var payloads = storage.readAll(new SnapshotReadLocation(null, "OrderPlaced.1."));
 
         assertTrue(payloads.isEmpty());
-    }
-
-    @Test
-    void resolve_whenNoLayoutIsConfigured_failsBecauseTheLocationCannotPlaceTheFile() {
-        var location = new SnapshotLocation(
-                null, ".json", TestClassNaming.SIMPLE, (packageName, sourceFileName) -> Path.of(""));
-
-        assertThrows(IllegalStateException.class, () -> location.resolve("OrderPlaced", "OrderPlaced"));
     }
 
     @Test

@@ -19,8 +19,8 @@ import org.jspecify.annotations.Nullable;
  * <pre>
  * MessageContract.specification(
  *         SpecificationOptions.serializer(new CsvMessageSerializer())
- *             .snapshotLayout(SnapshotLayout.nextToTest())
- *             .messageTypeMapper(MessageTypeMapper.simpleName()))
+ *             .snapshotLayout(SnapshotLayout.registry())
+ *             .messageTypeMapper(MessageTypeMapper.fullyQualifiedName()))
  *     .given(new MemberJoined(memberId, "Alice"))
  *     .whenDeserializedAs(MemberJoined.class)
  *     .thenBackwardCompatible();
@@ -55,7 +55,7 @@ public record SpecificationOptions(
 
     /**
      * Returns a copy with a different snapshot store, for keeping approved snapshots somewhere other
-     * than next to your test. A store set this way is used as-is, ahead of any layout.
+     * than the default contract registry. A store set this way is used as-is, ahead of any layout.
      *
      * @param storage where approved snapshots are read from and written to
      * @return a copy of these options using the given storage
@@ -82,7 +82,7 @@ public record SpecificationOptions(
      *
      * <pre>
      * SpecificationOptions options =
-     *     Json.Jackson.defaults().snapshotLayout(SnapshotLayout.globalRoot("src/test/resources/snapshots"));
+     *     Json.Jackson.defaults().snapshotLayout(SnapshotLayout.registry().rootPath("src/test/resources"));
      * </pre>
      *
      * @param layout decides where this spec's snapshot file lives

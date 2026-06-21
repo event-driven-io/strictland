@@ -7,15 +7,14 @@ import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
 @NullMarked
-final class NextToTestLayoutEndToEndTests {
+final class RegistryLayoutEndToEndTests {
 
     private static final UUID ORDER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
 
     private record OrderPlaced(UUID orderId, String customer) {}
 
     private static SpecificationOptions options() {
-        return Json.Jackson.defaults()
-                .snapshotLayout(SnapshotLayout.nextToTest().grouping(SnapshotGrouping.PER_TEST_CLASS));
+        return Json.Jackson.defaults().snapshotLayout(SnapshotLayout.registry());
     }
 
     @Test

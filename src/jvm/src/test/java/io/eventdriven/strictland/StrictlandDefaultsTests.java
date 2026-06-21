@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +23,7 @@ final class StrictlandDefaultsTests {
 
     @Test
     void snapshotLayout_whenSet_isReadBack() {
-        var layout = SnapshotLayout.nextToTest();
+        var layout = SnapshotLayout.registry();
 
         Strictland.defaults().snapshotLayout(layout);
 
@@ -33,7 +32,7 @@ final class StrictlandDefaultsTests {
 
     @Test
     void snapshotLayout_whenReset_returnsToUnset() {
-        Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest());
+        Strictland.defaults().snapshotLayout(SnapshotLayout.registry());
 
         Strictland.resetDefaults();
 
@@ -41,35 +40,12 @@ final class StrictlandDefaultsTests {
     }
 
     @Test
-    void testSourceRoots_whenUnset_areTheConventionalRoots() {
-        assertEquals(TestSourceDirectoryLocator.DEFAULT_SOURCE_ROOTS, Strictland.testSourceRoots());
-    }
-
-    @Test
-    void testSourceRoots_whenSet_areReadBack() {
-        Strictland.defaults().testSourceRoots(List.of("modules/orders/src/test/java"));
-
-        assertEquals(List.of("modules/orders/src/test/java"), Strictland.testSourceRoots());
-    }
-
-    @Test
-    void testSourceRoots_whenReset_returnToTheConventionalRoots() {
-        Strictland.defaults().testSourceRoots(List.of("custom/root"));
-
-        Strictland.resetDefaults();
-
-        assertEquals(TestSourceDirectoryLocator.DEFAULT_SOURCE_ROOTS, Strictland.testSourceRoots());
-    }
-
-    @Test
     void config_chainsAndReturnsSameInstance() {
         var config = Strictland.defaults();
 
-        var returned = config.snapshotLayout(SnapshotLayout.nextToTest());
+        var returned = config.snapshotLayout(SnapshotLayout.registry().wrapperFolder("approved"));
 
         assertSame(config, returned);
-        assertEquals(
-                SnapshotRoot.NEXT_TO_TEST,
-                Strictland.snapshotLayout().orElseThrow().location());
+        assertEquals("approved", Strictland.snapshotLayout().orElseThrow().wrapperFolder());
     }
 }

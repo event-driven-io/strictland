@@ -68,7 +68,7 @@ final class TestSourceDirectoryLocatorTests {
 
         var message = requireNonNull(ex.getMessage());
         assertTrue(message.contains("Missing.java"), message);
-        assertTrue(message.contains("testSourceRoots"), message);
+        assertTrue(message.contains(root.toString()), message);
     }
 
     @Test
@@ -80,6 +80,6 @@ final class TestSourceDirectoryLocatorTests {
 
         var message = requireNonNull(ex.getMessage());
         assertTrue(message.contains(PACKAGE), message);
-        assertTrue(message.contains("testSourceRoots"), message);
+        assertTrue(message.contains(root.toString()), message);
     }
 }

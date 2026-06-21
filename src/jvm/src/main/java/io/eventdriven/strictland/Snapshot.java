@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
  * Strictland captures it the first time from your message, then checks every later run still produces
  * the same thing, so an accidental change to the format fails the test.
  *
- * <p>Every check already uses a default snapshot, named after the message and kept next to your test.
+ * <p>Every check already uses a default snapshot, named after the message and kept in the contract registry.
  * You reach for this type only to point at a different one: the factory methods give you the ways to
  * pick one - by its message class with {@link #of(Class)}, by a message-type name with {@link
  * #forMessageType(String)}, by file path with {@link #at(Path)}, or by a variant label when one message type has several snapshots.
@@ -34,7 +34,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
             Class<T> messageClass, String version, @Nullable String variant) implements Snapshot {
         /**
          * Points at a snapthot's variant and records for the a {@link #messageClass()}.
-         * @param variant the label naming the variant, used as the snapshot's leaf file name
+         * @param variant the label naming the variant, used as the trailing segment of the snapshot's file name
          * @return snapshot variant for specific {@link #messageClass()}
          */
         public ByClass<T> variant(String variant) {
@@ -63,7 +63,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
             String messageType, String version, @Nullable String variant) implements Snapshot {
         /**
          * Points at a snapthot's variant and records for the a {@link #messageType()}.
-         * @param variant the label naming the variant, used as the snapshot's leaf file name
+         * @param variant the label naming the variant, used as the trailing segment of the snapshot's file name
          * @return snapshot variant for specific {@link #messageType()}
          */
         public ByMessageType variant(String variant) {
@@ -82,7 +82,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
     }
 
     /**
-     * A snapshot found by an explicit file path, for one kept somewhere other than next to your test.
+     * A snapshot found by an explicit file path, for one kept somewhere other than the default contract registry.
      *
      * @param path the file to read the snapshot from
      */
@@ -104,7 +104,7 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
     }
 
     /**
-     * Points at a snapshot by file path, for one kept somewhere other than next to your test.
+     * Points at a snapshot by file path, for one kept somewhere other than the default contract registry.
      *
      * @param path the file to read the snapshot from
      * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step

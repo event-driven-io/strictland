@@ -3,7 +3,7 @@ package io.eventdriven.strictland;
 /**
  * The storage presets for where approved snapshots live, so you pick one by name rather than wiring a
  * {@link SnapshotStorage} yourself. {@link #files()} is the default, keeping each snapshot in a file
- * next to your test.
+ * in the committed contract registry.
  *
  * <pre>
  * MessageContract.specification(
@@ -17,9 +17,9 @@ package io.eventdriven.strictland;
 public interface Snapshots {
 
     /**
-     * Storage that keeps each approved snapshot in a file beside the test that wrote it, committed to
-     * your repository so a contract change lands in the same pull request as the code that caused it.
-     * This is what a specification uses unless you swap it.
+     * Storage that keeps each approved snapshot in a committed contract registry, under
+     * {@code src/test/resources/contract-snapshots} by default, so a contract change lands in the same
+     * pull request as the code that caused it. This is what a specification uses unless you swap it.
      *
      * @return file-backed snapshot storage
      */

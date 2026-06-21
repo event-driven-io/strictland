@@ -29,8 +29,9 @@
  *     .thenBackwardCompatible();
  * </pre>
  *
- * <p>The approved file each check compares against lives next to your test code and is committed to
- * your repository, so a contract change shows up in the same pull request as the code that caused it.
+ * <p>The approved file each check compares against lives in a committed contract registry, under
+ * {@code src/test/resources/contract-snapshots} by default, so a contract change shows up in the same
+ * pull request as the code that caused it.
  * {@link io.eventdriven.strictland.Snapshot} picks which file backs a check, and {@link
  * io.eventdriven.strictland.PublicApiScanner} renders a package's public API as text so you can
  * approval-test the surface itself.</p>
