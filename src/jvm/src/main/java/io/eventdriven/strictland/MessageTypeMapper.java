@@ -8,11 +8,11 @@ import java.util.Optional;
  * not the Java class name, so checks find the right approved file.
  *
  * <p>Hand an implementation to {@link SpecificationOptions#messageTypeMapper(MessageTypeMapper)}; the
- * default {@link #simpleName()} uses the class's simple name.</p>
+ * default {@link #fullyQualifiedName()} uses the class's fully-qualified name.</p>
  *
  * <pre>
- * MessageTypeMapper byClassName = MessageTypeMapper.simpleName();
- * String name = byClassName.name(OrderPlaced.class); // "OrderPlaced"
+ * MessageTypeMapper byClassName = MessageTypeMapper.fullyQualifiedName();
+ * String name = byClassName.name(OrderPlaced.class); // "com.acme.orders.OrderPlaced"
  * </pre>
  */
 public interface MessageTypeMapper {
@@ -29,7 +29,7 @@ public interface MessageTypeMapper {
     /**
      * Resolves a logical name back to the message class it maps to, the reverse of {@link
      * #name(Class)}. It can only answer for names this mapper was given an explicit mapping for, so a
-     * name-derived default like {@link #simpleName()} returns {@link Optional#empty()}.
+     * name-derived default like {@link #fullyQualifiedName()} returns {@link Optional#empty()}.
      *
      * @param name the logical name to resolve
      * @return the message class registered for that name, or {@link Optional#empty()} when none is
@@ -37,22 +37,27 @@ public interface MessageTypeMapper {
     Optional<Class<?>> type(String name);
 
     /**
-     * A mapper that names a message after its class's simple name, the default Strictland uses when
-     * you haven't registered logical message types. It maps a class to a name but, having no registry
-     * to reverse, resolves no name back to a class.
+     * A mapper that names a message after its class's fully-qualified canonical name, the default
+     * Strictland uses when you haven't registered logical message types. It maps a class to a name but,
+     * having no registry to reverse, resolves no name back to a class.
+     *
+     * <p>A nested type {@code Outer.Inner} is named {@code pkg.Outer.Inner}: dotted, never with a
+     * {@code $}. It falls back to the binary name only for local or anonymous classes that have no
+     * canonical name.</p>
      *
      * <pre>
-     * MessageTypeMapper mapper = MessageTypeMapper.simpleName();
-     * String name = mapper.name(OrderPlaced.class); // "OrderPlaced"
+     * MessageTypeMapper mapper = MessageTypeMapper.fullyQualifiedName();
+     * String name = mapper.name(OrderPlaced.class); // "com.acme.orders.OrderPlaced"
      * </pre>
      *
-     * @return a mapper keyed on the class's simple name
+     * @return a mapper keyed on the class's fully-qualified canonical name
      */
-    static MessageTypeMapper simpleName() {
+    static MessageTypeMapper fullyQualifiedName() {
         return new MessageTypeMapper() {
             @Override
             public String name(Class<?> type) {
-                return type.getSimpleName();
+                var canonical = type.getCanonicalName();
+                return canonical != null ? canonical : type.getTypeName();
             }
 
             @Override

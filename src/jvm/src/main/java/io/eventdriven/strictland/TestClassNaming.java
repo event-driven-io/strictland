@@ -5,12 +5,12 @@ package io.eventdriven.strictland;
  * the one based on how you tell two tests apart: by their simple class name, or by the
  * fully-qualified one when simple names collide across packages.
  *
- * <p>It changes only the discriminator written into the file name, never the folder a snapshot is
- * grouped under: the folder always uses the simple class name.</p>
+ * <p>It changes only the tail written into the file name, never the folder a snapshot resolves under:
+ * the folder always mirrors the message type.</p>
  *
  * <pre>
  * SnapshotLayout qualified = SnapshotLayout
- *     .nextToTest()
+ *     .registry()
  *     .testClassNaming(TestClassNaming.FULL);
  * </pre>
  */

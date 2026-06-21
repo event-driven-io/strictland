@@ -23,8 +23,9 @@ package io.eventdriven.strictland;
  *     .thenContractIsUnchanged();
  * </pre>
  *
- * <p>The approved file each check compares against lives next to your test code and is committed to
- * your repository, so a contract change shows up in the same pull request as the code that caused it.
+ * <p>The approved file each check compares against lives in a committed contract registry, under
+ * {@code src/test/resources/contract-snapshots} by default, so a contract change shows up in the same
+ * pull request as the code that caused it.
  * {@link Snapshot} picks which file backs a check, and {@link PublicApiScanner} renders a package's
  * public API as text so you can approval-test the surface itself.</p>
  */
@@ -36,20 +37,18 @@ public class MessageContract {
 
     private MessageContract(SpecificationOptions options) {
         this.serializer = options.serializer();
-        var sourceLocator = TestSourceDirectoryLocator.knownRoots(Strictland.testSourceRoots());
         var configuredStorage = options.storage();
         if (configuredStorage != null) {
             this.storage = configuredStorage;
-            this.location = new SnapshotLocation(
-                    null, options.serializer().fileExtension(), TestClassNaming.SIMPLE, sourceLocator);
+            this.location = new SnapshotLocation(null, options.serializer().fileExtension(), TestClassNaming.SIMPLE);
         } else {
             var layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
             this.storage = new FileSnapshotStorage();
-            this.location = new SnapshotLocation(
-                    layout, options.serializer().fileExtension(), layout.testClassNaming(), sourceLocator);
+            this.location =
+                    new SnapshotLocation(layout, options.serializer().fileExtension(), layout.testClassNaming());
         }
         var configuredTypeMapper = options.typeMapper();
-        this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.simpleName();
+        this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.fullyQualifiedName();
     }
 
     /**
@@ -113,7 +112,7 @@ public class MessageContract {
      * Defines the version under contract: an earlier one you saved as a snapshot, located by its file
      * path.
      *
-     * <p>Reach for it when the approved file lives somewhere other than next to your test. {@code
+     * <p>Reach for it when the approved file lives somewhere other than the default contract registry. {@code
      * Snapshot.at(path)} points straight at it.</p>
      *
      * @param snapshot the saved snapshot to read

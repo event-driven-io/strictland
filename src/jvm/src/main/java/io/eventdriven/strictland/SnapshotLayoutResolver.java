@@ -19,6 +19,6 @@ final class SnapshotLayoutResolver {
         if (perSpec != null) {
             return perSpec;
         }
-        return global.or(file).orElseGet(SnapshotLayout::nextToTest);
+        return global.or(file).orElseGet(SnapshotLayout::registry);
     }
 }

@@ -1,6 +1,5 @@
 package io.eventdriven.strictland;
 
-import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
@@ -16,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  * others unset.</p>
  *
  * <pre>
- * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest());
+ * Strictland.defaults().snapshotLayout(SnapshotLayout.registry());
  * try {
  *     MessageContract.specification(Json.Jackson.defaults())
  *         .given(new OrderPlaced(orderId, "Alice", placedAt))
@@ -30,7 +29,6 @@ import org.jspecify.annotations.Nullable;
 public final class Strictland {
 
     private static volatile @Nullable SnapshotLayout snapshotLayout;
-    private static volatile @Nullable List<String> testSourceRoots;
 
     private Strictland() {}
 
@@ -41,7 +39,7 @@ public final class Strictland {
      * then the built-in default.
      *
      * <pre>
-     * Strictland.defaults().snapshotLayout(SnapshotLayout.globalRoot("src/test/resources/snapshots"));
+     * Strictland.defaults().snapshotLayout(SnapshotLayout.registry().rootPath("src/test/resources"));
      * </pre>
      *
      * @return the global configuration to set defaults on
@@ -55,7 +53,7 @@ public final class Strictland {
      * default one test sets can't leak into the next, which would make the suite order-dependent.
      *
      * <pre>
-     * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest());
+     * Strictland.defaults().snapshotLayout(SnapshotLayout.registry());
      * try {
      *     // a check that relies on the global default
      * } finally {
@@ -65,16 +63,10 @@ public final class Strictland {
      */
     public static void resetDefaults() {
         snapshotLayout = null;
-        testSourceRoots = null;
     }
 
     static Optional<SnapshotLayout> snapshotLayout() {
         return Optional.ofNullable(snapshotLayout);
-    }
-
-    static List<String> testSourceRoots() {
-        var configured = testSourceRoots;
-        return configured != null ? configured : TestSourceDirectoryLocator.DEFAULT_SOURCE_ROOTS;
     }
 
     /**
@@ -83,7 +75,7 @@ public final class Strictland {
      * you don't set stays unset.
      *
      * <pre>
-     * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest());
+     * Strictland.defaults().snapshotLayout(SnapshotLayout.registry());
      * </pre>
      */
     public static final class Config {
@@ -95,7 +87,7 @@ public final class Strictland {
          * Pair it with {@link Strictland#resetDefaults()} in teardown so it doesn't outlive the test.
          *
          * <pre>
-         * Strictland.defaults().snapshotLayout(SnapshotLayout.nextToTest().grouping(Grouping.PER_CONTRACT));
+         * Strictland.defaults().snapshotLayout(SnapshotLayout.registry().wrapperFolder("approved"));
          * </pre>
          *
          * @param layout the layout to fall back to when a spec sets none
@@ -103,25 +95,6 @@ public final class Strictland {
          */
         public Config snapshotLayout(SnapshotLayout layout) {
             Strictland.snapshotLayout = layout;
-            return this;
-        }
-
-        /**
-         * Sets the source roots a test-relative layout searches to anchor a snapshot beside the test
-         * that owns it, for a project whose tests don't live under the conventional {@code
-         * src/test/java}, {@code src/test/kotlin}, or {@code src/test/scala}. The roots are checked in
-         * order, and the first one holding the calling test's source file anchors the snapshot. Pair it
-         * with {@link Strictland#resetDefaults()} in teardown so it doesn't outlive the test.
-         *
-         * <pre>
-         * Strictland.defaults().testSourceRoots(java.util.List.of("modules/orders/src/test/java"));
-         * </pre>
-         *
-         * @param sourceRoots the source roots to search, in order
-         * @return this configuration, so you can chain further calls
-         */
-        public Config testSourceRoots(List<String> sourceRoots) {
-            Strictland.testSourceRoots = List.copyOf(sourceRoots);
             return this;
         }
     }

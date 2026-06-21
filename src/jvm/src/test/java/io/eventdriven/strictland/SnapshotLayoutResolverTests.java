@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 @NullMarked
 final class SnapshotLayoutResolverTests {
 
-    private final SnapshotLayout perSpec = SnapshotLayout.nextToTest();
-    private final SnapshotLayout global = SnapshotLayout.globalRoot("global");
-    private final SnapshotLayout file = SnapshotLayout.globalRoot("file");
+    private final SnapshotLayout perSpec = SnapshotLayout.registry();
+    private final SnapshotLayout global = SnapshotLayout.registry().rootPath("global");
+    private final SnapshotLayout file = SnapshotLayout.registry().rootPath("file");
 
     @AfterEach
     void resetGlobalDefaults() {
@@ -42,10 +42,10 @@ final class SnapshotLayoutResolverTests {
     }
 
     @Test
-    void builtInDefaultIsNextToTest_whenEverythingUnset() {
+    void builtInDefaultIsRegistry_whenEverythingUnset() {
         var resolved = SnapshotLayoutResolver.resolve(null, Optional.empty(), Optional::empty);
 
-        assertEquals(SnapshotLayout.nextToTest(), resolved);
+        assertEquals(SnapshotLayout.registry(), resolved);
     }
 
     @Test
@@ -64,7 +64,7 @@ final class SnapshotLayoutResolverTests {
 
         var resolved = SnapshotLayoutResolver.resolve(null);
 
-        assertEquals(SnapshotLayout.nextToTest(), resolved);
+        assertEquals(SnapshotLayout.registry(), resolved);
     }
 
     @Test
@@ -74,15 +74,14 @@ final class SnapshotLayoutResolverTests {
                 Optional.empty(),
                 () -> SnapshotLayoutProperties.fromClasspath("fixtures/layout-sample.properties"));
 
-        assertEquals(SnapshotRoot.GLOBAL_ROOT, resolved.location());
-        assertEquals(SnapshotGrouping.PER_CONTRACT, resolved.grouping());
-        assertEquals("src/test/resources/snapshots", resolved.rootPath());
+        assertEquals("src/test/resources", resolved.rootPath());
+        assertEquals("approved", resolved.wrapperFolder());
         assertEquals(TestClassNaming.SIMPLE, resolved.testClassNaming());
     }
 
     @Test
     void perSpec_layoutWithFullTestClassNaming_isThreadedThrough() {
-        var qualified = SnapshotLayout.nextToTest().testClassNaming(TestClassNaming.FULL);
+        var qualified = SnapshotLayout.registry().testClassNaming(TestClassNaming.FULL);
 
         var resolved = SnapshotLayoutResolver.resolve(qualified, Optional.of(global), () -> Optional.of(file));
 

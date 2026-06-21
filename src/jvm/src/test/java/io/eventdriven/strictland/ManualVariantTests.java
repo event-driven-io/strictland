@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 final class ManualVariantTests {
 
     private static final UUID ORDER_ID = UUID.fromString("00000000-0000-0000-0000-000000000030");
-    private static final Path VARIANTS_DIR =
-            Path.of("src/test/java/io/eventdriven/strictland/snapshots/OrderInitiated");
+    private static final Path VARIANTS_DIR = Path.of(
+            "src/test/resources/contract-snapshots/io/eventdriven/strictland/ManualVariantTests/OrderInitiated");
 
     private record OrderInitiated(UUID orderId, String customer, String promotion) {}
 
@@ -26,15 +26,7 @@ final class ManualVariantTests {
     }
 
     private static SpecificationOptions options() {
-        return Json.Jackson.defaults()
-                .snapshotLayout(SnapshotLayout.nextToTest().grouping(SnapshotGrouping.PER_CONTRACT));
-    }
-
-    private static SpecificationOptions flatOptions() {
-        return Json.Jackson.defaults()
-                .snapshotLayout(SnapshotLayout.nextToTest()
-                        .grouping(SnapshotGrouping.NONE)
-                        .wrapperFolder(""));
+        return Json.Jackson.defaults().snapshotLayout(SnapshotLayout.registry());
     }
 
     @Test
@@ -80,35 +72,13 @@ final class ManualVariantTests {
     }
 
     @Test
-    void underFlat_theLabelNamesTheFlatApprovedFile() throws Exception {
-        var snapshotFile = Path.of(
-                "src/test/java/io/eventdriven/strictland/OrderInitiated.1.ManualVariantTests.underFlat_theLabelNamesTheFlatApprovedFile.FlatNullPromotion.snap.approved.json");
-        try {
-            MessageContract.specification(flatOptions())
-                    .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
-                    .whenSerializedAs(SnapshotVariant.named("FlatNullPromotion"))
-                    .thenContractIsUnchanged();
-
-            assertTrue(Files.exists(snapshotFile), "expected the flat file at " + snapshotFile);
-
-            // Read it back by label, with the source class recorded on the variant.
-            MessageContract.specification(flatOptions())
-                    .given(Snapshot.of(OrderInitiated.class).variant("FlatNullPromotion"))
-                    .whenDeserializedAs(OrderInitiated.class)
-                    .thenBackwardCompatible(order -> assertEquals("NONE", order.promotion()));
-        } finally {
-            Files.deleteIfExists(snapshotFile);
-        }
-    }
-
-    @Test
     void theLabelIsRecordedAsTheLeafFileName() {
         MessageContract.specification(options())
                 .given(new OrderInitiated(ORDER_ID, "Alice", "NONE"))
                 .whenSerializedAs(SnapshotVariant.named("NoPromotion"))
                 .thenContractIsUnchanged();
 
-        // The label is the trailing segment of the leaf file name, so it reads as documentation.
+        // The label is the trailing segment of the snapshot's file name, so it reads as documentation.
         var leaf = VARIANTS_DIR.resolve(
                 "OrderInitiated.1.ManualVariantTests.theLabelIsRecordedAsTheLeafFileName.NoPromotion.snap.approved.json");
         assertTrue(Files.exists(leaf), "expected the label to name the leaf at " + leaf);
