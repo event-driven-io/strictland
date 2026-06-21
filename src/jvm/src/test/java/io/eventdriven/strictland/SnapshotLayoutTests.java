@@ -19,8 +19,7 @@ final class SnapshotLayoutTests {
         var layout = SnapshotLayout.registry();
 
         assertEquals("src/test/resources", layout.rootPath());
-        assertEquals("contract-snapshots", layout.wrapperFolder());
-        assertEquals(TestClassNaming.SIMPLE, layout.testClassNaming());
+        assertEquals("contract-registry", layout.wrapperFolder());
     }
 
     @Test
@@ -29,14 +28,11 @@ final class SnapshotLayoutTests {
 
         var rerooted = original.rootPath("build/snaps");
         var wrapped = original.wrapperFolder("approved");
-        var qualified = original.testClassNaming(TestClassNaming.FULL);
 
         assertEquals("build/snaps", rerooted.rootPath());
         assertEquals("approved", wrapped.wrapperFolder());
-        assertEquals(TestClassNaming.FULL, qualified.testClassNaming());
         assertEquals("src/test/resources", original.rootPath());
-        assertEquals("contract-snapshots", original.wrapperFolder());
-        assertEquals(TestClassNaming.SIMPLE, original.testClassNaming());
+        assertEquals("contract-registry", original.wrapperFolder());
     }
 
     @Test
@@ -45,7 +41,7 @@ final class SnapshotLayoutTests {
 
         assertEquals(
                 Path.of(
-                        "src/test/resources/contract-snapshots/com/acme/orders/OrderPlaced",
+                        "src/test/resources/contract-registry/com/acme/orders/OrderPlaced",
                         "withCoupon.snap.approved.json"),
                 path);
     }
@@ -55,7 +51,7 @@ final class SnapshotLayoutTests {
         var path = SnapshotLayout.registry().resolve(DOTLESS_TYPE, SNAPSHOT_NAME, EXTENSION);
 
         assertEquals(
-                Path.of("src/test/resources/contract-snapshots/OrderPlaced", "withCoupon.snap.approved.json"), path);
+                Path.of("src/test/resources/contract-registry/OrderPlaced", "withCoupon.snap.approved.json"), path);
     }
 
     @Test
@@ -63,7 +59,7 @@ final class SnapshotLayoutTests {
         var path = SnapshotLayout.registry().rootPath("snaps").resolve(QUALIFIED_TYPE, SNAPSHOT_NAME, EXTENSION);
 
         assertEquals(
-                Path.of("snaps/contract-snapshots/com/acme/orders/OrderPlaced", "withCoupon.snap.approved.json"), path);
+                Path.of("snaps/contract-registry/com/acme/orders/OrderPlaced", "withCoupon.snap.approved.json"), path);
     }
 
     @Test
@@ -77,20 +73,23 @@ final class SnapshotLayoutTests {
     }
 
     @Test
-    void resolve_testClassNaming_doesNotChangeTheResolvedFolder() {
-        var simple = SnapshotLayout.registry().resolve(QUALIFIED_TYPE, SNAPSHOT_NAME, EXTENSION);
-        var full = SnapshotLayout.registry()
-                .testClassNaming(TestClassNaming.FULL)
-                .resolve(QUALIFIED_TYPE, SNAPSHOT_NAME, EXTENSION);
-
-        assertEquals(simple, full);
-    }
-
-    @Test
     void resolve_honoursTheSerializerExtension() {
         var path = SnapshotLayout.registry().resolve(DOTLESS_TYPE, SNAPSHOT_NAME, ".csv");
 
-        assertEquals(
-                Path.of("src/test/resources/contract-snapshots/OrderPlaced", "withCoupon.snap.approved.csv"), path);
+        assertEquals(Path.of("src/test/resources/contract-registry/OrderPlaced", "withCoupon.snap.approved.csv"), path);
+    }
+
+    @Test
+    void folder_aQualifiedType_mirrorsItsNamespaceEndingInTheShortName() {
+        var folder = SnapshotLayout.registry().folder(MessageTypeName.of(QUALIFIED_TYPE));
+
+        assertEquals(Path.of("src/test/resources/contract-registry/com/acme/orders/OrderPlaced"), folder);
+    }
+
+    @Test
+    void folder_aDotlessType_addsNoNamespaceFolders() {
+        var folder = SnapshotLayout.registry().folder(MessageTypeName.of(DOTLESS_TYPE));
+
+        assertEquals(Path.of("src/test/resources/contract-registry/OrderPlaced"), folder);
     }
 }

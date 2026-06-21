@@ -1,69 +1,81 @@
 package io.eventdriven.strictland;
 
+import java.nio.file.Path;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The settled snapshot file name, as parts. It renders the convention base name
- * {@code {shortMessageTypeName}.{version}.{testClass}.{testName}[.{variant}]} and the stable read prefix
- * {@code {shortMessageTypeName}.{version}.} that a replay-all read globs. It is the one place the grammar
- * lives, so naming and reading never drift apart.
+ * The canonical name of a snapshot, derived only from the contract it locks down: the message type, the
+ * version, and an optional variant. It renders the convention base name and the stable read prefix, and
+ * resolves the file's path against a {@link SnapshotLayout}, so naming and reading never drift apart.
  *
- * @param shortMessageTypeName the short, dotless contract name the snapshot locks down
+ * <p>One snapshot exists per {@code (messageType, version, variant)}. The base name is {@code
+ * {shortName}.{version}} when there's no variant, or {@code {shortName}.{version}.{variant}} when there
+ * is. A read globs the stable {@code {shortName}.{version}.} prefix and replays every match.</p>
+ *
+ * @param messageType the message type the snapshot locks down, split into namespace and short name
  * @param version the version label the snapshot is pinned to
- * @param testClass the test class that owns the snapshot, simple or fully qualified per the layout
- * @param testName the test method that owns the snapshot
- * @param variant the label distinguishing several snapshots of one contract in one test, or {@code null}
+ * @param variant the variant naming this snapshot among others of the same type and version, or {@code
+ *     null} when there's just one
  */
 record SnapshotName(
-        String shortMessageTypeName,
+        MessageTypeName messageType,
         String version,
-        String testClass,
-        String testName,
         @Nullable String variant) {
 
+    private static final String SNAP_APPROVED_SUFFIX = ".snap.approved";
+
     /**
-     * Renders the convention base name: the read prefix, then {@code testClass.testName}, then the
-     * variant when one is set.
+     * Builds a canonical name from a message type's name, splitting it into namespace and short name.
+     *
+     * @param messageType the message type's name the snapshot locks down
+     * @param version the version label the snapshot is pinned to
+     * @param variant the variant naming this snapshot, or {@code null} when there's just one
+     * @return the canonical name for that contract
+     */
+    static SnapshotName of(String messageType, String version, @Nullable String variant) {
+        return new SnapshotName(MessageTypeName.of(messageType), version, variant);
+    }
+
+    /**
+     * Renders the convention base name: {@code {shortName}.{version}}, with the variant appended when
+     * present.
      *
      * @return the convention base name, without folder, {@code .snap.approved}, or extension
      */
     String base() {
-        var tail = variant != null ? testClass + "." + testName + "." + variant : testClass + "." + testName;
-        return readPrefix(shortMessageTypeName, version) + tail;
+        var prefix = messageType.shortName() + "." + version;
+        return variant == null || variant.isBlank() ? prefix : prefix + "." + variant;
     }
 
     /**
      * The stable name prefix every snapshot of one contract version shares, which a replay-all read
      * globs.
      *
-     * @param shortMessageTypeName the short, dotless contract name the snapshot locks down
-     * @param version the version label the snapshot is pinned to
-     * @return {@code shortMessageTypeName.version.}
+     * @return {@code {shortName}.{version}.}
      */
-    static String readPrefix(String shortMessageTypeName, String version) {
-        return shortMessageTypeName + "." + version + ".";
+    String readPrefix() {
+        return messageType.shortName() + "." + version + ".";
     }
 
     /**
-     * The short, dotless tail of a message type, the part after the last dot. A dotless type is its own
-     * short name.
+     * Resolves the committed approved-file path against a layout: the folder the layout lays out, then
+     * the base name with {@code .snap.approved} and the serializer's extension.
      *
-     * @param messageType the message type's fully-qualified name
-     * @return the part after the last dot, or the whole type when it has none
+     * @param layout the layout that lays out the snapshot tree
+     * @param fileExtension the extension the serializer writes, including the leading dot
+     * @return the committed approved-file path
      */
-    static String shortName(String messageType) {
-        var dot = messageType.lastIndexOf('.');
-        return dot < 0 ? messageType : messageType.substring(dot + 1);
+    Path resolve(SnapshotLayout layout, String fileExtension) {
+        return folder(layout).resolve(base() + SNAP_APPROVED_SUFFIX + fileExtension);
     }
 
     /**
-     * The namespace of a message type, the part before the last dot. A dotless type has no namespace.
+     * The directory a read globs in, the folder the layout lays out for this message type.
      *
-     * @param messageType the message type's fully-qualified name
-     * @return the part before the last dot, or an empty string when it has none
+     * @param layout the layout that lays out the snapshot tree
+     * @return the directory the matching approved files live in
      */
-    static String namespace(String messageType) {
-        var dot = messageType.lastIndexOf('.');
-        return dot < 0 ? "" : messageType.substring(0, dot);
+    Path folder(SnapshotLayout layout) {
+        return layout.folder(messageType);
     }
 }

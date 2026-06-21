@@ -76,16 +76,15 @@ final class SnapshotLayoutResolverTests {
 
         assertEquals("src/test/resources", resolved.rootPath());
         assertEquals("approved", resolved.wrapperFolder());
-        assertEquals(TestClassNaming.SIMPLE, resolved.testClassNaming());
     }
 
     @Test
-    void perSpec_layoutWithFullTestClassNaming_isThreadedThrough() {
-        var qualified = SnapshotLayout.registry().testClassNaming(TestClassNaming.FULL);
+    void perSpec_layoutWithWrapperFolderOverride_isThreadedThrough() {
+        var overridden = SnapshotLayout.registry().wrapperFolder("approved");
 
-        var resolved = SnapshotLayoutResolver.resolve(qualified, Optional.of(global), () -> Optional.of(file));
+        var resolved = SnapshotLayoutResolver.resolve(overridden, Optional.of(global), () -> Optional.of(file));
 
-        assertSame(qualified, resolved);
-        assertEquals(TestClassNaming.FULL, resolved.testClassNaming());
+        assertSame(overridden, resolved);
+        assertEquals("approved", resolved.wrapperFolder());
     }
 }

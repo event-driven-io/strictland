@@ -17,84 +17,74 @@ import org.junit.jupiter.api.io.TempDir;
 @NullMarked
 final class FileSnapshotStorageLayoutTests {
 
-    private static final String CALLER = "FileSnapshotStorageLayoutTests";
     private static final String MESSAGE_TYPE = "io.eventdriven.strictland.OrderPlaced";
     private static final byte[] PAYLOAD = "{\"id\":1}".getBytes(UTF_8);
 
     private static Path registryFolder(Path root) {
-        return root.resolve("contract-snapshots").resolve("io/eventdriven/strictland/OrderPlaced");
+        return root.resolve("contract-registry").resolve("io/eventdriven/strictland/OrderPlaced");
     }
 
     @Test
     void registry_resolvesUnderTheNamespaceFolderAndRoundTrips(@TempDir Path root) {
-        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".json");
+        var layout = SnapshotLayout.registry().rootPath(root.toString());
 
-        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
+        var key = SnapshotName.of(MESSAGE_TYPE, "1", null)
+                .resolve(layout, ".json")
+                .toString();
 
-        var expected = registryFolder(root)
-                .resolve("OrderPlaced.1." + CALLER
-                        + ".registry_resolvesUnderTheNamespaceFolderAndRoundTrips.snap.approved.json");
+        var expected = registryFolder(root).resolve("OrderPlaced.1.snap.approved.json");
         assertEquals(expected.toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
     void registry_aDotlessType_resolvesWithNoNamespaceFolderAndRoundTrips(@TempDir Path root) {
-        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".json");
+        var layout = SnapshotLayout.registry().rootPath(root.toString());
 
-        var key = location.resolveForWrite("OrderPlaced", "1", null);
+        var key = SnapshotName.of("OrderPlaced", "1", null)
+                .resolve(layout, ".json")
+                .toString();
 
-        var expected = root.resolve("contract-snapshots")
-                .resolve("OrderPlaced")
-                .resolve("OrderPlaced.1." + CALLER
-                        + ".registry_aDotlessType_resolvesWithNoNamespaceFolderAndRoundTrips.snap.approved.json");
+        var expected =
+                root.resolve("contract-registry").resolve("OrderPlaced").resolve("OrderPlaced.1.snap.approved.json");
         assertEquals(expected.toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
     void registry_wrapperFolderOverride_replacesTheWrapperSegment(@TempDir Path root) {
-        var location = new SnapshotLocation(
-                SnapshotLayout.registry().rootPath(root.toString()).wrapperFolder("approved"), ".json");
+        var layout = SnapshotLayout.registry().rootPath(root.toString()).wrapperFolder("approved");
 
-        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
+        var key = SnapshotName.of(MESSAGE_TYPE, "1", null)
+                .resolve(layout, ".json")
+                .toString();
 
         var expected = root.resolve("approved")
                 .resolve("io/eventdriven/strictland/OrderPlaced")
-                .resolve("OrderPlaced.1." + CALLER
-                        + ".registry_wrapperFolderOverride_replacesTheWrapperSegment.snap.approved.json");
+                .resolve("OrderPlaced.1.snap.approved.json");
         assertEquals(expected.toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
     void registry_aVariant_namesTheFileAndReadsBack(@TempDir Path root) {
-        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".json");
+        var layout = SnapshotLayout.registry().rootPath(root.toString());
 
-        var key = location.resolveForWrite(MESSAGE_TYPE, "1", "WithPromotion");
+        var key = SnapshotName.of(MESSAGE_TYPE, "1", "WithPromotion")
+                .resolve(layout, ".json")
+                .toString();
 
-        var expected = registryFolder(root)
-                .resolve("OrderPlaced.1." + CALLER
-                        + ".registry_aVariant_namesTheFileAndReadsBack.WithPromotion.snap.approved.json");
+        var expected = registryFolder(root).resolve("OrderPlaced.1.WithPromotion.snap.approved.json");
         assertEquals(expected.toString(), key);
         assertRoundTrips(key);
     }
 
     @Test
-    void resolveForWrite_customStorage_returnsABareBaseNameWithNoFolder() {
-        var location = new SnapshotLocation(null, ".json", TestClassNaming.SIMPLE);
-
-        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
-
-        assertEquals(
-                "OrderPlaced.1." + CALLER + ".resolveForWrite_customStorage_returnsABareBaseNameWithNoFolder", key);
-    }
-
-    @Test
     void usesSerializerExtensionInFileName(@TempDir Path root) {
-        var location = new SnapshotLocation(SnapshotLayout.registry().rootPath(root.toString()), ".csv");
+        var layout = SnapshotLayout.registry().rootPath(root.toString());
 
-        var key = location.resolveForWrite(MESSAGE_TYPE, "1", null);
+        var key =
+                SnapshotName.of(MESSAGE_TYPE, "1", null).resolve(layout, ".csv").toString();
 
         assertTrue(key.endsWith(".snap.approved.csv"), key);
     }
@@ -171,7 +161,7 @@ final class FileSnapshotStorageLayoutTests {
     void readAll_whenNothingMatchesThePrefix_returnsEmpty(@TempDir Path dir) {
         var storage = new FileSnapshotStorage();
 
-        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1."));
+        var payloads = storage.readAll(dir, "OrderPlaced.1.", null);
 
         assertTrue(payloads.isEmpty());
     }
@@ -180,7 +170,7 @@ final class FileSnapshotStorageLayoutTests {
     void readAll_whenFolderDoesNotExist_returnsEmpty(@TempDir Path dir) {
         var storage = new FileSnapshotStorage();
 
-        var payloads = storage.readAll(new SnapshotReadLocation(dir.resolve("missing"), "OrderPlaced.1."));
+        var payloads = storage.readAll(dir.resolve("missing"), "OrderPlaced.1.", null);
 
         assertTrue(payloads.isEmpty());
     }
@@ -197,9 +187,7 @@ final class FileSnapshotStorageLayoutTests {
         org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(unreadable), "directory is still readable");
         var storage = new FileSnapshotStorage();
         try {
-            assertThrows(
-                    UncheckedIOException.class,
-                    () -> storage.readAll(new SnapshotReadLocation(unreadable, "OrderPlaced.1.")));
+            assertThrows(UncheckedIOException.class, () -> storage.readAll(unreadable, "OrderPlaced.1.", null));
         } finally {
             Files.setPosixFilePermissions(
                     unreadable, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));
@@ -210,7 +198,7 @@ final class FileSnapshotStorageLayoutTests {
     void readAll_whenFolderIsNull_returnsEmpty() {
         var storage = new FileSnapshotStorage();
 
-        var payloads = storage.readAll(new SnapshotReadLocation(null, "OrderPlaced.1."));
+        var payloads = storage.readAll(null, "OrderPlaced.1.", null);
 
         assertTrue(payloads.isEmpty());
     }
@@ -228,7 +216,7 @@ final class FileSnapshotStorageLayoutTests {
             }
         };
 
-        var payloads = storage.readAll(new SnapshotReadLocation(null, "OrderPlaced.1."));
+        var payloads = storage.readAll(null, "OrderPlaced.1.", null);
 
         assertEquals(1, payloads.size());
         assertArrayEquals(stored, payloads.get(0));
@@ -246,7 +234,7 @@ final class FileSnapshotStorageLayoutTests {
             }
         };
 
-        assertTrue(storage.readAll(new SnapshotReadLocation(null, "Missing.1.")).isEmpty());
+        assertTrue(storage.readAll(null, "Missing.1.", null).isEmpty());
     }
 
     @Test
@@ -260,7 +248,7 @@ final class FileSnapshotStorageLayoutTests {
         Files.write(dir.resolve("OrderPlaced.1.A.snap.received.json"), other);
         var storage = new FileSnapshotStorage();
 
-        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1."));
+        var payloads = storage.readAll(dir, "OrderPlaced.1.", null);
 
         assertEquals(2, payloads.size());
         assertArrayEquals(first, payloads.get(0));
@@ -271,11 +259,11 @@ final class FileSnapshotStorageLayoutTests {
     void readAll_withVariant_returnsOnlyTheMatchingVariantFile(@TempDir Path dir) throws Exception {
         var withPromotion = "{\"id\":1}".getBytes(UTF_8);
         var noPromotion = "{\"id\":2}".getBytes(UTF_8);
-        Files.write(dir.resolve("OrderPlaced.1.SomeTest.someTest.WithPromotion.snap.approved.json"), withPromotion);
-        Files.write(dir.resolve("OrderPlaced.1.SomeTest.someTest.NoPromotion.snap.approved.json"), noPromotion);
+        Files.write(dir.resolve("OrderPlaced.1.WithPromotion.snap.approved.json"), withPromotion);
+        Files.write(dir.resolve("OrderPlaced.1.NoPromotion.snap.approved.json"), noPromotion);
         var storage = new FileSnapshotStorage();
 
-        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1.", "WithPromotion"));
+        var payloads = storage.readAll(dir, "OrderPlaced.1.", "WithPromotion");
 
         assertEquals(1, payloads.size());
         assertArrayEquals(withPromotion, payloads.get(0));
@@ -283,15 +271,11 @@ final class FileSnapshotStorageLayoutTests {
 
     @Test
     void readAll_withVariant_thatMatchesNothing_isEmpty(@TempDir Path dir) throws Exception {
-        Files.write(
-                dir.resolve("OrderPlaced.1.SomeTest.someTest.WithPromotion.snap.approved.json"),
-                "{\"id\":1}".getBytes(UTF_8));
-        Files.write(
-                dir.resolve("OrderPlaced.1.SomeTest.someTest.NoPromotion.snap.approved.json"),
-                "{\"id\":2}".getBytes(UTF_8));
+        Files.write(dir.resolve("OrderPlaced.1.WithPromotion.snap.approved.json"), "{\"id\":1}".getBytes(UTF_8));
+        Files.write(dir.resolve("OrderPlaced.1.NoPromotion.snap.approved.json"), "{\"id\":2}".getBytes(UTF_8));
         var storage = new FileSnapshotStorage();
 
-        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1.", "DoesNotExist"));
+        var payloads = storage.readAll(dir, "OrderPlaced.1.", "DoesNotExist");
 
         assertTrue(payloads.isEmpty());
     }
@@ -299,10 +283,10 @@ final class FileSnapshotStorageLayoutTests {
     @Test
     void readAll_withVariant_whenNoSnapMarker_matchesAgainstTheWholeFileName(@TempDir Path dir) throws Exception {
         var payload = "{\"id\":1}".getBytes(UTF_8);
-        Files.write(dir.resolve("OrderPlaced.1.SomeTest.approved.json.WithPromotion"), payload);
+        Files.write(dir.resolve("OrderPlaced.1.approved.json.WithPromotion"), payload);
         var storage = new FileSnapshotStorage();
 
-        var payloads = storage.readAll(new SnapshotReadLocation(dir, "OrderPlaced.1.", "WithPromotion"));
+        var payloads = storage.readAll(dir, "OrderPlaced.1.", "WithPromotion");
 
         assertEquals(1, payloads.size());
         assertArrayEquals(payload, payloads.get(0));

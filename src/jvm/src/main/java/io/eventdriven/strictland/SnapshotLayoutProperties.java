@@ -14,15 +14,12 @@ import org.jspecify.annotations.Nullable;
  * you already hold the values and want a pure, testable conversion.
  *
  * <p>Every key is optional and falls back to the {@link SnapshotLayout#registry()} defaults. The
- * recognised keys are {@code strictland.layout.rootPath}, {@code strictland.layout.wrapperFolder}, and
- * {@code strictland.layout.testClassNaming} ({@code simple} or {@code full}). An unrecognised
- * {@code testClassNaming} value throws {@link IllegalArgumentException} naming the key and the
- * value.</p>
+ * recognised keys are {@code strictland.layout.rootPath} and {@code strictland.layout.wrapperFolder}.</p>
  *
  * <pre>
  * var props = new Properties();
  * props.setProperty("strictland.layout.rootPath", "src/test/resources");
- * props.setProperty("strictland.layout.wrapperFolder", "contract-snapshots");
+ * props.setProperty("strictland.layout.wrapperFolder", "contract-registry");
  * SnapshotLayout layout = SnapshotLayoutProperties.fromProperties(props);
  * </pre>
  */
@@ -31,7 +28,6 @@ public final class SnapshotLayoutProperties {
     private static final String DEFAULT_RESOURCE = "strictland.properties";
     private static final String ROOT_PATH_KEY = "strictland.layout.rootPath";
     private static final String WRAPPER_FOLDER_KEY = "strictland.layout.wrapperFolder";
-    private static final String TEST_CLASS_NAMING_KEY = "strictland.layout.testClassNaming";
 
     private SnapshotLayoutProperties() {}
 
@@ -81,7 +77,6 @@ public final class SnapshotLayoutProperties {
      *
      * @param props the configuration to read the layout from
      * @return the layout the properties describe
-     * @throws IllegalArgumentException if a test-class-naming value is not recognised
      */
     public static SnapshotLayout fromProperties(Properties props) {
         var layout = SnapshotLayout.registry();
@@ -96,23 +91,6 @@ public final class SnapshotLayoutProperties {
             layout = layout.wrapperFolder(wrapperFolder);
         }
 
-        var testClassNaming = props.getProperty(TEST_CLASS_NAMING_KEY);
-        if (testClassNaming != null) {
-            layout = layout.testClassNaming(testClassNaming(testClassNaming));
-        }
-
         return layout;
-    }
-
-    private static TestClassNaming testClassNaming(String testClassNaming) {
-        return switch (testClassNaming) {
-            case "simple" -> TestClassNaming.SIMPLE;
-            case "full" -> TestClassNaming.FULL;
-            default -> throw badValue(TEST_CLASS_NAMING_KEY, testClassNaming);
-        };
-    }
-
-    private static IllegalArgumentException badValue(String key, String value) {
-        return new IllegalArgumentException("Unrecognised value '" + value + "' for property '" + key + "'");
     }
 }

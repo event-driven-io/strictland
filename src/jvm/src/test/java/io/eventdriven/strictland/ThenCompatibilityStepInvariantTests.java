@@ -11,7 +11,6 @@ final class ThenCompatibilityStepInvariantTests {
 
     @Test
     void whenBothSnapshotAndInstanceAreNull_thenForwardCompatible_throwsIllegalState() {
-        var location = new SnapshotLocation(SnapshotLayout.registry(), ".json");
         var step = new ThenCompatibilityStep<Object, Object>(
                 null,
                 null,
@@ -19,7 +18,7 @@ final class ThenCompatibilityStepInvariantTests {
                 Object.class,
                 new JacksonMessageSerializer(new JsonMapper()),
                 new FileSnapshotStorage(),
-                location,
+                SnapshotLayout.registry(),
                 MessageTypeMapper.fullyQualifiedName());
         assertThrows(IllegalStateException.class, step::thenForwardCompatible);
     }

@@ -60,16 +60,16 @@ final class Base64SnapshotStorage implements SnapshotStorage {
     }
 
     @Override
-    public List<byte[]> readAll(SnapshotReadLocation location) {
+    public List<byte[]> readAll(@Nullable Path folder, String prefix, @Nullable String variant) {
         if (!Files.isDirectory(dir)) {
             return List.of();
         }
         try (Stream<Path> files = Files.list(dir)) {
             var matches = files.filter(path -> {
                         var name = path.getFileName().toString();
-                        return name.startsWith(location.prefix())
+                        return name.startsWith(prefix)
                                 && name.endsWith(".approved.txt")
-                                && matchesVariant(name, location.variant());
+                                && matchesVariant(name, variant);
                     })
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
                     .toList();

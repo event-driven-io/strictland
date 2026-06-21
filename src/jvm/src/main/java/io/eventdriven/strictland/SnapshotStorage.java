@@ -1,7 +1,9 @@
 package io.eventdriven.strictland;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Stores an approved snapshot and reads it back, keyed by name. Normally you don't implement it: the
@@ -9,9 +11,9 @@ import java.util.Optional;
  * snapshots somewhere else, such as a shared fixture directory or an in-memory store for a binary
  * format. The contract checks read and write through it.
  *
- * <p>The key the DSL hands in is already resolved: the layout, the calling test, and any variant label
- * are folded in before storage is called, so this extension point stays two methods and a custom
- * storage needs no concept of layouts or variants.</p>
+ * <p>The key the DSL hands in is already resolved: the layout and any variant are folded in before
+ * storage is called, so this extension point stays two methods and a custom storage needs no concept of
+ * layouts or variants.</p>
  *
  * <p>Pass your storage to {@link SpecificationOptions#snapshotStorage(SnapshotStorage)}, or take the
  * default from {@link Snapshots#files()}.</p>
@@ -48,17 +50,19 @@ public interface SnapshotStorage {
     Optional<byte[]> read(String name);
 
     /**
-     * Reads every approved snapshot at a read-location, the matches sharing a stable name prefix, in a
-     * deterministic order. A compatibility check replays them all, so a snapshot one test wrote can be
-     * read by another.
+     * Reads every approved snapshot sharing a stable name prefix, in a deterministic order. A
+     * compatibility check replays them all, so a snapshot one test wrote can be read by another.
      *
-     * <p>The default reads by the location's {@code prefix} as an exact name, enough for a custom store
-     * that keys snapshots by that name. File-backed storage overrides it to glob the location's folder.</p>
+     * <p>The default reads by {@code prefix} as an exact name, enough for a custom store that keys
+     * snapshots by that name. File-backed storage overrides it to glob {@code folder}.</p>
      *
-     * @param location the folder and name prefix the matching snapshots share
+     * @param folder the directory the matching snapshots live in, or {@code null} for a custom store
+     *     that keys by name
+     * @param prefix the stable name prefix the matching snapshots share, {@code {shortName}.{version}.}
+     * @param variant the variant selecting just that one, or {@code null} to replay all
      * @return the matching payloads in a deterministic order, empty when nothing matches
      */
-    default List<byte[]> readAll(SnapshotReadLocation location) {
-        return read(location.prefix()).map(List::of).orElseGet(List::of);
+    default List<byte[]> readAll(@Nullable Path folder, String prefix, @Nullable String variant) {
+        return read(prefix).map(List::of).orElseGet(List::of);
     }
 }
