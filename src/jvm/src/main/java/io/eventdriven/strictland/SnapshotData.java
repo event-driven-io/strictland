@@ -1,9 +1,8 @@
 package io.eventdriven.strictland;
 
 /**
- * A snapshot's raw payload bytes, the one value storage stores, reads, and replays. It is a thin typed
- * wrapper so the storage seam moves a named value rather than a bare {@code byte[]}, which keeps method
- * signatures self-describing and stops a payload getting confused with any other byte array.
+ * The bytes of a single snapshot. A custom {@link SnapshotStorage} is handed one to persist in {@code
+ * store} and returns one from {@code read} and {@code readAll}.
  */
 public final class SnapshotData {
 

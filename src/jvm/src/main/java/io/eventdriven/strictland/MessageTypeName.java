@@ -2,8 +2,7 @@ package io.eventdriven.strictland;
 
 /**
  * A message type's name split into its namespace and short name. The snapshot machinery names files by
- * the short name and lays out folders by the namespace, so splitting once here keeps that math in one
- * place.
+ * the short name and lays out folders by the namespace.
  *
  * <p>The namespace is everything before the last dot, the short name everything after it. A dotless
  * logical name has an empty namespace and is its own short name.</p>

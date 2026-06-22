@@ -3,13 +3,13 @@ package io.eventdriven.strictland;
 import java.nio.file.Path;
 
 /**
- * A message snapshot is what your message looks like once serialized - the JSON you reviewed and
+ * A message snapshot is what your message looks like once serialized: the JSON you reviewed and
  * approved. Strictland captures it the first time from your message, then checks every later run still
- * produces the same thing, so an accidental change to the format fails the test.
+ * produces the same thing. An accidental change to the format fails the test.
  *
  * <p>Every check already uses a default snapshot, named after the message and kept in the contract
  * registry. You reach for this type only to point at a different one, or to hand the check a live
- * message: the factory methods give you the ways to pick one - a message in hand with {@link
+ * message. The factory methods give you the ways to pick one: a message in hand with {@link
  * #of(Object)}, by its message class with {@link #of(Class)}, by a message-type name with {@link
  * #forMessageType(String)}, by file path with {@link #at(Path)}, or by a variant label when one message
  * type has several snapshots. Pass the result to a {@link MessageContract#given(MessageSnapshot.ByClass)
@@ -65,8 +65,8 @@ public sealed interface MessageSnapshot
     }
 
     /**
-     * A snapshot found by a message-type name, for when it's named after a logical type - the one your
-     * event store or message bus records - rather than a Java class.
+     * A snapshot found by a message-type name, for when it's named after a logical type, the one your
+     * event store or message bus records, rather than a Java class.
      *
      * @param messageType the name identifying the snapshot
      * @param version the version label the snapshot is pinned to, defaulting to {@value #DEFAULT_VERSION}
@@ -138,9 +138,9 @@ public sealed interface MessageSnapshot
 
     /**
      * Wraps a message your current code holds in hand, for a check that serializes it at check time
-     * rather than reading a saved file. This is the door {@link MessageContract#given(Object)} goes
-     * through; a {@link Class} argument resolves to the more specific {@link #of(Class)} instead, so a
-     * class reference still points at a stored snapshot.
+     * rather than reading a saved file. {@link MessageContract#given(Object)} resolves through this
+     * method; a {@link Class} argument resolves to the more specific {@link #of(Class)} instead, leaving a
+     * class reference pointing at a stored snapshot.
      *
      * @param message the message your current code builds
      * @param <S> the type of the message
@@ -161,8 +161,8 @@ public sealed interface MessageSnapshot
     }
 
     /**
-     * Points at a snapshot by a message-type name, for when it's named after a logical type - the one
-     * your event store or message bus records - rather than a Java class.
+     * Points at a snapshot by a message-type name, for when it's named after a logical type, the one
+     * your event store or message bus records, rather than a Java class.
      *
      * @param messageType the name identifying the snapshot
      * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step
