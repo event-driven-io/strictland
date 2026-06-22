@@ -1,43 +1,23 @@
 package io.eventdriven.strictland;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * The version you put under contract with {@code given(...)}, ready for you to check.
  *
  * <p>From here, lock its shape so accidental changes get caught with {@link #whenSerialized()} (or
- * {@link #whenSerializedAs(Snapshot)} to choose the snapshot), or read it as another version to confirm
- * the two are compatible with {@link #whenDeserializedAs(Class)}.</p>
+ * {@link #whenSerializedAs(MessageSnapshot)} to choose the snapshot), or read it as another version to
+ * confirm the two are compatible with {@link #whenDeserializedAs(Class)}.</p>
  *
  * @param <S> the type of the message under test
  */
 public class GivenStep<S> {
-    final @Nullable Snapshot snapshot;
-    final @Nullable S instance;
-    final String version;
-    final MessageSerializer serializer;
-    final SnapshotStorage storage;
-    final @Nullable SnapshotLayout layout;
-    final String fileExtension;
-    final MessageTypeMapper typeMapper;
+    private final MessageSnapshot source;
+    private final String version;
+    private final ContractContext context;
 
-    GivenStep(
-            @Nullable Snapshot snapshot,
-            @Nullable S instance,
-            String version,
-            MessageSerializer serializer,
-            SnapshotStorage storage,
-            @Nullable SnapshotLayout layout,
-            String fileExtension,
-            MessageTypeMapper typeMapper) {
-        this.snapshot = snapshot;
-        this.instance = instance;
+    GivenStep(MessageSnapshot source, String version, ContractContext context) {
+        this.source = source;
         this.version = version;
-        this.serializer = serializer;
-        this.storage = storage;
-        this.layout = layout;
-        this.fileExtension = fileExtension;
-        this.typeMapper = typeMapper;
+        this.context = context;
     }
 
     /**
@@ -59,8 +39,7 @@ public class GivenStep<S> {
      *     since there's nothing to serialize
      */
     public ThenContractStep<S> whenSerialized() {
-        var instance = requireInstance();
-        return new ThenContractStep<>(instance, null, version, serializer, storage, layout, fileExtension, typeMapper);
+        return new ThenContractStep<>(requireInstance(), null, version, context);
     }
 
     /**
@@ -73,7 +52,7 @@ public class GivenStep<S> {
      * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderInitiatedV2(id, null, initiatedAt))
-     *     .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2_NullField"))
+     *     .whenSerializedAs(MessageSnapshot.forMessageType("OrderInitiatedV2_NullField"))
      *     .thenContractIsUnchanged();
      * </pre>
      *
@@ -82,10 +61,8 @@ public class GivenStep<S> {
      * @throws IllegalStateException if you started from a saved snapshot rather than a live instance,
      *     since there's nothing to serialize
      */
-    public ThenContractStep<S> whenSerializedAs(Snapshot destination) {
-        var instance = requireInstance();
-        return new ThenContractStep<>(
-                instance, destination, version, serializer, storage, layout, fileExtension, typeMapper);
+    public ThenContractStep<S> whenSerializedAs(MessageSnapshot destination) {
+        return new ThenContractStep<>(requireInstance(), destination, version, context);
     }
 
     /**
@@ -109,24 +86,22 @@ public class GivenStep<S> {
      */
     public ThenContractStep<S> whenSerializedAs(SnapshotVariant variant) {
         var instance = requireInstance();
-        var label = ((SnapshotVariant.ByLabel) variant).name();
         return new ThenContractStep<>(
-                instance,
-                Snapshot.of(instance.getClass()).variant(label),
-                version,
-                serializer,
-                storage,
-                layout,
-                fileExtension,
-                typeMapper);
+                instance, MessageSnapshot.of(instance.getClass()).variant(variant), version, context);
     }
 
-    private S requireInstance() {
-        if (instance == null) {
-            throw new IllegalStateException(
-                    "whenSerialized() requires an instance - use MessageContract.given(instance), not MessageContract.given(Snapshot)");
-        }
-        return instance;
+    private Object requireInstance() {
+        return switch (source) {
+            case MessageSnapshot.OfInstance<?> v -> v.message();
+            case MessageSnapshot.ByClass<?> ignored -> throw instanceRequired();
+            case MessageSnapshot.ByMessageType ignored -> throw instanceRequired();
+            case MessageSnapshot.ByPath ignored -> throw instanceRequired();
+        };
+    }
+
+    private static IllegalStateException instanceRequired() {
+        return new IllegalStateException(
+                "whenSerialized() requires an instance - use MessageContract.given(instance), not MessageContract.given(MessageSnapshot)");
     }
 
     /**
@@ -149,7 +124,6 @@ public class GivenStep<S> {
      * @return the step where you check compatibility, choosing the direction
      */
     public <T> ThenCompatibilityStep<S, T> whenDeserializedAs(Class<T> targetType) {
-        return new ThenCompatibilityStep<>(
-                snapshot, instance, version, targetType, serializer, storage, layout, typeMapper);
+        return new ThenCompatibilityStep<>(source, version, targetType, context);
     }
 }

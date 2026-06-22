@@ -41,7 +41,7 @@ final class SpecificationOptionsTests {
     @Test
     void givenWithers_whenApplied_thenAccessorsReturnWhatWasSet() {
         MessageSerializer serializer = new CustomMessageSerializer(new JsonMapper());
-        SnapshotStorage storage = new FileSnapshotStorage();
+        SnapshotStorage storage = new FileSnapshotStorage(SnapshotLayout.registry());
         MessageTypeMapper typeMapper = MessageTypeMapper.fullyQualifiedName();
         SnapshotLayout layout = SnapshotLayout.registry();
 
@@ -70,13 +70,18 @@ final class SpecificationOptionsTests {
         var captured = new String[1];
         SnapshotStorage storage = new SnapshotStorage() {
             @Override
-            public void store(String name, byte[] payload) {
-                captured[0] = name;
+            public void store(SnapshotLocation location, SnapshotData data) {
+                captured[0] = location.name();
             }
 
             @Override
-            public java.util.Optional<byte[]> read(String name) {
-                return java.util.Optional.empty();
+            public SnapshotData read(SnapshotLocation location) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public java.util.List<SnapshotData> readAll(SnapshotFilter filter) {
+                return java.util.List.of();
             }
         };
 
@@ -87,7 +92,7 @@ final class SpecificationOptionsTests {
                 .whenSerialized()
                 .thenContractIsUnchanged();
 
-        assertEquals("MemberJoined.1", captured[0]);
+        assertEquals("MemberJoined.1.default", captured[0]);
     }
 
     @Test

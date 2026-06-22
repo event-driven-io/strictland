@@ -10,16 +10,14 @@ import org.junit.jupiter.api.Test;
 final class ThenCompatibilityStepInvariantTests {
 
     @Test
-    void whenBothSnapshotAndInstanceAreNull_thenForwardCompatible_throwsIllegalState() {
-        var step = new ThenCompatibilityStep<Object, Object>(
-                null,
-                null,
-                Snapshot.DEFAULT_VERSION,
-                Object.class,
+    void whenTheReferencedSnapshotIsAbsent_thenForwardCompatible_throws() {
+        var context = new ContractContext(
                 new JacksonMessageSerializer(new JsonMapper()),
-                new FileSnapshotStorage(),
-                SnapshotLayout.registry(),
+                new FileSnapshotStorage(SnapshotLayout.registry()),
                 MessageTypeMapper.fullyQualifiedName());
-        assertThrows(IllegalStateException.class, step::thenForwardCompatible);
+        var step = new ThenCompatibilityStep<>(
+                MessageSnapshot.forMessageType("NeverWritten"), MessageSnapshot.DEFAULT_VERSION, Object.class, context);
+
+        assertThrows(RuntimeException.class, step::thenForwardCompatible);
     }
 }

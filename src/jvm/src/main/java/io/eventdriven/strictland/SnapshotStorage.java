@@ -1,19 +1,18 @@
 package io.eventdriven.strictland;
 
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
 /**
- * Stores an approved snapshot and reads it back, keyed by name. Normally you don't implement it: the
- * default file-based storage keeps each snapshot in the committed contract registry. Implement it only to keep
- * snapshots somewhere else, such as a shared fixture directory or an in-memory store for a binary
- * format. The contract checks read and write through it.
+ * Stores an approved snapshot and reads it back, keyed by typed values. Normally you don't implement it:
+ * the default file-based storage keeps each snapshot in the committed contract registry. Implement it
+ * only to keep snapshots somewhere else, such as a shared fixture directory or an in-memory store for a
+ * binary format. The contract checks read and write through it.
  *
- * <p>The key the DSL hands in is already resolved: the layout and any variant are folded in before
- * storage is called, so this extension point stays two methods and a custom storage needs no concept of
- * layouts or variants.</p>
+ * <p>The DSL hands in typed locations and filters: a {@link SnapshotLocation} names one exact file, a
+ * {@link SnapshotFilter} names a whole family of variants. A custom store derives its own key from the
+ * location's {@link SnapshotLocation#name() name} and matches a filter by its {@link
+ * SnapshotFilter#namePrefix() name prefix}, so this extension point needs no concept of a root, layout,
+ * or marker.</p>
  *
  * <p>Pass your storage to {@link SpecificationOptions#snapshotStorage(SnapshotStorage)}, or take the
  * default from {@link Snapshots#files()}.</p>
@@ -30,39 +29,34 @@ import org.jspecify.annotations.Nullable;
 public interface SnapshotStorage {
 
     /**
-     * Approves and persists a payload under a name. The first run saves it for you to review and
-     * commit; on a later run a matching payload passes, and one that has drifted throws an {@link
+     * Approves and persists a snapshot at one exact location. The first run saves it for you to review
+     * and commit; on a later run a matching payload passes, and one that has drifted throws an {@link
      * AssertionError} to fail the check.
      *
-     * @param name the name the snapshot is stored under
-     * @param payload the serialized message to approve and persist
+     * @param location the exact file the snapshot is stored at
+     * @param data the serialized message to approve and persist
      * @throws AssertionError when the payload differs from the approved snapshot
      */
-    void store(String name, byte[] payload) throws AssertionError;
+    void store(SnapshotLocation location, SnapshotData data) throws AssertionError;
 
     /**
-     * Reads back the payload approved under a name, for a compatibility check that replays an older
-     * version's data.
+     * Reads back the one snapshot approved at an exact location, for a compatibility check that replays a
+     * pinned version's data. Throws when the expected approved file is missing, since a pinned read names
+     * a single file that must exist.
      *
-     * @param name the logical name to read
-     * @return the stored payload, or {@link Optional#empty()} when nothing has been approved yet
+     * @param location the exact file to read
+     * @return the stored snapshot's payload
+     * @throws RuntimeException when the expected approved file cannot be read
      */
-    Optional<byte[]> read(String name);
+    SnapshotData read(SnapshotLocation location);
 
     /**
-     * Reads every approved snapshot sharing a stable name prefix, in a deterministic order. A
-     * compatibility check replays them all, so a snapshot one test wrote can be read by another.
+     * Reads every approved snapshot in a family, the variants sharing one message type and version, in a
+     * deterministic order. A compatibility check replays them all, so a snapshot one test wrote can be
+     * read by another.
      *
-     * <p>The default reads by {@code prefix} as an exact name, enough for a custom store that keys
-     * snapshots by that name. File-backed storage overrides it to glob {@code folder}.</p>
-     *
-     * @param folder the directory the matching snapshots live in, or {@code null} for a custom store
-     *     that keys by name
-     * @param prefix the stable name prefix the matching snapshots share, {@code {shortName}.{version}.}
-     * @param variant the variant selecting just that one, or {@code null} to replay all
+     * @param filter the family to read: the shared folder path and the variants' name prefix
      * @return the matching payloads in a deterministic order, empty when nothing matches
      */
-    default List<byte[]> readAll(@Nullable Path folder, String prefix, @Nullable String variant) {
-        return read(prefix).map(List::of).orElseGet(List::of);
-    }
+    List<SnapshotData> readAll(SnapshotFilter filter);
 }

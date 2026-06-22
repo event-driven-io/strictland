@@ -64,7 +64,7 @@ final class ManualVariantTests {
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options())
-                .given(Snapshot.of(OrderInitiated.class).variant("WithPromotion"))
+                .given(MessageSnapshot.of(OrderInitiated.class).variant("WithPromotion"))
                 .whenDeserializedAs(OrderInitiated.class)
                 .thenBackwardCompatible(order -> assertEquals("WELCOME", order.promotion()));
     }

@@ -8,19 +8,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 
 /**
- * File-backed snapshot storage. It is a thin wrapper that reads and stores snapshots.
+ * File-backed snapshot storage, rooted at the {@code rootPath/wrapperFolder} a {@link SnapshotLayout}
+ * lays out. It owns the root, the {@code .snap.approved} marker, and the {@code .received} sibling, and
+ * joins a {@link SnapshotLocation} or {@link SnapshotFilter} into a path under that root.
  *
  * <p>The first run writes the approved file for you to review and commit. A later run compares the
  * payload against it: a match passes, a difference writes a sibling {@code .received} file for diffing
  * and fails the check.</p>
- *
- * <p> `FileSnapshotStorage` is a thin wrapper that just writes bytes and reads them back.
- * The path, layout, and variant are resolved by the caller before the bytes reach storage.</p>
  */
 class FileSnapshotStorage implements SnapshotStorage {
 
@@ -28,19 +25,24 @@ class FileSnapshotStorage implements SnapshotStorage {
     private static final String RECEIVED_MARKER = ".received.";
     static final String SNAP_APPROVED_MARKER = ".snap.approved.";
 
+    private final Path root;
+
+    FileSnapshotStorage(SnapshotLayout layout) {
+        this.root = Path.of(layout.rootPath(), layout.wrapperFolder());
+    }
+
     @Override
-    public void store(String pathWithName, byte[] payload) {
-        var approved = Path.of(pathWithName);
-        if (approved.getParent() == null) {
-            throw new IllegalArgumentException("Snapshot path must have a parent directory: " + pathWithName);
-        }
-        if (!pathWithName.contains(APPROVED_MARKER)) {
-            throw new IllegalArgumentException("Snapshot path must end in .approved.<ext>: " + pathWithName);
-        }
-        var received = Path.of(pathWithName.replace(APPROVED_MARKER, RECEIVED_MARKER));
+    public void store(SnapshotLocation location, SnapshotData data) {
+        var approved = approvedPath(location);
+        var fileName = approved.getFileName().toString();
+        var received = approved.resolveSibling(fileName.replace(APPROVED_MARKER, RECEIVED_MARKER));
+        var payload = data.bytes();
         try {
+            var parent = approved.getParent();
             if (!Files.exists(approved)) {
-                Files.createDirectories(approved.getParent());
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
                 Files.write(approved, payload);
                 Files.deleteIfExists(received);
                 return;
@@ -49,41 +51,44 @@ class FileSnapshotStorage implements SnapshotStorage {
                 Files.deleteIfExists(received);
                 return;
             }
-            Files.createDirectories(received.getParent());
+            var receivedParent = received.getParent();
+            if (receivedParent != null) {
+                Files.createDirectories(receivedParent);
+            }
             Files.write(received, payload);
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to store snapshot at " + pathWithName, e);
+            throw new UncheckedIOException("Failed to store snapshot at " + approved, e);
         }
-        throw new AssertionError("Snapshot drift: " + pathWithName + " differs from the approved snapshot. See "
-                + received + " to review.");
+        throw new AssertionError(
+                "Snapshot drift: " + approved + " differs from the approved snapshot. See " + received + " to review.");
     }
 
     @Override
-    public Optional<byte[]> read(String pathWithName) {
+    public SnapshotData read(SnapshotLocation location) {
+        var approved = approvedPath(location);
         try {
-            return Optional.of(Files.readAllBytes(Path.of(pathWithName)));
+            return new SnapshotData(Files.readAllBytes(approved));
         } catch (IOException e) {
-            return Optional.empty();
+            throw new UncheckedIOException("Cannot read snapshot file: " + approved, e);
         }
     }
 
     @Override
-    public List<byte[]> readAll(@Nullable Path folder, String prefix, @Nullable String variant) {
-        if (folder == null || !Files.isDirectory(folder)) {
+    public List<SnapshotData> readAll(SnapshotFilter filter) {
+        var folder = join(root, filter.path());
+        if (!Files.isDirectory(folder)) {
             return List.of();
         }
         try (Stream<Path> files = Files.list(folder)) {
             var matches = files.filter(path -> {
                         var name = path.getFileName().toString();
-                        return name.startsWith(prefix)
-                                && name.contains(APPROVED_MARKER)
-                                && matchesVariant(name, variant);
+                        return name.startsWith(filter.namePrefix()) && name.contains(APPROVED_MARKER);
                     })
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
                     .toList();
-            var payloads = new ArrayList<byte[]>(matches.size());
+            var payloads = new ArrayList<SnapshotData>(matches.size());
             for (var match : matches) {
-                payloads.add(Files.readAllBytes(match));
+                payloads.add(new SnapshotData(Files.readAllBytes(match)));
             }
             return List.copyOf(payloads);
         } catch (IOException e) {
@@ -91,12 +96,15 @@ class FileSnapshotStorage implements SnapshotStorage {
         }
     }
 
-    private static boolean matchesVariant(String fileName, @Nullable String variant) {
-        if (variant == null) {
-            return true;
+    private Path approvedPath(SnapshotLocation location) {
+        return join(root, location.path()).resolve(location.name() + ".snap.approved" + location.extension());
+    }
+
+    private static Path join(Path base, List<String> path) {
+        var resolved = base;
+        for (var segment : path) {
+            resolved = resolved.resolve(segment);
         }
-        var markerAt = fileName.indexOf(SNAP_APPROVED_MARKER);
-        var base = markerAt < 0 ? fileName : fileName.substring(0, markerAt);
-        return base.endsWith("." + variant);
+        return resolved;
     }
 }

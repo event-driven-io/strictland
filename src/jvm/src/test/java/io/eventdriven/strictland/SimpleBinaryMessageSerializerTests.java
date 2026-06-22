@@ -36,7 +36,7 @@ final class SimpleBinaryMessageSerializerTests {
     void givenBinarySerializerAndCustomStorage_whenSerialized_thenContractIsUnchanged() {
         MessageContract.specification(Binary.defaults())
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerializedAs(Snapshot.forMessageType("OrderPlaced"))
+                .whenSerializedAs(MessageSnapshot.forMessageType("OrderPlaced"))
                 .thenContractIsUnchanged();
     }
 
@@ -55,11 +55,11 @@ final class SimpleBinaryMessageSerializerTests {
         var options = Binary.of(tmp);
         MessageContract.specification(options)
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerializedAs(Snapshot.forMessageType("OrderPlaced"))
+                .whenSerializedAs(MessageSnapshot.forMessageType("OrderPlaced"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options)
-                .given(Snapshot.forMessageType("OrderPlaced"))
+                .given(MessageSnapshot.forMessageType("OrderPlaced"))
                 .whenDeserializedAs(OrderPlaced.class)
                 .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
     }
@@ -69,11 +69,11 @@ final class SimpleBinaryMessageSerializerTests {
         var options = Binary.of(tmp);
         MessageContract.specification(options)
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerializedAs(Snapshot.forMessageType("OrderPlaced").variant("Alice"))
+                .whenSerializedAs(MessageSnapshot.forMessageType("OrderPlaced").variant("Alice"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options)
-                .given(Snapshot.forMessageType("OrderPlaced").variant("Alice"))
+                .given(MessageSnapshot.forMessageType("OrderPlaced").variant("Alice"))
                 .whenDeserializedAs(OrderPlaced.class)
                 .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
     }
@@ -83,10 +83,12 @@ final class SimpleBinaryMessageSerializerTests {
         var serializer = new SimpleBinaryMessageSerializer();
         var storage = new Base64SnapshotStorage(tmp);
         var original = new OrderPlaced(FIXED_ID, "Alice");
+        var location = SnapshotLocation.of(
+                MessageTypeName.of("RoundTrip"), "1", SnapshotVariant.DEFAULT, serializer.fileExtension());
 
-        storage.store("RoundTrip", serializer.serialize(original));
+        storage.store(location, new SnapshotData(serializer.serialize(original)));
 
-        var bytes = storage.read("RoundTrip").orElseThrow();
+        var bytes = storage.read(location).bytes();
         var roundTripped = serializer.deserialize(bytes, OrderPlaced.class);
 
         assertEquals(original, roundTripped);
@@ -131,21 +133,25 @@ final class SimpleBinaryMessageSerializerTests {
     void givenAnApprovedSnapshot_whenStoringADifferentPayload_thenThrowsDrift(@TempDir Path tmp) {
         var serializer = new SimpleBinaryMessageSerializer();
         var storage = new Base64SnapshotStorage(tmp);
-        storage.store("Drifting", serializer.serialize(new OrderPlaced(FIXED_ID, "Alice")));
+        var location = SnapshotLocation.of(
+                MessageTypeName.of("Drifting"), "1", SnapshotVariant.DEFAULT, serializer.fileExtension());
+        storage.store(location, new SnapshotData(serializer.serialize(new OrderPlaced(FIXED_ID, "Alice"))));
 
         var error = assertThrows(
                 AssertionError.class,
-                () -> storage.store("Drifting", serializer.serialize(new OrderPlaced(FIXED_ID, "Bob"))));
+                () -> storage.store(
+                        location, new SnapshotData(serializer.serialize(new OrderPlaced(FIXED_ID, "Bob")))));
 
         var message = requireNonNull(error.getMessage());
         assertTrue(message.contains("drift"));
     }
 
     @Test
-    void givenAnAbsentSnapshotName_whenRead_thenEmpty(@TempDir Path tmp) {
+    void givenAnAbsentSnapshotName_whenRead_thenThrows(@TempDir Path tmp) {
         var storage = new Base64SnapshotStorage(tmp);
+        var location = SnapshotLocation.of(MessageTypeName.of("Missing"), "1", SnapshotVariant.DEFAULT, ".txt");
 
-        assertTrue(storage.read("Missing").isEmpty());
+        assertThrows(java.io.UncheckedIOException.class, () -> storage.read(location));
     }
 
     private record OrderPlacedThreeFields(UUID orderId, String customer, String currency) {}

@@ -18,12 +18,12 @@ public interface Snapshots {
 
     /**
      * Storage that keeps each approved snapshot in a committed contract registry, under
-     * {@code src/test/resources/contract-snapshots} by default, so a contract change lands in the same
+     * {@code src/test/resources/contract-registry} by default, so a contract change lands in the same
      * pull request as the code that caused it. This is what a specification uses unless you swap it.
      *
      * @return file-backed snapshot storage
      */
     static SnapshotStorage files() {
-        return new FileSnapshotStorage();
+        return new FileSnapshotStorage(SnapshotLayout.registry());
     }
 }
