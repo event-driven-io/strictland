@@ -27,32 +27,18 @@ import org.jspecify.annotations.Nullable;
  * @param <T> the version you check it against
  */
 public class ThenCompatibilityStep<S, T> {
-    private final @Nullable Snapshot snapshot;
-    private final @Nullable S instance;
+    private final MessageSnapshot source;
     private final String version;
     private final Class<T> targetType;
+    private final ContractContext context;
     private final MessageSerializer serializer;
-    private final SnapshotStorage storage;
-    private final @Nullable SnapshotLayout layout;
-    private final MessageTypeMapper typeMapper;
 
-    ThenCompatibilityStep(
-            @Nullable Snapshot snapshot,
-            @Nullable S instance,
-            String version,
-            Class<T> targetType,
-            MessageSerializer serializer,
-            SnapshotStorage storage,
-            @Nullable SnapshotLayout layout,
-            MessageTypeMapper typeMapper) {
-        this.snapshot = snapshot;
-        this.instance = instance;
+    ThenCompatibilityStep(MessageSnapshot source, String version, Class<T> targetType, ContractContext context) {
+        this.source = source;
         this.version = version;
         this.targetType = targetType;
-        this.serializer = serializer;
-        this.storage = storage;
-        this.layout = layout;
-        this.typeMapper = typeMapper;
+        this.context = context;
+        this.serializer = context.serializer();
     }
 
     /**
@@ -199,41 +185,48 @@ public class ThenCompatibilityStep<S, T> {
     }
 
     private List<byte[]> resolveSourceBytesList() {
-        if (instance != null) {
-            try {
-                return List.of(serializer.serialize(instance));
-            } catch (UncheckedIOException e) {
-                throw new RuntimeException(
-                        "Serialization of " + instance.getClass().getSimpleName() + " failed", e);
+        var ext = serializer.fileExtension();
+        return switch (source) {
+            case MessageSnapshot.OfInstance<?> v -> {
+                var instance = v.message();
+                try {
+                    yield List.of(serializer.serialize(instance));
+                } catch (UncheckedIOException e) {
+                    throw new RuntimeException(
+                            "Serialization of " + instance.getClass().getSimpleName() + " failed", e);
+                }
             }
-        }
-        if (snapshot == null) {
-            throw new IllegalStateException("Either a snapshot or an instance is required");
-        }
-        return switch (snapshot) {
-            case Snapshot.ByPath byPath -> {
-                var key = byPath.path().toString();
-                var bytes =
-                        storage.read(key).orElseThrow(() -> new RuntimeException("Cannot read snapshot file: " + key));
-                yield List.of(bytes);
-            }
-            case Snapshot.ByClass<?> s ->
-                readAll(SnapshotName.of(typeMapper.name(s.messageClass()), resolveVersion(s.version()), s.variant()));
-            case Snapshot.ByMessageType s ->
-                readAll(SnapshotName.of(s.messageType(), resolveVersion(s.version()), s.variant()));
+            case MessageSnapshot.ByPath byPath -> List.of(readOne(SnapshotLocation.ofRelativePath(byPath.path())));
+            case MessageSnapshot.ByClass<?> s ->
+                resolveFamilyOrVariant(
+                        MessageTypeName.of(context.typeMapper().name(s.messageClass())),
+                        resolveVersion(s.version()),
+                        s.variant(),
+                        ext);
+            case MessageSnapshot.ByMessageType s ->
+                resolveFamilyOrVariant(
+                        MessageTypeName.of(s.messageType()), resolveVersion(s.version()), s.variant(), ext);
         };
     }
 
-    private List<byte[]> readAll(SnapshotName name) {
-        var folder = layout == null ? null : name.folder(layout);
-        var payloads = storage.readAll(folder, name.readPrefix(), name.variant());
-        if (payloads.isEmpty()) {
-            throw new RuntimeException("Cannot read snapshot file: " + name.readPrefix());
+    private List<byte[]> resolveFamilyOrVariant(
+            MessageTypeName messageType, String resolvedVersion, SnapshotVariant variant, String ext) {
+        if (variant instanceof SnapshotVariant.Unset) {
+            var payloads = context.storage().readAll(SnapshotFilter.of(messageType, resolvedVersion));
+            if (payloads.isEmpty()) {
+                throw new RuntimeException(
+                        "Cannot read snapshot file: " + messageType.shortName() + "." + resolvedVersion + ".");
+            }
+            return payloads.stream().map(SnapshotData::bytes).toList();
         }
-        return payloads;
+        return List.of(readOne(SnapshotLocation.of(messageType, resolvedVersion, variant, ext)));
+    }
+
+    private byte[] readOne(SnapshotLocation location) {
+        return context.storage().read(location).bytes();
     }
 
     private String resolveVersion(String snapshotVersion) {
-        return snapshotVersion.equals(Snapshot.DEFAULT_VERSION) ? version : snapshotVersion;
+        return snapshotVersion.equals(MessageSnapshot.DEFAULT_VERSION) ? version : snapshotVersion;
     }
 }

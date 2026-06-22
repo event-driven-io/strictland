@@ -25,7 +25,7 @@ final class RegistryLayoutEndToEndTests {
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options())
-                .given(Snapshot.of(OrderPlaced.class))
+                .given(MessageSnapshot.of(OrderPlaced.class))
                 .whenDeserializedAs(OrderPlaced.class)
                 .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
     }

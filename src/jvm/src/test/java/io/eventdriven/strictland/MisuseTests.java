@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 
 @NullMarked
 final class MisuseTests {
-    private static final UUID FIXED_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     private record OrderPlaced(UUID orderId, String customer, OffsetDateTime placedAt) {}
 
@@ -45,39 +44,48 @@ final class MisuseTests {
     }
 
     @Test
-    void given_snapshotSource_whenSerialized_thenFailsBecauseAnInstanceIsRequired() {
+    void given_messageTypeSnapshotSource_whenSerialized_thenFailsBecauseAnInstanceIsRequired() {
         var exception = assertThrows(
                 IllegalStateException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(Snapshot.forMessageType("OrderPlaced"))
+                        .given(MessageSnapshot.forMessageType("OrderPlaced"))
                         .whenSerialized());
 
         assertTrue(requireNonNull(exception.getMessage()).contains("instance"));
     }
 
     @Test
-    void given_pathWithoutParentDirectory_whenSerialized_thenFailsBecausePathHasNoParent() {
-        var path = Path.of("Orphan.approved.txt");
+    void given_classSnapshotSource_whenSerialized_thenFailsBecauseAnInstanceIsRequired() {
+        var exception = assertThrows(
+                IllegalStateException.class,
+                () -> MessageContract.specification(Json.Jackson.defaults())
+                        .given(MessageSnapshot.of(OrderPlaced.class))
+                        .whenSerialized());
+
+        assertTrue(requireNonNull(exception.getMessage()).contains("instance"));
+    }
+
+    @Test
+    void given_pathSnapshotSource_whenSerialized_thenFailsBecauseAnInstanceIsRequired() {
+        var path = Path.of("MisuseTests/Malformed.reference.snap.approved.json");
 
         var exception = assertThrows(
-                IllegalArgumentException.class,
+                IllegalStateException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(new OrderPlaced(FIXED_ID, "Alice", OffsetDateTime.parse("2024-01-01T12:00:00Z")))
-                        .whenSerializedAs(Snapshot.at(path))
-                        .thenContractIsUnchanged());
+                        .given(MessageSnapshot.at(path))
+                        .whenSerialized());
 
-        assertTrue(requireNonNull(exception.getMessage()).contains("parent directory"));
+        assertTrue(requireNonNull(exception.getMessage()).contains("instance"));
     }
 
     @Test
     void given_malformedStoredSnapshot_whenDeserialized_thenFailsBecauseDeserializationFailed() {
-        var path = Path.of(
-                "src/test/java/io/eventdriven/strictland/snapshots/MisuseTests/Malformed.reference.snap.approved.json");
+        var path = Path.of("MisuseTests/Malformed.reference.snap.approved.json");
 
         var exception = assertThrows(
                 RuntimeException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(Snapshot.at(path))
+                        .given(MessageSnapshot.at(path))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenBackwardCompatible());
 
@@ -87,13 +95,12 @@ final class MisuseTests {
 
     @Test
     void given_storedSnapshotWithNullBody_whenDeserialized_thenFailsBecauseItDeserializedToEmpty() {
-        var path = Path.of(
-                "src/test/java/io/eventdriven/strictland/snapshots/MisuseTests/NullBody.reference.snap.approved.json");
+        var path = Path.of("MisuseTests/NullBody.reference.snap.approved.json");
 
         var exception = assertThrows(
                 AssertionError.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(Snapshot.at(path))
+                        .given(MessageSnapshot.at(path))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenForwardCompatible());
 
@@ -107,7 +114,7 @@ final class MisuseTests {
         var exception = assertThrows(
                 RuntimeException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(Snapshot.at(path))
+                        .given(MessageSnapshot.at(path))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenBackwardCompatible());
 

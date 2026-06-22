@@ -2,6 +2,7 @@ package io.eventdriven.strictland;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.nio.file.Path;
 import org.jspecify.annotations.NullMarked;
 
 /**
@@ -23,8 +24,10 @@ final class ApiSurfaceApproval {
         var testClass = caller.getDeclaringClass();
         var sourceDir =
                 TestSourceDirectoryLocator.knownRoots().locate(testClass.getPackageName(), caller.getFileName());
-        var approved =
-                sourceDir.resolve(testClass.getSimpleName() + "." + caller.getMethodName() + ".snap.approved.txt");
-        new FileSnapshotStorage().store(approved.toString(), surface.getBytes(UTF_8));
+        var fileName = testClass.getSimpleName() + "." + caller.getMethodName() + ".snap.approved.txt";
+        var storage = new FileSnapshotStorage(
+                SnapshotLayout.registry().rootPath(sourceDir.toString()).wrapperFolder(""));
+        var location = SnapshotLocation.ofRelativePath(Path.of(fileName));
+        storage.store(location, new SnapshotData(surface.getBytes(UTF_8)));
     }
 }

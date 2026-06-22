@@ -36,7 +36,7 @@ final class RegistryLayoutOverrideEndToEndTests {
                 .thenContractIsUnchanged();
 
         MessageContract.specification(Json.Jackson.defaults())
-                .given(Snapshot.of(ShipmentScheduled.class))
+                .given(MessageSnapshot.of(ShipmentScheduled.class))
                 .whenDeserializedAs(ShipmentScheduled.class)
                 .thenBackwardCompatible(shipment -> assertEquals("Acme", shipment.carrier()));
     }

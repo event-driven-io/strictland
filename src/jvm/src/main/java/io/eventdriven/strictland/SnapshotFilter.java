@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * The read query for a whole family of snapshots: every variant pinned to one {@code (messageType,
  * version)}. It carries the relative folder {@code path} the variants share, the namespace parts then
- * the short name, composed the same way {@link SnapshotName} lays out its folder, and a {@code
+ * the short name, composed the same way {@link SnapshotLocation} lays out its folder, and a {@code
  * namePrefix} every variant's file name starts with.
  *
  * <p>This is a family read, a prefix match, not an exact single-variant read. Reading one named variant

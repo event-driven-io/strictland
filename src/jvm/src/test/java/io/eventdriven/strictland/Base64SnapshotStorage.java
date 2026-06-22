@@ -11,13 +11,13 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 @NullMarked
 final class Base64SnapshotStorage implements SnapshotStorage {
+    private static final String APPROVED_SUFFIX = ".approved.txt";
+
     private final Path dir;
 
     Base64SnapshotStorage(Path dir) {
@@ -25,8 +25,9 @@ final class Base64SnapshotStorage implements SnapshotStorage {
     }
 
     @Override
-    public void store(String name, byte[] payload) {
-        var path = approvedPath(name);
+    public void store(SnapshotLocation location, SnapshotData data) {
+        var payload = data.bytes();
+        var path = approvedPath(location.name());
         try {
             if (!Files.exists(path)) {
                 var parent = path.getParent();
@@ -38,8 +39,8 @@ final class Base64SnapshotStorage implements SnapshotStorage {
             }
             var approved = Base64.getDecoder().decode(Files.readString(path, UTF_8));
             if (!Arrays.equals(approved, payload)) {
-                throw new AssertionError(
-                        "Snapshot drift for '" + name + "': stored payload differs from the approved snapshot");
+                throw new AssertionError("Snapshot drift for '" + location.name()
+                        + "': stored payload differs from the approved snapshot");
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -47,35 +48,30 @@ final class Base64SnapshotStorage implements SnapshotStorage {
     }
 
     @Override
-    public Optional<byte[]> read(String name) {
-        var path = approvedPath(name);
-        if (!Files.exists(path)) {
-            return Optional.empty();
-        }
+    public SnapshotData read(SnapshotLocation location) {
+        var path = approvedPath(location.name());
         try {
-            return Optional.of(Base64.getDecoder().decode(Files.readString(path, UTF_8)));
+            return new SnapshotData(Base64.getDecoder().decode(Files.readString(path, UTF_8)));
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException("Cannot read snapshot file: " + path, e);
         }
     }
 
     @Override
-    public List<byte[]> readAll(@Nullable Path folder, String prefix, @Nullable String variant) {
+    public List<SnapshotData> readAll(SnapshotFilter filter) {
         if (!Files.isDirectory(dir)) {
             return List.of();
         }
         try (Stream<Path> files = Files.list(dir)) {
             var matches = files.filter(path -> {
                         var name = path.getFileName().toString();
-                        return name.startsWith(prefix)
-                                && name.endsWith(".approved.txt")
-                                && matchesVariant(name, variant);
+                        return name.startsWith(filter.namePrefix()) && name.endsWith(APPROVED_SUFFIX);
                     })
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
                     .toList();
-            var payloads = new ArrayList<byte[]>(matches.size());
+            var payloads = new ArrayList<SnapshotData>(matches.size());
             for (var match : matches) {
-                payloads.add(Base64.getDecoder().decode(Files.readString(match, UTF_8)));
+                payloads.add(new SnapshotData(Base64.getDecoder().decode(Files.readString(match, UTF_8))));
             }
             return List.copyOf(payloads);
         } catch (IOException e) {
@@ -83,15 +79,7 @@ final class Base64SnapshotStorage implements SnapshotStorage {
         }
     }
 
-    private static boolean matchesVariant(String fileName, @Nullable String variant) {
-        if (variant == null) {
-            return true;
-        }
-        var base = fileName.substring(0, fileName.length() - ".approved.txt".length());
-        return base.endsWith("." + variant);
-    }
-
     private Path approvedPath(String name) {
-        return dir.resolve(name + ".approved.txt");
+        return dir.resolve(name + APPROVED_SUFFIX);
     }
 }

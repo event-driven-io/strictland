@@ -11,32 +11,16 @@ import org.jspecify.annotations.Nullable;
  * @param <S> the type of the message under test
  */
 public class ThenContractStep<S> {
-    private final S instance;
-    private final @Nullable Snapshot destination;
+    private final Object instance;
+    private final @Nullable MessageSnapshot destination;
     private final String version;
-    private final MessageSerializer serializer;
-    private final SnapshotStorage storage;
-    private final @Nullable SnapshotLayout layout;
-    private final String fileExtension;
-    private final MessageTypeMapper typeMapper;
+    private final ContractContext context;
 
-    ThenContractStep(
-            S instance,
-            @Nullable Snapshot destination,
-            String version,
-            MessageSerializer serializer,
-            SnapshotStorage storage,
-            @Nullable SnapshotLayout layout,
-            String fileExtension,
-            MessageTypeMapper typeMapper) {
+    ThenContractStep(Object instance, @Nullable MessageSnapshot destination, String version, ContractContext context) {
         this.instance = instance;
         this.destination = destination;
         this.version = version;
-        this.serializer = serializer;
-        this.storage = storage;
-        this.layout = layout;
-        this.fileExtension = fileExtension;
-        this.typeMapper = typeMapper;
+        this.context = context;
     }
 
     /**
@@ -56,27 +40,34 @@ public class ThenContractStep<S> {
      * </pre>
      */
     public void thenContractIsUnchanged() {
-        storage.store(snapshotKey(), serializer.serialize(instance));
+        var data = new SnapshotData(context.serializer().serialize(instance));
+        context.storage().store(snapshotLocation(), data);
     }
 
-    private String snapshotKey() {
+    private SnapshotLocation snapshotLocation() {
+        var ext = context.serializer().fileExtension();
         return switch (destination) {
-            case null -> writePath(SnapshotName.of(typeMapper.name(instance.getClass()), version, null));
-            case Snapshot.ByClass<?> b ->
-                writePath(SnapshotName.of(typeMapper.name(b.messageClass()), resolveVersion(b.version()), b.variant()));
-            case Snapshot.ByMessageType b ->
-                writePath(SnapshotName.of(b.messageType(), resolveVersion(b.version()), b.variant()));
-            case Snapshot.ByPath b -> b.path().toString();
+            case null ->
+                SnapshotLocation.of(
+                        MessageTypeName.of(context.typeMapper().name(instance.getClass())),
+                        version,
+                        SnapshotVariant.DEFAULT,
+                        ext);
+            case MessageSnapshot.ByClass<?> b ->
+                SnapshotLocation.of(
+                        MessageTypeName.of(context.typeMapper().name(b.messageClass())),
+                        resolveVersion(b.version()),
+                        b.variant(),
+                        ext);
+            case MessageSnapshot.ByMessageType b ->
+                SnapshotLocation.of(MessageTypeName.of(b.messageType()), resolveVersion(b.version()), b.variant(), ext);
+            case MessageSnapshot.ByPath b -> SnapshotLocation.ofRelativePath(b.path());
+            case MessageSnapshot.OfInstance<?> ignored ->
+                throw new IllegalArgumentException("a message in hand is not a snapshot destination");
         };
     }
 
-    private String writePath(SnapshotName name) {
-        return layout == null
-                ? name.base()
-                : name.resolve(layout, fileExtension).toString();
-    }
-
     private String resolveVersion(String snapshotVersion) {
-        return snapshotVersion.equals(Snapshot.DEFAULT_VERSION) ? version : snapshotVersion;
+        return snapshotVersion.equals(MessageSnapshot.DEFAULT_VERSION) ? version : snapshotVersion;
     }
 }

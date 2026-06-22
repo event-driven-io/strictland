@@ -124,7 +124,7 @@ final class BackwardCompatibilityTests {
         @Test
         void givenAStoredEventNamedAfterItsClass_whenReadByTheEvolvedType_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(Snapshot.of(CustomerRegisteredV1.class))
+                    .given(MessageSnapshot.of(CustomerRegisteredV1.class))
                     .whenDeserializedAs(CustomerRegisteredV2.class)
                     .thenBackwardCompatible(event -> assertNull(event.referralCode()));
         }
@@ -132,7 +132,7 @@ final class BackwardCompatibilityTests {
         @Test
         void givenAStoredEventNamedByItsMessageType_whenReadByTheEvolvedType_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(Snapshot.forMessageType("AccountOpenedV1"))
+                    .given(MessageSnapshot.forMessageType("AccountOpenedV1"))
                     .whenDeserializedAs(AccountOpenedV2.class)
                     .thenBackwardCompatible(event -> assertNull(event.currency()));
         }
@@ -144,11 +144,10 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredOldEvent_whenReadByTheCurrentType_thenBackwardCompatible() {
-            var path = Path.of(
-                    "src/test/java/io/eventdriven/strictland/snapshots/ReadingAStoredOldEvent/ShoppingCartConfirmedV1.reference.snap.approved.json");
+            var path = Path.of("ReadingAStoredOldEvent/ShoppingCartConfirmedV1.reference.snap.approved.json");
 
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(Snapshot.at(path))
+                    .given(MessageSnapshot.at(path))
                     .whenDeserializedAs(ShoppingCartConfirmed.class)
                     .thenBackwardCompatible();
         }
@@ -161,12 +160,12 @@ final class BackwardCompatibilityTests {
         @Test
         void givenAnOldEpochTimestampEvent_whenReadByTheCurrentIsoType_thenNotBackwardCompatible() {
             var path = Path.of(
-                    "src/test/java/io/eventdriven/strictland/snapshots/WhenTheSerializerDateFormatChanged/InvoiceIssuedV1_EpochTimestamp.reference.snap.approved.json");
+                    "WhenTheSerializerDateFormatChanged/InvoiceIssuedV1_EpochTimestamp.reference.snap.approved.json");
 
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(Snapshot.at(path))
+                            .given(MessageSnapshot.at(path))
                             .whenDeserializedAs(InvoiceIssued.class)
                             .thenBackwardCompatible());
 
@@ -220,13 +219,12 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredEventWithARemovedStatus_whenReadByTheCurrentEnum_thenNotBackwardCompatible() {
-            var path = Path.of(
-                    "src/test/java/io/eventdriven/strictland/snapshots/RemovingAnEnumConstant/InvoiceWithStatusIssuedV1.reference.snap.approved.json");
+            var path = Path.of("RemovingAnEnumConstant/InvoiceWithStatusIssuedV1.reference.snap.approved.json");
 
             assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(Snapshot.at(path))
+                            .given(MessageSnapshot.at(path))
                             .whenDeserializedAs(InvoiceStatusChanged.class)
                             .thenBackwardCompatible());
         }
@@ -288,13 +286,12 @@ final class BackwardCompatibilityTests {
 
         @Test
         void givenAStoredEventForARemovedVariant_whenReadByTheSmallerHierarchy_thenNotBackwardCompatible() {
-            var path = Path.of(
-                    "src/test/java/io/eventdriven/strictland/snapshots/EvolvingASealedHierarchy/ShipmentCancelledEvent.reference.snap.approved.json");
+            var path = Path.of("EvolvingASealedHierarchy/ShipmentCancelledEvent.reference.snap.approved.json");
 
             assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(Snapshot.at(path))
+                            .given(MessageSnapshot.at(path))
                             .whenDeserializedAs(ShipmentEvent.class)
                             .thenBackwardCompatible());
         }

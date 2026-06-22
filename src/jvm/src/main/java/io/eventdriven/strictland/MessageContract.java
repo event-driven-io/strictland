@@ -1,7 +1,5 @@
 package io.eventdriven.strictland;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * Strictland is a contract-testing library for the messages your code sends and stores: events,
  * commands, queue messages, HTTP requests and responses, and anything else you serialize for someone
@@ -28,27 +26,21 @@ import org.jspecify.annotations.Nullable;
  * <p>The approved file each check compares against lives in a committed contract registry, under
  * {@code src/test/resources/contract-registry} by default, so a contract change shows up in the same
  * pull request as the code that caused it.
- * {@link Snapshot} picks which file backs a check, and {@link PublicApiScanner} renders a package's
- * public API as text so you can approval-test the surface itself.</p>
+ * {@link MessageSnapshot} picks which file backs a check, and {@link PublicApiScanner} renders a
+ * package's public API as text so you can approval-test the surface itself.</p>
  */
 public class MessageContract {
-    private final MessageSerializer serializer;
-    private final SnapshotStorage storage;
-    private final @Nullable SnapshotLayout layout;
-    private final MessageTypeMapper typeMapper;
+    private final ContractContext context;
 
     private MessageContract(SpecificationOptions options) {
-        this.serializer = options.serializer();
+        var serializer = options.serializer();
         var configuredStorage = options.storage();
-        if (configuredStorage != null) {
-            this.storage = configuredStorage;
-            this.layout = null;
-        } else {
-            this.layout = SnapshotLayoutResolver.resolve(options.snapshotLayout());
-            this.storage = new FileSnapshotStorage();
-        }
+        var storage = configuredStorage != null
+                ? configuredStorage
+                : new FileSnapshotStorage(SnapshotLayoutResolver.resolve(options.snapshotLayout()));
         var configuredTypeMapper = options.typeMapper();
-        this.typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.fullyQualifiedName();
+        var typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.fullyQualifiedName();
+        this.context = new ContractContext(serializer, storage, typeMapper);
     }
 
     /**
@@ -81,24 +73,16 @@ public class MessageContract {
      * type.
      *
      * <p>Use it to check your current code still reads what an older version wrote. {@code
-     * Snapshot.of(OrderPlaced.class)} loads the approved file for that type, which you then read as
-     * today's type with {@link GivenStep#whenDeserializedAs(Class)}. {@link Snapshot} lists the other
-     * ways to locate one.</p>
+     * MessageSnapshot.of(OrderPlaced.class)} loads the approved file for that type, which you then read
+     * as today's type with {@link GivenStep#whenDeserializedAs(Class)}. {@link MessageSnapshot} lists the
+     * other ways to locate one.</p>
      *
      * @param snapshot the saved snapshot to read
      * @param <S> the message type the snapshot holds
      * @return the next step, where you choose what to check
      */
-    public <S> GivenStep<S> given(Snapshot.ByClass<S> snapshot) {
-        return new GivenStep<>(
-                snapshot,
-                null,
-                snapshot.version(),
-                serializer,
-                storage,
-                layout,
-                serializer.fileExtension(),
-                typeMapper);
+    public <S> GivenStep<S> given(MessageSnapshot.ByClass<S> snapshot) {
+        return new GivenStep<>(snapshot, snapshot.version(), context);
     }
 
     /**
@@ -107,21 +91,13 @@ public class MessageContract {
      *
      * <p>Useful when the saved name is a logical message type rather than a Java class, such as the
      * type your event store records, or when one class has several saved versions. {@code
-     * Snapshot.forMessageType("OrderPlaced_V1")} loads that file.</p>
+     * MessageSnapshot.forMessageType("OrderPlaced_V1")} loads that file.</p>
      *
      * @param snapshot the saved snapshot to read
      * @return the next step, where you choose what to check
      */
-    public GivenStep<Object> given(Snapshot.ByMessageType snapshot) {
-        return new GivenStep<>(
-                snapshot,
-                null,
-                snapshot.version(),
-                serializer,
-                storage,
-                layout,
-                serializer.fileExtension(),
-                typeMapper);
+    public GivenStep<Object> given(MessageSnapshot.ByMessageType snapshot) {
+        return new GivenStep<>(snapshot, snapshot.version(), context);
     }
 
     /**
@@ -129,21 +105,13 @@ public class MessageContract {
      * path.
      *
      * <p>Reach for it when the approved file lives somewhere other than the default contract registry. {@code
-     * Snapshot.at(path)} points straight at it.</p>
+     * MessageSnapshot.at(path)} points straight at it.</p>
      *
      * @param snapshot the saved snapshot to read
      * @return the next step, where you choose what to check
      */
-    public GivenStep<Object> given(Snapshot.ByPath snapshot) {
-        return new GivenStep<>(
-                snapshot,
-                null,
-                Snapshot.DEFAULT_VERSION,
-                serializer,
-                storage,
-                layout,
-                serializer.fileExtension(),
-                typeMapper);
+    public GivenStep<Object> given(MessageSnapshot.ByPath snapshot) {
+        return new GivenStep<>(snapshot, MessageSnapshot.DEFAULT_VERSION, context);
     }
 
     /**
@@ -158,15 +126,7 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance) {
-        return new GivenStep<>(
-                null,
-                instance,
-                Snapshot.DEFAULT_VERSION,
-                serializer,
-                storage,
-                layout,
-                serializer.fileExtension(),
-                typeMapper);
+        return new GivenStep<>(MessageSnapshot.of(instance), MessageSnapshot.DEFAULT_VERSION, context);
     }
 
     /**
@@ -183,7 +143,6 @@ public class MessageContract {
      * @return the next step, where you choose what to check
      */
     public <S> GivenStep<S> given(S instance, String version) {
-        return new GivenStep<>(
-                null, instance, version, serializer, storage, layout, serializer.fileExtension(), typeMapper);
+        return new GivenStep<>(MessageSnapshot.of(instance), version, context);
     }
 }
