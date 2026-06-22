@@ -7,12 +7,11 @@ import java.util.List;
 /**
  * The exact identity of one snapshot file, always relative to the storage root. It carries the relative
  * folder segments, the three-part file stem {@code {shortName}.{version}.{variant}}, and the
- * serializer's extension, so a store and a read of the same snapshot always agree on the same file.
+ * serializer's extension. A store and a read of the same snapshot resolve to the same file.
  *
- * <p>The storage owns the root, the {@code .snap.approved} marker, and the {@code .received} sibling.
- * This value owns only what the contract decides: where the file sits and what it is called. A registry
- * snapshot maps its message type's namespace to folders ending in the short name; an explicit {@code
- * at(path)} snapshot decomposes the given root-relative path instead.</p>
+ * <p>This value names where the file sits and what it is called. A registry snapshot maps its message
+ * type's namespace to folders ending in the short name; an explicit {@code at(path)} snapshot decomposes
+ * the given root-relative path instead.</p>
  *
  * @param path the relative folder segments under the storage root: the namespace parts, then the short
  *     name
@@ -29,7 +28,7 @@ public record SnapshotLocation(List<String> path, String name, String extension)
      * Builds the location for a registry snapshot: the namespace parts then the short name as folder
      * segments, and the three-part {@code {shortName}.{version}.{variant}} stem. An {@link
      * SnapshotVariant.Unset} variant, like {@link SnapshotVariant#DEFAULT}, renders the reserved {@code
-     * default} label, since an unnamed write lands under the default variant rather than a family.
+     * default} label: an unnamed write lands under the default variant rather than a family.
      *
      * @param messageType the message type the snapshot locks down, split into namespace and short name
      * @param version the version label the snapshot is pinned to
@@ -71,7 +70,7 @@ public record SnapshotLocation(List<String> path, String name, String extension)
      * last dot for the extension.
      *
      * <p>Re-joining {@code root / path / name + ".snap.approved" + extension} reproduces {@code
-     * root.resolve(relativePath)}, so naming and reading never drift apart.</p>
+     * root.resolve(relativePath)}. Naming and reading resolve to the same file.</p>
      *
      * @param relativePath the snapshot file's path, relative to the storage root
      * @return the exact location the path points at

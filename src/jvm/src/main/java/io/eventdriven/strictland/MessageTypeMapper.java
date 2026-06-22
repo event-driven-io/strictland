@@ -4,8 +4,8 @@ import java.util.Optional;
 
 /**
  * Maps between a message class and the logical name a snapshot is stored under. Supply your own when
- * the stored name is a versioned message type your event store records - {@code OrderPlaced_V1} - and
- * not the Java class name, so checks find the right approved file.
+ * the stored name is a versioned message type your event store records, such as {@code OrderPlaced_V1},
+ * rather than the Java class name. A check then finds the right approved file.
  *
  * <p>Hand an implementation to {@link SpecificationOptions#messageTypeMapper(MessageTypeMapper)}; the
  * default {@link #fullyQualifiedName()} uses the class's fully-qualified name.</p>

@@ -2,13 +2,13 @@ package io.eventdriven.strictland;
 
 /**
  * Which variant of a message type's data a snapshot holds, when one type and version keeps several
- * snapshots. Modelling it as a type rather than a bare string means an unset variant and a named one are
- * distinct cases the compiler tells apart, so a family read can never collide with a real label.
+ * snapshots. An unset variant and a named one are distinct cases: a family read can never collide with a
+ * real label.
  *
- * <p>Most checks leave it {@link #UNSET}: an unset variant on a read means "every variant of this type
- * and version" (a family read), and on a write lands under the reserved {@link #DEFAULT} label. You set a
- * {@link ByLabel} variant only when one type and version needs more than one snapshot, naming each so
- * they sit side by side in the registry.</p>
+ * <p>A check leaves it {@link #UNSET} unless it needs more than one snapshot. An unset variant on a read
+ * means "every variant of this type and version" (a family read), and on a write lands under the reserved
+ * {@link #DEFAULT} label. You set a {@link ByLabel} variant when one type and version needs more than one
+ * snapshot, naming each so they sit side by side in the registry.</p>
  */
 public sealed interface SnapshotVariant
         permits SnapshotVariant.ByLabel, SnapshotVariant.Unset, SnapshotVariant.Default {
@@ -34,9 +34,8 @@ public sealed interface SnapshotVariant
     record Unset() implements SnapshotVariant {}
 
     /**
-     * The variant an unnamed snapshot is written under, kept distinct from any {@link ByLabel} so the
-     * default case is a type the compiler tells apart rather than a magic label. Use the {@link #DEFAULT}
-     * constant rather than building one.
+     * The variant an unnamed snapshot is written under, a case distinct from any {@link ByLabel}. Use the
+     * {@link #DEFAULT} constant rather than building one.
      */
     record Default() implements SnapshotVariant {}
 

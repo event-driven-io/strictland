@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 /**
  * Lists a package's public types, fields, constructors, and methods as plain text, so you can pin
  * your public API the same way you pin a message: snapshot the text, and any accidental change to the
- * surface — a method gone, a parameter added, a return type changed — fails the build.
+ * surface, a method gone, a parameter added, a return type changed, fails the build.
  *
  * <p>Point it at a package, optionally trim what you don't want to track, and call {@link #generate()}
  * for the text to hand to your approval check.</p>
@@ -31,7 +31,7 @@ public class PublicApiScanner {
     }
 
     /**
-     * Starts a scan of the given package, your entry point for capturing its public API. Chain the
+     * Creates a scanner for the given package, the starting point for capturing its public API. Chain the
      * {@code exclude...} methods to trim the surface, then call {@link #generate()}.
      *
      * @param packageName the package to scan, e.g. {@code "com.myapp.events.v1"}
@@ -42,11 +42,11 @@ public class PublicApiScanner {
     }
 
     /**
-     * Leaves out any method your predicate matches, for trimming calls you don't count as part of the
+     * Leaves out any method your predicate matches. Use it to drop calls you don't count as part of the
      * contract.
      *
      * @param filter picks the methods to drop; one it matches won't appear
-     * @return this scanner, so you can keep chaining
+     * @return this scanner, ready for the next refinement
      */
     public PublicApiScanner excludingMethods(Predicate<Method> filter) {
         this.methodFilter = this.methodFilter.and(filter.negate());
@@ -57,7 +57,7 @@ public class PublicApiScanner {
      * Leaves constructors out, for when you track the methods and fields a caller uses but not how
      * instances get built.
      *
-     * @return this scanner, so you can keep chaining
+     * @return this scanner, ready for the next refinement
      */
     public PublicApiScanner excludeConstructors() {
         this.excludeConstructors = true;
@@ -65,11 +65,11 @@ public class PublicApiScanner {
     }
 
     /**
-     * Narrows the surface to public fields and no-argument, value-returning methods — the read-only
-     * shape of a data type — dropping constructors, void and parameterized methods, and {@code
+     * Narrows the surface to public fields and no-argument, value-returning methods, the read-only
+     * shape of a data type: it drops constructors, void and parameterized methods, and {@code
      * equals}/{@code hashCode}/{@code toString}. Handy for pinning the contract of records or DTOs.
      *
-     * @return this scanner, so you can keep chaining
+     * @return this scanner, ready for the next refinement
      */
     public PublicApiScanner onlyGettersAndFields() {
         return excludeConstructors()
@@ -81,7 +81,7 @@ public class PublicApiScanner {
      * Leaves out {@code equals}, {@code hashCode}, and {@code toString}, so generated boilerplate
      * doesn't clutter the captured surface or churn it every time you add a field.
      *
-     * @return this scanner, so you can keep chaining
+     * @return this scanner, ready for the next refinement
      */
     public PublicApiScanner excludeStandardObjectMethods() {
         return excludingMethods(m -> matchesSignature(m, "equals", Object.class)

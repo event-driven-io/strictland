@@ -11,7 +11,7 @@ import java.util.List;
  * <p>The DSL hands in typed locations and filters: a {@link SnapshotLocation} names one exact file, a
  * {@link SnapshotFilter} names a whole family of variants. A custom store derives its own key from the
  * location's {@link SnapshotLocation#name() name} and matches a filter by its {@link
- * SnapshotFilter#namePrefix() name prefix}, so this extension point needs no concept of a root, layout,
+ * SnapshotFilter#namePrefix() name prefix}. It needs no concept of a root, layout,
  * or marker.</p>
  *
  * <p>Pass your storage to {@link SpecificationOptions#snapshotStorage(SnapshotStorage)}, or take the
