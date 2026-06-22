@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 final class ManualVariantTests {
 
     private static final UUID ORDER_ID = UUID.fromString("00000000-0000-0000-0000-000000000030");
-    private static final Path VARIANTS_DIR = Path.of(
-            "src/test/resources/contract-snapshots/io/eventdriven/strictland/ManualVariantTests/OrderInitiated");
+    private static final Path VARIANTS_DIR =
+            Path.of("src/test/resources/contract-registry/io/eventdriven/strictland/ManualVariantTests/OrderInitiated");
 
     private record OrderInitiated(UUID orderId, String customer, String promotion) {}
 
@@ -41,10 +41,8 @@ final class ManualVariantTests {
                 .whenSerializedAs(SnapshotVariant.named("NoPromotion"))
                 .thenContractIsUnchanged();
 
-        var withPromotion = VARIANTS_DIR.resolve(
-                "OrderInitiated.1.ManualVariantTests.twoVariantsOfOneType_writeTwoDistinctFiles_neitherOverwritingTheOther.WithPromotion.snap.approved.json");
-        var noPromotion = VARIANTS_DIR.resolve(
-                "OrderInitiated.1.ManualVariantTests.twoVariantsOfOneType_writeTwoDistinctFiles_neitherOverwritingTheOther.NoPromotion.snap.approved.json");
+        var withPromotion = VARIANTS_DIR.resolve("OrderInitiated.1.WithPromotion.snap.approved.json");
+        var noPromotion = VARIANTS_DIR.resolve("OrderInitiated.1.NoPromotion.snap.approved.json");
 
         assertTrue(Files.exists(withPromotion), "expected snapshot at " + withPromotion);
         assertTrue(Files.exists(noPromotion), "expected snapshot at " + noPromotion);
@@ -79,8 +77,7 @@ final class ManualVariantTests {
                 .thenContractIsUnchanged();
 
         // The label is the trailing segment of the snapshot's file name, so it reads as documentation.
-        var leaf = VARIANTS_DIR.resolve(
-                "OrderInitiated.1.ManualVariantTests.theLabelIsRecordedAsTheLeafFileName.NoPromotion.snap.approved.json");
+        var leaf = VARIANTS_DIR.resolve("OrderInitiated.1.NoPromotion.snap.approved.json");
         assertTrue(Files.exists(leaf), "expected the label to name the leaf at " + leaf);
     }
 

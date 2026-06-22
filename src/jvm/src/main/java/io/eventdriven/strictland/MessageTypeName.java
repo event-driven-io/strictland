@@ -28,4 +28,20 @@ record MessageTypeName(String namespace, String shortName) {
                 ? new MessageTypeName("", messageType)
                 : new MessageTypeName(messageType.substring(0, dot), messageType.substring(dot + 1));
     }
+
+    /**
+     * Splits a message class's name on its last dot into a namespace and a short name, the same way the
+     * default fully-qualified type mapper names a class. It reads the class's canonical name, so a
+     * packaged class like {@code com.acme.orders.OrderPlaced} yields the namespace {@code
+     * com.acme.orders} and the short name {@code OrderPlaced}, and a nested class {@code Outer.Inner}
+     * stays dotted as {@code pkg.Outer.Inner}, never with a {@code $}. A local or anonymous class has no
+     * canonical name, so it falls back to the binary name.
+     *
+     * @param messageClass the message class whose name to split
+     * @return the namespace and short name the message class's name carries
+     */
+    static MessageTypeName of(Class<?> messageClass) {
+        var canonical = messageClass.getCanonicalName();
+        return of(canonical != null ? canonical : messageClass.getTypeName());
+    }
 }

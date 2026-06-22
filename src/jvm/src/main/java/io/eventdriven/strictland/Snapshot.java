@@ -23,6 +23,15 @@ public sealed interface Snapshot permits Snapshot.ByClass, Snapshot.ByMessageTyp
     String DEFAULT_VERSION = "1";
 
     /**
+     * The reserved sentinel meaning no variant is pinned. It marks a family read, every variant of one
+     * message type and version, and is never written to disk as a variant name.
+     */
+    String UNSET_VARIANT = "unset";
+
+    /** The reserved on-disk variant an unnamed snapshot is written under. */
+    String DEFAULT_VARIANT = "default";
+
+    /**
      * A snapshot found by its message class, named after the class's simple name.
      *
      * @param <T> the message type the snapshot holds
