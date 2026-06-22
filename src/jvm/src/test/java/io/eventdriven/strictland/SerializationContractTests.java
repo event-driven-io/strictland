@@ -2,6 +2,8 @@ package io.eventdriven.strictland;
 
 import static java.time.ZoneOffset.UTC;
 
+import com.acme.membership.Membership;
+import com.acme.orders.OrderPlaced;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -24,8 +26,6 @@ import org.junit.jupiter.api.Test;
 final class SerializationContractTests {
     private static final UUID FIXED_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final OffsetDateTime FIXED_DATE = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, UTC);
-
-    private record OrderPlaced(UUID orderId, String customer, OffsetDateTime placedAt) {}
 
     private record OrderInitiatedV1(UUID orderId, OffsetDateTime initiatedAt) {}
 
@@ -53,8 +53,6 @@ final class SerializationContractTests {
     private record InvoiceIssued(UUID invoiceId, BigDecimal amount) implements InvoiceEvent {}
 
     private record InvoicePaid(UUID invoiceId) implements InvoiceEvent {}
-
-    private record MemberJoined(UUID userId, String email) {}
 
     private record UserOnboardedV2(
             @JsonProperty("user_id") UUID userId,
@@ -117,15 +115,15 @@ final class SerializationContractTests {
         @Test
         void given_event_whenSerialized_goldenFileIsNamedAfterTheEventClass() {
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(new MemberJoined(FIXED_ID, "alice@example.com"))
-                    .whenSerializedAs(MessageSnapshot.of(MemberJoined.class))
+                    .given(new Membership.MemberJoined(FIXED_ID, "alice@example.com"))
+                    .whenSerializedAs(MessageSnapshot.of(Membership.MemberJoined.class))
                     .thenContractIsUnchanged();
         }
 
         @Test
         void given_event_whenSerialized_goldenFileNamedByMessageType() {
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(new MemberJoined(FIXED_ID, "alice@example.com"))
+                    .given(new Membership.MemberJoined(FIXED_ID, "alice@example.com"))
                     .whenSerializedAs(MessageSnapshot.forMessageType("MemberJoined"))
                     .thenContractIsUnchanged();
         }
@@ -135,7 +133,7 @@ final class SerializationContractTests {
             var path = Path.of("WhereTheGoldenFileLives/MemberJoined_ByPath.snap.approved.json");
 
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(new MemberJoined(FIXED_ID, "alice@example.com"))
+                    .given(new Membership.MemberJoined(FIXED_ID, "alice@example.com"))
                     .whenSerializedAs(MessageSnapshot.at(path))
                     .thenContractIsUnchanged();
         }
