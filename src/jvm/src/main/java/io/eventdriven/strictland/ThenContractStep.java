@@ -49,16 +49,10 @@ public class ThenContractStep<S> {
         return switch (destination) {
             case null ->
                 SnapshotLocation.of(
-                        MessageTypeName.of(context.typeMapper().name(instance.getClass())),
-                        version,
-                        SnapshotVariant.DEFAULT,
-                        ext);
+                        context.typeMapper().name(instance.getClass()), version, SnapshotVariant.DEFAULT, ext);
             case MessageSnapshot.ByClass<?> b ->
                 SnapshotLocation.of(
-                        MessageTypeName.of(context.typeMapper().name(b.messageClass())),
-                        resolveVersion(b.version()),
-                        b.variant(),
-                        ext);
+                        context.typeMapper().name(b.messageClass()), resolveVersion(b.version()), b.variant(), ext);
             case MessageSnapshot.ByMessageType b ->
                 SnapshotLocation.of(MessageTypeName.of(b.messageType()), resolveVersion(b.version()), b.variant(), ext);
             case MessageSnapshot.ByPath b -> SnapshotLocation.ofRelativePath(b.path());

@@ -12,19 +12,19 @@ import java.util.Optional;
  *
  * <pre>
  * MessageTypeMapper byClassName = MessageTypeMapper.fullyQualifiedName();
- * String name = byClassName.name(OrderPlaced.class); // "com.acme.orders.OrderPlaced"
+ * MessageTypeName name = byClassName.name(OrderPlaced.class); // namespace com.acme.orders, short name OrderPlaced
  * </pre>
  */
 public interface MessageTypeMapper {
 
     /**
-     * Returns the logical name a message of the given type is stored under, so a check can locate its
-     * approved file.
+     * Returns the message type name a message of the given type is stored under, split into its
+     * namespace and short name, so a check can locate its approved file.
      *
      * @param type the message class to name
-     * @return the logical name for that type
+     * @return the message type name for that type
      */
-    String name(Class<?> type);
+    MessageTypeName name(Class<?> type);
 
     /**
      * Resolves a logical name back to the message class it maps to, the reverse of {@link
@@ -47,7 +47,7 @@ public interface MessageTypeMapper {
      *
      * <pre>
      * MessageTypeMapper mapper = MessageTypeMapper.fullyQualifiedName();
-     * String name = mapper.name(OrderPlaced.class); // "com.acme.orders.OrderPlaced"
+     * MessageTypeName name = mapper.name(OrderPlaced.class); // namespace com.acme.orders, short name OrderPlaced
      * </pre>
      *
      * @return a mapper keyed on the class's fully-qualified canonical name
@@ -55,9 +55,8 @@ public interface MessageTypeMapper {
     static MessageTypeMapper fullyQualifiedName() {
         return new MessageTypeMapper() {
             @Override
-            public String name(Class<?> type) {
-                var canonical = type.getCanonicalName();
-                return canonical != null ? canonical : type.getTypeName();
+            public MessageTypeName name(Class<?> type) {
+                return MessageTypeName.of(type);
             }
 
             @Override

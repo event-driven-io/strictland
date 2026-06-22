@@ -14,7 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 @NullMarked
 final class SimpleBinaryMessageSerializerTests {
     private static final UUID FIXED_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final Path SNAPSHOT_DIR = Path.of("src/test/java/io/eventdriven/strictland/snapshots");
+    private static final Path SNAPSHOT_DIR = Path.of("src/test/resources/binary-snapshots");
 
     private interface Binary {
         static SpecificationOptions defaults() {
