@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.acme.orders.OrderInitiated;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -18,9 +19,7 @@ final class ManualVariantTests {
 
     private static final UUID ORDER_ID = UUID.fromString("00000000-0000-0000-0000-000000000030");
     private static final Path VARIANTS_DIR =
-            Path.of("src/test/resources/contract-registry/io/eventdriven/strictland/ManualVariantTests/OrderInitiated");
-
-    private record OrderInitiated(UUID orderId, String customer, String promotion) {}
+            Path.of("src/test/resources/contract-registry/com/acme/orders/OrderInitiated");
 
     @AfterEach
     void resetGlobalDefaults() {
