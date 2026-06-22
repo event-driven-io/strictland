@@ -199,10 +199,7 @@ public class ThenCompatibilityStep<S, T> {
             case MessageSnapshot.ByPath byPath -> List.of(readOne(SnapshotLocation.ofRelativePath(byPath.path())));
             case MessageSnapshot.ByClass<?> s ->
                 resolveFamilyOrVariant(
-                        MessageTypeName.of(context.typeMapper().name(s.messageClass())),
-                        resolveVersion(s.version()),
-                        s.variant(),
-                        ext);
+                        context.typeMapper().name(s.messageClass()), resolveVersion(s.version()), s.variant(), ext);
             case MessageSnapshot.ByMessageType s ->
                 resolveFamilyOrVariant(
                         MessageTypeName.of(s.messageType()), resolveVersion(s.version()), s.variant(), ext);

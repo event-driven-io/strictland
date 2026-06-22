@@ -84,9 +84,13 @@ public class PublicApiScanner {
      * @return this scanner, so you can keep chaining
      */
     public PublicApiScanner excludeStandardObjectMethods() {
-        return excludingMethods(m -> (m.getName().equals("equals") && m.getParameterCount() == 1)
-                || (m.getName().equals("hashCode") && m.getParameterCount() == 0)
-                || (m.getName().equals("toString") && m.getParameterCount() == 0));
+        return excludingMethods(m -> matchesSignature(m, "equals", Object.class)
+                || matchesSignature(m, "hashCode")
+                || matchesSignature(m, "toString"));
+    }
+
+    private static boolean matchesSignature(Method method, String name, Class<?>... parameterTypes) {
+        return method.getName().equals(name) && Arrays.equals(method.getParameterTypes(), parameterTypes);
     }
 
     /**

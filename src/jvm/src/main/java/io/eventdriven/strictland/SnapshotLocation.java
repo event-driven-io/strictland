@@ -20,7 +20,7 @@ import java.util.List;
  *     extension
  * @param extension the extension the serializer writes, including the leading dot
  */
-record SnapshotLocation(List<String> path, String name, String extension) {
+public record SnapshotLocation(List<String> path, String name, String extension) {
 
     private static final String SNAP_APPROVED_MARKER = ".snap.approved.";
     private static final String DEFAULT_LABEL = "default";

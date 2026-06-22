@@ -22,9 +22,4 @@ public final class ReportView {
     public int hashCode(int seed) {
         return seed * 31;
     }
-
-    @SuppressWarnings("NonOverridingEquals")
-    public boolean equals(Object first, Object second) {
-        return first == second;
-    }
 }

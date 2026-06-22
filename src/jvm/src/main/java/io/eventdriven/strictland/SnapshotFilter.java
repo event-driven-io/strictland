@@ -16,7 +16,7 @@ import java.util.List;
  * @param path the relative folder the family's variants share: the namespace parts, then the short name
  * @param namePrefix the prefix every variant's file name starts with: {@code {shortName}.{version}.}
  */
-record SnapshotFilter(List<String> path, String namePrefix) {
+public record SnapshotFilter(List<String> path, String namePrefix) {
 
     /**
      * Builds the family read for one message type and version: the shared folder path and the {@code

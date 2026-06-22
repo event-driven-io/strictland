@@ -104,7 +104,7 @@ final class SpecificationOptionsTests {
     void givenFullyQualifiedNameMapper_whenQueried_thenItNamesByClassAndResolvesNoName() {
         var mapper = MessageTypeMapper.fullyQualifiedName();
 
-        assertEquals("java.lang.String", mapper.name(String.class));
+        assertEquals(MessageTypeName.of("java.lang.String"), mapper.name(String.class));
         assertTrue(mapper.type("anything").isEmpty());
     }
 
@@ -114,7 +114,7 @@ final class SpecificationOptionsTests {
         var mapper = MessageTypeMapper.fullyQualifiedName();
 
         assertNull(LocalEvent.class.getCanonicalName());
-        assertEquals(LocalEvent.class.getTypeName(), mapper.name(LocalEvent.class));
+        assertEquals(MessageTypeName.of(LocalEvent.class.getTypeName()), mapper.name(LocalEvent.class));
     }
 
     @Test

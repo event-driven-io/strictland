@@ -11,7 +11,7 @@ package io.eventdriven.strictland;
  * @param namespace the part before the last dot, empty when the name has none
  * @param shortName the part after the last dot, the whole name when it has none
  */
-record MessageTypeName(String namespace, String shortName) {
+public record MessageTypeName(String namespace, String shortName) {
 
     /**
      * Splits a message type's name on its last dot into a namespace and a short name. A fully-qualified
@@ -22,7 +22,7 @@ record MessageTypeName(String namespace, String shortName) {
      * @param messageType the message type's name to split
      * @return the namespace and short name the message type's name carries
      */
-    static MessageTypeName of(String messageType) {
+    public static MessageTypeName of(String messageType) {
         var dot = messageType.lastIndexOf('.');
         return dot < 0
                 ? new MessageTypeName("", messageType)
@@ -40,7 +40,7 @@ record MessageTypeName(String namespace, String shortName) {
      * @param messageClass the message class whose name to split
      * @return the namespace and short name the message class's name carries
      */
-    static MessageTypeName of(Class<?> messageClass) {
+    public static MessageTypeName of(Class<?> messageClass) {
         var canonical = messageClass.getCanonicalName();
         return of(canonical != null ? canonical : messageClass.getTypeName());
     }
