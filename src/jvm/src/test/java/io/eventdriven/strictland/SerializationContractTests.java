@@ -74,7 +74,8 @@ final class SerializationContractTests {
         void given_eventWithNullField_whenSerialized_nullRendersByDefault() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV2").variant("nullDefault"))
                     .thenContractIsUnchanged();
         }
 
@@ -105,7 +106,8 @@ final class SerializationContractTests {
         void given_customMapper_whenSerialized_thatMapperDrivesTheOutput() {
             MessageContract.specification(Json.Jackson.of(timestampMapper))
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV1").variant("customMapper"))
                     .thenContractIsUnchanged();
         }
     }
@@ -173,7 +175,8 @@ final class SerializationContractTests {
         void given_isoMapper_whenSerialized_datesAreIsoStrings() {
             MessageContract.specification(Json.Jackson.of(isoMapper))
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV1").variant("isoDates"))
                     .thenContractIsUnchanged();
         }
 
@@ -181,7 +184,8 @@ final class SerializationContractTests {
         void given_epochMapper_whenSerialized_datesAreEpochNumbers() {
             MessageContract.specification(Json.Jackson.of(epochMapper))
                     .given(new OrderInitiatedV1(FIXED_ID, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV1"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV1").variant("epochDates"))
                     .thenContractIsUnchanged();
         }
 
@@ -189,7 +193,8 @@ final class SerializationContractTests {
         void given_nullInclusion_whenSerialized_nullFieldIsPresent() {
             MessageContract.specification(Json.Jackson.of(includeNullsMapper))
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV2").variant("nullIncluded"))
                     .thenContractIsUnchanged();
         }
 
@@ -197,7 +202,8 @@ final class SerializationContractTests {
         void given_nullExclusion_whenSerialized_nullFieldIsOmitted() {
             MessageContract.specification(Json.Jackson.of(omitNullsMapper))
                     .given(new OrderInitiatedV2(FIXED_ID, null, FIXED_DATE))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV2"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV2").variant("nullOmitted"))
                     .thenContractIsUnchanged();
         }
 
@@ -213,7 +219,8 @@ final class SerializationContractTests {
         void given_enumByName_whenSerialized_enumIsAString() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV3"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV3").variant("enumAsName"))
                     .thenContractIsUnchanged();
         }
 
@@ -221,7 +228,8 @@ final class SerializationContractTests {
         void given_enumByIndex_whenSerialized_enumIsANumber() {
             MessageContract.specification(Json.Jackson.of(enumIndexMapper))
                     .given(new OrderInitiatedV3(FIXED_ID, OrderStatus.CONFIRMED))
-                    .whenSerializedAs(Snapshot.forMessageType("OrderInitiatedV3"))
+                    .whenSerializedAs(
+                            Snapshot.forMessageType("OrderInitiatedV3").variant("enumAsNumber"))
                     .thenContractIsUnchanged();
         }
 

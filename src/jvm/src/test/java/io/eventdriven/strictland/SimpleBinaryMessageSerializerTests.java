@@ -41,16 +41,13 @@ final class SimpleBinaryMessageSerializerTests {
     }
 
     @Test
-    void givenCustomStorageAndAVariant_whenSerialized_theLabelKeysTheSnapshot(@TempDir Path tmp) {
+    void givenCustomStorageAndAVariant_whenSerialized_theVariantKeysTheSnapshot(@TempDir Path tmp) {
         MessageContract.specification(Binary.of(tmp))
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
                 .whenSerializedAs(SnapshotVariant.named("AliceVariant"))
                 .thenContractIsUnchanged();
 
-        assertTrue(
-                java.nio.file.Files.exists(
-                        tmp.resolve(
-                                "OrderPlaced.1.SimpleBinaryMessageSerializerTests.givenCustomStorageAndAVariant_whenSerialized_theLabelKeysTheSnapshot.AliceVariant.approved.txt")));
+        assertTrue(java.nio.file.Files.exists(tmp.resolve("OrderPlaced.1.AliceVariant.approved.txt")));
     }
 
     @Test
