@@ -45,7 +45,7 @@ final class MessageSnapshotTests {
 
     @Test
     void byMessageTypeVariantOverload_setsTheVariantDirectly() {
-        var snapshot = MessageSnapshot.forMessageType("OrderPlaced").variant(SnapshotVariant.named("withCoupon"));
+        var snapshot = MessageSnapshot.ofTypeNamed("OrderPlaced").variant(SnapshotVariant.named("withCoupon"));
 
         assertEquals(SnapshotVariant.named("withCoupon"), snapshot.variant());
     }

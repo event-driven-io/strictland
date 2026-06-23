@@ -11,7 +11,7 @@ package directory, named after the message class (see
    each snapshot is easy to find.
 2. **Collisions.** Two tests that pin the same message class write the same
    filename and silently overwrite each other, unless one passes an explicit
-   `Snapshot.forMessageType("...")`.
+   `Snapshot.ofTypeNamed("...")`.
 
 This work introduces **configurable snapshot location strategies** and makes
 **multiple snapshots per contract** a first-class, expected thing, with an
@@ -415,7 +415,7 @@ dumb/nullability-driven pair.
 
 - Pre-1.0, the default layout changes to `NextToTest + PerTestClass`. Existing
   users keep the old behaviour by selecting `Flat`.
-- Existing `Snapshot.of`, `Snapshot.forMessageType`, `Snapshot.at` keep working,
+- Existing `Snapshot.of`, `Snapshot.ofTypeNamed`, `Snapshot.at` keep working,
   reinterpreted within the active layout.
 - The repository's own ~30 snapshots are relocated to the new structure as part
   of this work, with their tests updated.

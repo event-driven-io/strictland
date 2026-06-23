@@ -52,7 +52,7 @@ public class GivenStep<S> {
      * <pre>
      * MessageContract.specification(Json.Jackson.defaults())
      *     .given(new OrderInitiatedV2(id, null, initiatedAt))
-     *     .whenSerializedAs(MessageSnapshot.forMessageType("OrderInitiatedV2_NullField"))
+     *     .whenSerializedAs(MessageSnapshot.ofTypeNamed("OrderInitiatedV2_NullField"))
      *     .thenContractIsUnchanged();
      * </pre>
      *

@@ -16,7 +16,7 @@ final class ThenCompatibilityStepInvariantTests {
                 new FileSnapshotStorage(SnapshotLayout.registry()),
                 MessageTypeMapper.fullyQualifiedName());
         var step = new ThenCompatibilityStep<>(
-                MessageSnapshot.forMessageType("NeverWritten"), MessageSnapshot.DEFAULT_VERSION, Object.class, context);
+                MessageSnapshot.ofTypeNamed("NeverWritten"), MessageSnapshot.DEFAULT_VERSION, Object.class, context);
 
         assertThrows(RuntimeException.class, step::thenForwardCompatible);
     }

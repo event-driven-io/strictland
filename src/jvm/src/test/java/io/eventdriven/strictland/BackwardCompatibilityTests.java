@@ -132,7 +132,7 @@ final class BackwardCompatibilityTests {
         @Test
         void givenAStoredEventNamedByItsMessageType_whenReadByTheEvolvedType_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
-                    .given(MessageSnapshot.forMessageType("AccountOpenedV1"))
+                    .given(MessageSnapshot.ofTypeNamed("AccountOpenedV1"))
                     .whenDeserializedAs(AccountOpenedV2.class)
                     .thenBackwardCompatible(event -> assertNull(event.currency()));
         }

@@ -11,7 +11,7 @@ import java.nio.file.Path;
  * registry. You reach for this type only to point at a different one, or to hand the check a live
  * message. The factory methods give you the ways to pick one: a message in hand with {@link
  * #of(Object)}, by its message class with {@link #of(Class)}, by a message-type name with {@link
- * #forMessageType(String)}, by file path with {@link #at(Path)}, or by a variant label when one message
+ * #ofTypeNamed(String)}, by file path with {@link #at(Path)}, or by a variant label when one message
  * type has several snapshots. Pass the result to a {@link MessageContract#given(MessageSnapshot.ByClass)
  * given(...)} step to read an earlier version's data, or to {@link
  * GivenStep#whenSerializedAs(MessageSnapshot)} to choose which snapshot a serialization check compares
@@ -167,7 +167,7 @@ public sealed interface MessageSnapshot
      * @param messageType the name identifying the snapshot
      * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step
      */
-    static ByMessageType forMessageType(String messageType) {
+    static ByMessageType ofTypeNamed(String messageType) {
         return new ByMessageType(messageType, DEFAULT_VERSION, SnapshotVariant.UNSET);
     }
 }
