@@ -104,7 +104,7 @@ public sealed interface MessageSnapshot
     }
 
     /**
-     * A snapshot found by an explicit file path, for one kept somewhere other than the default contract registry.
+     * A snapshot found by an explicit file path, for one kept somewhere other than the default contract snapshots location.
      *
      * @param path the file to read the snapshot from
      */
@@ -151,7 +151,7 @@ public sealed interface MessageSnapshot
     }
 
     /**
-     * Points at a snapshot by file path, for one kept somewhere other than the default contract registry.
+     * Points at a snapshot by file path, for one kept somewhere other than the default contract snapshots location.
      *
      * @param path the file to read the snapshot from
      * @return the snapshot, ready for a {@code given(...)} or {@code whenSerialized(...)} step

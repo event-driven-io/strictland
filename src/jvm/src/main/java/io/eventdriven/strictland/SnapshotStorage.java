@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Stores an approved snapshot and reads it back, keyed by typed values. Normally you don't implement it:
- * the default file-based storage keeps each snapshot in the committed contract registry. Implement it
+ * the default file-based storage keeps each snapshot in the committed file in git repository. Implement it
  * only to keep snapshots somewhere else, such as a shared fixture directory or an in-memory store for a
  * binary format. The contract checks read and write through it.
  *
