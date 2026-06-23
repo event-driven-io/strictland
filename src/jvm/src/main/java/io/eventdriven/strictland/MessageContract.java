@@ -23,11 +23,10 @@ package io.eventdriven.strictland;
  *     .thenContractIsUnchanged();
  * </pre>
  *
- * <p>The approved file each check compares against lives in a committed contract registry, under
+ * <p>The approved file each check compares against lives in a committed file in git repository, under
  * {@code src/test/resources/contract-registry} by default, so a contract change shows up in the same
  * pull request as the code that caused it.
- * {@link MessageSnapshot} picks which file backs a check, and {@link PublicApiScanner} renders a
- * package's public API as text so you can approval-test the surface itself.</p>
+ * {@link MessageSnapshot} picks which file backs a check.</p>
  */
 public class MessageContract {
     private final ContractContext context;
@@ -104,7 +103,7 @@ public class MessageContract {
      * Defines the version under contract: an earlier one you saved as a snapshot, located by its file
      * path.
      *
-     * <p>Reach for it when the approved file lives somewhere other than the default contract registry. {@code
+     * <p>Reach for it when the approved file lives somewhere other than the default contract snapshots location. {@code
      * MessageSnapshot.at(path)} points straight at it.</p>
      *
      * @param snapshot the saved snapshot to read

@@ -55,7 +55,7 @@ public record SpecificationOptions(
 
     /**
      * Returns a copy with a different snapshot store, for keeping approved snapshots somewhere other
-     * than the default contract registry. A store set this way is used as-is, ahead of any layout.
+     * than the default contract snapshots location. A store set this way is used as-is, ahead of any layout.
      *
      * @param storage where approved snapshots are read from and written to
      * @return a copy of these options using the given storage

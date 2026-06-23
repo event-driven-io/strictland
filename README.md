@@ -171,13 +171,6 @@ MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .thenBackwardCompatible(event -> assertNull(event.referralCode()));
 ```
 
-Pin the public surface of a package the same way you pin a message: snapshot the text, and any accidental change to the surface, a method gone, a parameter added, a return type changed, fails the build:
-
-```java
-String api = PublicApiScanner.forPackage("com.myapp.events.v1").generate();
-Approvals.verify(api);
-```
-
 You'll find these and more in the test suite, [`SerializationContractTests`](./src/jvm/src/test/java/io/eventdriven/strictland/SerializationContractTests.java), [`BackwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/BackwardCompatibilityTests.java), and [`ForwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/ForwardCompatibilityTests.java), each written as a worked example of the cases above.
 
 ## Is it production ready?

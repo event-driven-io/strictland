@@ -29,7 +29,7 @@ public class ThenContractStep<S> {
      * switched, a value newly dropped or added.
      *
      * <p>The first run creates the approved file from the current message for you to review and
-     * commit; it lives in the committed contract registry, so a later change to the format shows up in
+     * commit; it lives in the committed committed file in git repository, so a later change to the format shows up in
      * the same pull request as the code that caused it.</p>
      *
      * <pre>

@@ -29,12 +29,10 @@
  *     .thenBackwardCompatible();
  * </pre>
  *
- * <p>The approved file each check compares against lives in a committed contract registry, under
+ * <p>The approved file each check compares against lives in a a committed file in git repository, under
  * {@code src/test/resources/contract-snapshots} by default, so a contract change shows up in the same
  * pull request as the code that caused it.
- * {@link io.eventdriven.strictland.MessageSnapshot} picks which file backs a check, and {@link
- * io.eventdriven.strictland.PublicApiScanner} renders a package's public API as text so you can
- * approval-test the surface itself.</p>
+ * {@link io.eventdriven.strictland.MessageSnapshot} picks which file backs a check</p>
  */
 @NullMarked
 package io.eventdriven.strictland;

@@ -3,7 +3,7 @@ package io.eventdriven.strictland;
 /**
  * The storage presets for where approved snapshots live, so you pick one by name rather than wiring a
  * {@link SnapshotStorage} yourself. {@link #files()} is the default, keeping each snapshot in a file
- * in the committed contract registry.
+ * in the committed file in git repository.
  *
  * <pre>
  * MessageContract.specification(
@@ -17,7 +17,7 @@ package io.eventdriven.strictland;
 public interface Snapshots {
 
     /**
-     * Storage that keeps each approved snapshot in a committed contract registry, under
+     * Storage that keeps each approved snapshot in a committed a committed file in git repository, under
      * {@code src/test/resources/contract-registry} by default, so a contract change lands in the same
      * pull request as the code that caused it. This is what a specification uses unless you swap it.
      *

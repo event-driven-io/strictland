@@ -1,4 +1,0 @@
-public final class io.eventdriven.strictland.tests.contracts.apishapes.ReportView {
-  public final java.util.UUID io.eventdriven.strictland.tests.contracts.apishapes.ReportView.reportId;
-  public java.util.UUID reportId();
-}
