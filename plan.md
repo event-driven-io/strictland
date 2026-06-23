@@ -380,7 +380,7 @@ Task: support manually labelled snapshot variants.
      the same labelled path and reads it back.
    - Storage still sees only a resolved path: no variant reaches the
      SnapshotStorage interface.
-   Under FLAT the label behaves like today's forMessageType leaf name.
+   Under FLAT the label behaves like today's ofTypeNamed leaf name.
 
 3. Tests first (opt into NEXT_TO_TEST + PER_CONTRACT so variants sit together):
    write two variants of one message type, assert two distinct files exist and
@@ -546,7 +546,7 @@ snapshots.
    regenerates them in the new location, then eyeball the diffs.
 
 3. Update tests that reference explicit names or paths so they still resolve:
-   - BackwardCompatibilityTests Snapshot.at(path, ...) and forMessageType(...)
+   - BackwardCompatibilityTests Snapshot.at(path, ...) and ofTypeNamed(...)
      cases (hand-authored reference fixtures like CustomerRegisteredV1,
      AccountOpenedV1): move these reference files to a sensible home under the new
      structure (a GLOBAL_ROOT registry folder is a good fit) and update the

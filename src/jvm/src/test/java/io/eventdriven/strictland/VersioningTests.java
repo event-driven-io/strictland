@@ -32,11 +32,11 @@ final class VersioningTests {
     void givenAVersionPinnedOnAMessageTypeSnapshot_whenSerialized_theSnapshotCarriesThatVersion() {
         MessageContract.specification(Json.Jackson.defaults())
                 .given(new OrderPlaced(FIXED_ID, "Alice", FIXED_DATE))
-                .whenSerializedAs(MessageSnapshot.forMessageType("OrderShipped").version("3"))
+                .whenSerializedAs(MessageSnapshot.ofTypeNamed("OrderShipped").version("3"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(Json.Jackson.defaults())
-                .given(MessageSnapshot.forMessageType("OrderShipped").version("3"))
+                .given(MessageSnapshot.ofTypeNamed("OrderShipped").version("3"))
                 .whenDeserializedAs(OrderPlaced.class)
                 .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
     }
@@ -46,7 +46,7 @@ final class VersioningTests {
         var error = assertThrows(
                 RuntimeException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(MessageSnapshot.forMessageType("NeverWritten").version("9"))
+                        .given(MessageSnapshot.ofTypeNamed("NeverWritten").version("9"))
                         .whenDeserializedAs(OrderPlaced.class)
                         .thenBackwardCompatible());
 

@@ -121,7 +121,7 @@ A snapshot is what your message looks like once serialized: the JSON you reviewe
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new OrderInitiated(orderId, null, initiatedAt))
-    .whenSerialized(Snapshot.forMessageType("OrderInitiated_NullPromotion"))
+    .whenSerialized(Snapshot.ofTypeNamed("OrderInitiated_NullPromotion"))
     .thenContractIsUnchanged();
 ```
 
@@ -136,7 +136,7 @@ You can pin a message so its type can't change by accident, the kind of field th
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new InvoiceIssued(invoiceId, new BigDecimal("99.99")))
-    .whenSerialized(Snapshot.forMessageType("InvoiceIssuedEvent"))
+    .whenSerialized(Snapshot.ofTypeNamed("InvoiceIssuedEvent"))
     .thenContractIsUnchanged();
 ```
 

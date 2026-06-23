@@ -90,7 +90,7 @@ public class MessageContract {
      *
      * <p>Useful when the saved name is a logical message type rather than a Java class, such as the
      * type your event store records, or when one class has several saved versions. {@code
-     * MessageSnapshot.forMessageType("OrderPlaced_V1")} loads that file.</p>
+     * MessageSnapshot.ofTypeNamed("OrderPlaced_V1")} loads that file.</p>
      *
      * @param snapshot the saved snapshot to read
      * @return the next step, where you choose what to check

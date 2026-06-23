@@ -9,7 +9,7 @@ class StrictlandSmokeTest {
     @Test
     fun `library is consumable from Kotlin`() {
         val contract = MessageContract.specification(Json.Jackson.defaults())
-        val step = contract.given(MessageSnapshot.forMessageType("SomeEvent"))
+        val step = contract.given(MessageSnapshot.ofTypeNamed("SomeEvent"))
 
         assertNotNull(step)
     }

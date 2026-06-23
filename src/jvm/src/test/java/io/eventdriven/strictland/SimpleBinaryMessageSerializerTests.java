@@ -36,7 +36,7 @@ final class SimpleBinaryMessageSerializerTests {
     void givenBinarySerializerAndCustomStorage_whenSerialized_thenContractIsUnchanged() {
         MessageContract.specification(Binary.defaults())
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerializedAs(MessageSnapshot.forMessageType("OrderPlaced"))
+                .whenSerializedAs(MessageSnapshot.ofTypeNamed("OrderPlaced"))
                 .thenContractIsUnchanged();
     }
 
@@ -55,11 +55,11 @@ final class SimpleBinaryMessageSerializerTests {
         var options = Binary.of(tmp);
         MessageContract.specification(options)
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerializedAs(MessageSnapshot.forMessageType("OrderPlaced"))
+                .whenSerializedAs(MessageSnapshot.ofTypeNamed("OrderPlaced"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options)
-                .given(MessageSnapshot.forMessageType("OrderPlaced"))
+                .given(MessageSnapshot.ofTypeNamed("OrderPlaced"))
                 .whenDeserializedAs(OrderPlaced.class)
                 .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
     }
@@ -69,11 +69,11 @@ final class SimpleBinaryMessageSerializerTests {
         var options = Binary.of(tmp);
         MessageContract.specification(options)
                 .given(new OrderPlaced(FIXED_ID, "Alice"))
-                .whenSerializedAs(MessageSnapshot.forMessageType("OrderPlaced").variant("Alice"))
+                .whenSerializedAs(MessageSnapshot.ofTypeNamed("OrderPlaced").variant("Alice"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(options)
-                .given(MessageSnapshot.forMessageType("OrderPlaced").variant("Alice"))
+                .given(MessageSnapshot.ofTypeNamed("OrderPlaced").variant("Alice"))
                 .whenDeserializedAs(OrderPlaced.class)
                 .thenBackwardCompatible(order -> assertEquals("Alice", order.customer()));
     }

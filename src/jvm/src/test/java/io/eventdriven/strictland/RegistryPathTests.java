@@ -84,11 +84,11 @@ final class RegistryPathTests {
     void aDotlessLogicalName_isPinnedFlatAtTheRegistryRoot() {
         MessageContract.specification(Json.Jackson.defaults())
                 .given(new Membership.MemberJoined(FIXED_ID, "alice@example.com"))
-                .whenSerializedAs(MessageSnapshot.forMessageType("MemberJoined"))
+                .whenSerializedAs(MessageSnapshot.ofTypeNamed("MemberJoined"))
                 .thenContractIsUnchanged();
 
         MessageContract.specification(Json.Jackson.defaults())
-                .given(MessageSnapshot.forMessageType("MemberJoined"))
+                .given(MessageSnapshot.ofTypeNamed("MemberJoined"))
                 .whenDeserializedAs(Membership.MemberJoined.class)
                 .thenBackwardCompatible(member -> assertEquals("alice@example.com", member.email()));
 

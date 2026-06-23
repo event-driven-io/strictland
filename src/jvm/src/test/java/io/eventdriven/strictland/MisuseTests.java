@@ -48,7 +48,7 @@ final class MisuseTests {
         var exception = assertThrows(
                 IllegalStateException.class,
                 () -> MessageContract.specification(Json.Jackson.defaults())
-                        .given(MessageSnapshot.forMessageType("OrderPlaced"))
+                        .given(MessageSnapshot.ofTypeNamed("OrderPlaced"))
                         .whenSerialized());
 
         assertTrue(requireNonNull(exception.getMessage()).contains("instance"));

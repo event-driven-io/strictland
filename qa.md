@@ -8,7 +8,7 @@ turns its package into a path, and writes
 defaults to the message's simple class name. Result: ~30 `.approved.txt` files
 sit flat alongside the `.java` files in one package directory, and two tests
 pinning the same message class collide unless one passes
-`Snapshot.forMessageType(...)`.
+`Snapshot.ofTypeNamed(...)`.
 
 Two distinct problems are tangled together:
 1. **Where** snapshot files physically live (the location strategy).
