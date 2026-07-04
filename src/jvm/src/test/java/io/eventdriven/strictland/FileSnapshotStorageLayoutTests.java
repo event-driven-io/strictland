@@ -26,9 +26,9 @@ final class FileSnapshotStorageLayoutTests {
     }
 
     // A drift here should assert on files and the thrown error only, never open a real diff tool,
-    // whatever machine the suite runs on - so wire a no-op launcher and a non-interactive gate.
+    // whatever machine the suite runs on - so wire a review that opens nothing.
     private static FileSnapshotStorage nonInteractiveStorage(SnapshotLayout layout) {
-        return new FileSnapshotStorage(layout, SnapshotReview.auto(), (tool, received, approved) -> {}, () -> true);
+        return new FileSnapshotStorage(layout, SnapshotReview.auto(), (received, approved) -> {});
     }
 
     private static Path registryFolder(Path root) {
