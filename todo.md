@@ -82,6 +82,24 @@ only when the build is green.
   - [ ] CONTRIBUTING: new snapshots/ layout note
   - [ ] confirm Javadoc snippets still resolve
 
+## Snapshot review devex (diff + approve)
+
+Restores the diff-tool and approval experience dropped with ApprovalTests, behind one
+`SnapshotReview` setting that flows through the same config chain as `SnapshotLayout`.
+
+- [x] **Inline diff** on every drift: `SnapshotDiff` embeds a unified diff (hex/length fallback for
+  binary) in the `AssertionError`, so CI logs are self-explanatory.
+- [x] **Local diff-tool launch**: `DiffTool`/`DiffTools` registry + detection, `DiffLauncher` /
+  `ProcessDiffLauncher`, gated off on CI/headless by `CiDetector`; manual pick via
+  `SnapshotReview.tool(...)` or `strictland.review.tool`.
+- [x] **Approve mode**: `ReviewMode.APPROVE` re-baselines on drift; drive per-run with
+  `-Dstrictland.review.mode=approve`, or sweep the registry with `SnapshotApprove` /
+  `./gradlew approveSnapshots`.
+- [x] **Config chain**: `strictland.review.mode` / `strictland.review.tool` via
+  `SnapshotReviewProperties` + resolver, `SpecificationOptions.snapshotReview(...)`,
+  `Strictland.defaults().snapshotReview(...)`.
+- [x] **Docs**: README "Reviewing a drift" section (workflow, tool table, settings, bulk approve).
+
 ## Release boundaries
 
 - After **Step 6**: layouts + manual variants. Solves the original bloat and

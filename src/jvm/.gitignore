@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Strictland ###
+# Drift artifacts written next to an approved snapshot on a failing check; never committed.
+*.snap.received.*

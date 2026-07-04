@@ -45,15 +45,19 @@ final class SpecificationOptionsTests {
         MessageTypeMapper typeMapper = MessageTypeMapper.fullyQualifiedName();
         SnapshotLayout layout = SnapshotLayout.registry();
 
+        var review = SnapshotReview.off();
+
         var options = SpecificationOptions.serializer(serializer)
                 .snapshotStorage(storage)
                 .messageTypeMapper(typeMapper)
-                .snapshotLayout(layout);
+                .snapshotLayout(layout)
+                .snapshotReview(review);
 
         assertSame(serializer, options.serializer());
         assertSame(storage, options.storage());
         assertSame(typeMapper, options.typeMapper());
         assertSame(layout, options.snapshotLayout());
+        assertSame(review, options.review());
     }
 
     @Test
@@ -63,6 +67,7 @@ final class SpecificationOptionsTests {
         assertNull(options.storage());
         assertNull(options.typeMapper());
         assertNull(options.snapshotLayout());
+        assertNull(options.review());
     }
 
     @Test

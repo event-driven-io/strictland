@@ -81,6 +81,14 @@ tasks.named<Javadoc>("javadoc") {
 
 tasks.named("check") { dependsOn("jacocoTestReport", "jacocoTestCoverageVerification", "javadoc") }
 
+// Re-baseline drifted snapshots in bulk: promote every *.snap.received over its approved sibling.
+tasks.register<JavaExec>("approveSnapshots") {
+    group = "verification"
+    description = "Promote every drifted .snap.received snapshot over its approved sibling."
+    mainClass = "io.eventdriven.strictland.SnapshotApprove"
+    classpath = sourceSets.test.get().runtimeClasspath
+}
+
 dependencies {
     api(libs.jspecify)
     implementation(libs.classgraph)

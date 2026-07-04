@@ -129,6 +129,75 @@ You can also define your own serializer, if you're using unsupported (yet?) form
 - [CsvMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializer.java) and its [tests](src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializerTests.java) or,
 - [SimpleBinaryMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializer.java) and its [tests](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializerTests.java).
 
+## Reviewing a drift
+
+When a snapshot check finds the message no longer matches its approved baseline, the failure is meant to be actionable, not a chore.
+
+**The failure message carries the diff.** Every drift writes the new payload to a `.snap.received` file next to the approved one and fails with a unified diff of what moved, so a CI log explains itself with no extra tooling:
+
+```
+Snapshot drift: .../OrderPlaced.1.default.snap.approved.json differs from the approved snapshot.
+
+  {"id":1,"customer":"Alice"}
+- {"total":10}
++ {"total":12}
+
+received: .../OrderPlaced.1.default.snap.received.json
+approved: .../OrderPlaced.1.default.snap.approved.json
+
+To accept this change, re-run with -Dstrictland.review.mode=approve, or save the received payload over the approved file in the diff tool.
+```
+
+A binary serializer falls back to a byte-length and hex summary instead of a line diff.
+
+**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a detected diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI or a headless machine nothing launches - the inline diff stands alone. Strictland auto-detects VS Code, Cursor, IntelliJ, Meld, Beyond Compare, kdiff3, P4Merge and WinMerge, and falls back to `git difftool`.
+
+**Choosing the diff tool.** You're never stuck with auto-detection. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `cursor`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`, `git`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto-detection:
+
+```java
+MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotReview.tool("meld")))
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerialized()
+    .thenContractIsUnchanged();
+```
+
+**Accepting a change you made on purpose.** Re-run the tests with the review mode set to `approve`, and each drift re-baselines its snapshot instead of failing - the Jest `-u` / `cargo insta accept` model:
+
+```shell
+cd src/jvm
+./gradlew test -Dstrictland.review.mode=approve
+```
+
+The `-D` property re-baselines whatever those tests touch and then you commit the updated `.snap.approved` files alongside the code. You can also set the mode in code for one spec (`SnapshotReview.approve()`), globally for a suite (`Strictland.defaults().snapshotReview(SnapshotReview.approve())`), or in `strictland.properties`. To re-baseline everything already written without re-running the suite, run the sweep task (below).
+
+### Settings
+
+Both keys work in a `strictland.properties` file on the classpath or as `-D` system properties on a single run.
+
+| Setting | Values | Meaning |
+| --- | --- | --- |
+| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: inline diff + launch a tool locally. `off`: inline diff only, never launch. `approve`: re-baseline on drift instead of failing. |
+| `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The diff tool to launch, overriding auto-detection. |
+| `strictland.review.root` | a path (default `src/test/resources/contract-registry`) | The registry root the `SnapshotApprove` sweep walks. |
+
+Resolution, highest priority first: a `-D` system property, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
+
+### Re-baselining in bulk
+
+[`SnapshotApprove`](./src/jvm/src/main/java/io/eventdriven/strictland/SnapshotApprove.java) promotes every `.snap.received` file over its approved sibling as a filesystem sweep, with no test run. Wire it into your build once. This repository ships the Gradle task, so `./gradlew approveSnapshots` works here:
+
+```kotlin
+// build.gradle.kts
+tasks.register<JavaExec>("approveSnapshots") {
+    mainClass = "io.eventdriven.strictland.SnapshotApprove"
+    classpath = sourceSets.test.get().runtimeClasspath
+}
+```
+
+```xml
+<!-- Maven: mvn exec:java -Dexec.mainClass=io.eventdriven.strictland.SnapshotApprove -Dexec.classpathScope=test -->
+```
+
 ## Examples
 
 You can pin a message so its type can't change by accident, the kind of field that's invisible in the Java type but breaks deserialization the moment it's renamed:

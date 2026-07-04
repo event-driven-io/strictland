@@ -31,12 +31,14 @@ import org.jspecify.annotations.Nullable;
  * @param typeMapper names a message type for locating its snapshot, or null for the default
  * @param snapshotLayout decides where a snapshot's file lives, or null to fall through the config
  *     chain
+ * @param review how a drift is reviewed, or null to fall through the config chain
  */
 public record SpecificationOptions(
         MessageSerializer serializer,
         @Nullable SnapshotStorage storage,
         @Nullable MessageTypeMapper typeMapper,
-        @Nullable SnapshotLayout snapshotLayout) {
+        @Nullable SnapshotLayout snapshotLayout,
+        @Nullable SnapshotReview review) {
 
     /**
      * Creates options from your serializer, with every other setting left unset. Providing the
@@ -50,7 +52,7 @@ public record SpecificationOptions(
      *     to {@link MessageContract#specification(SpecificationOptions)}
      */
     public static SpecificationOptions serializer(MessageSerializer serializer) {
-        return new SpecificationOptions(serializer, null, null, null);
+        return new SpecificationOptions(serializer, null, null, null, null);
     }
 
     /**
@@ -61,7 +63,7 @@ public record SpecificationOptions(
      * @return a copy of these options using the given storage
      */
     public SpecificationOptions snapshotStorage(SnapshotStorage storage) {
-        return new SpecificationOptions(serializer, storage, typeMapper, snapshotLayout);
+        return new SpecificationOptions(serializer, storage, typeMapper, snapshotLayout, review);
     }
 
     /**
@@ -72,7 +74,7 @@ public record SpecificationOptions(
      * @return a copy of these options using the given mapper
      */
     public SpecificationOptions messageTypeMapper(MessageTypeMapper typeMapper) {
-        return new SpecificationOptions(serializer, storage, typeMapper, snapshotLayout);
+        return new SpecificationOptions(serializer, storage, typeMapper, snapshotLayout, review);
     }
 
     /**
@@ -89,6 +91,22 @@ public record SpecificationOptions(
      * @return a copy of these options using the given layout
      */
     public SpecificationOptions snapshotLayout(SnapshotLayout layout) {
-        return new SpecificationOptions(serializer, storage, typeMapper, layout);
+        return new SpecificationOptions(serializer, storage, typeMapper, layout, review);
+    }
+
+    /**
+     * Returns a copy with a snapshot review for this spec, overriding the global {@link Strictland}
+     * default and {@code strictland.properties} for this check alone. Use it to choose how a drift is
+     * reviewed - launch a particular diff tool, silence the tool, or re-baseline on purpose.
+     *
+     * <pre>
+     * SpecificationOptions options = Json.Jackson.defaults().snapshotReview(SnapshotReview.tool("meld"));
+     * </pre>
+     *
+     * @param review how a drift is reviewed for this spec
+     * @return a copy of these options using the given review
+     */
+    public SpecificationOptions snapshotReview(SnapshotReview review) {
+        return new SpecificationOptions(serializer, storage, typeMapper, snapshotLayout, review);
     }
 }
