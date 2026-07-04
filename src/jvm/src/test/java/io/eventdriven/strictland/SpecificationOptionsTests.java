@@ -75,8 +75,14 @@ final class SpecificationOptionsTests {
         var captured = new String[1];
         SnapshotStorage storage = new SnapshotStorage() {
             @Override
-            public void store(SnapshotLocation location, SnapshotData data) {
+            public SnapshotResult store(SnapshotLocation location, SnapshotData data) {
                 captured[0] = location.name();
+                return new SnapshotResult.Approved(location);
+            }
+
+            @Override
+            public void approve(SnapshotLocation location, SnapshotData data) {
+                throw new UnsupportedOperationException();
             }
 
             @Override

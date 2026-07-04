@@ -15,7 +15,8 @@ final class ThenContractStepInvariantTests {
         return new ContractContext(
                 new JacksonMessageSerializer(new JsonMapper()),
                 new FileSnapshotStorage(SnapshotLayout.registry()),
-                MessageTypeMapper.fullyQualifiedName());
+                MessageTypeMapper.fullyQualifiedName(),
+                SnapshotReviewer.forReview(SnapshotReview.off()));
     }
 
     @Test

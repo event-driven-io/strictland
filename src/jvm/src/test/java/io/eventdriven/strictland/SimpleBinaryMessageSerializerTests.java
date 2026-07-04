@@ -130,20 +130,16 @@ final class SimpleBinaryMessageSerializerTests {
     }
 
     @Test
-    void givenAnApprovedSnapshot_whenStoringADifferentPayload_thenThrowsDrift(@TempDir Path tmp) {
+    void givenAnApprovedSnapshot_whenStoringADifferentPayload_thenReportsDrift(@TempDir Path tmp) {
         var serializer = new SimpleBinaryMessageSerializer();
         var storage = new Base64SnapshotStorage(tmp);
         var location = SnapshotLocation.of(
                 MessageTypeName.of("Drifting"), "1", SnapshotVariant.DEFAULT, "." + serializer.fileExtension());
         storage.store(location, new SnapshotData(serializer.serialize(new OrderPlaced(FIXED_ID, "Alice"))));
 
-        var error = assertThrows(
-                AssertionError.class,
-                () -> storage.store(
-                        location, new SnapshotData(serializer.serialize(new OrderPlaced(FIXED_ID, "Bob")))));
+        var result = storage.store(location, new SnapshotData(serializer.serialize(new OrderPlaced(FIXED_ID, "Bob"))));
 
-        var message = requireNonNull(error.getMessage());
-        assertTrue(message.contains("drift"));
+        assertInstanceOf(SnapshotResult.Drifted.class, result);
     }
 
     @Test

@@ -1,9 +1,9 @@
 package io.eventdriven.strictland;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,10 +25,8 @@ final class FileSnapshotStorageLayoutTests {
         return new FileSnapshotStorage(SnapshotLayout.registry().rootPath(root.toString()));
     }
 
-    // A drift here should assert on files and the thrown error only, never open a real diff tool,
-    // whatever machine the suite runs on - so wire a review that opens nothing.
-    private static FileSnapshotStorage nonInteractiveStorage(SnapshotLayout layout) {
-        return new FileSnapshotStorage(layout, SnapshotReview.auto(), (received, approved) -> {});
+    private static FileSnapshotStorage storageFor(SnapshotLayout layout) {
+        return new FileSnapshotStorage(layout);
     }
 
     private static Path registryFolder(Path root) {
@@ -120,17 +118,37 @@ final class FileSnapshotStorageLayoutTests {
     }
 
     @Test
-    void store_aDriftedPayload_writesAReceivedFileAndThrows(@TempDir Path root) throws Exception {
-        var storage = nonInteractiveStorage(SnapshotLayout.registry().rootPath(root.toString()));
+    void store_aDriftedPayload_writesAReceivedFileAndReportsDrift(@TempDir Path root) throws Exception {
+        var storage = storageFor(SnapshotLayout.registry().rootPath(root.toString()));
         var location = SnapshotLocation.of(MESSAGE_TYPE, "1", SnapshotVariant.UNSET, ".json");
         storage.store(location, new SnapshotData(PAYLOAD));
 
         var drifted = "{\"id\":2}".getBytes(UTF_8);
-        var error = assertThrows(AssertionError.class, () -> storage.store(location, new SnapshotData(drifted)));
+        var result = storage.store(location, new SnapshotData(drifted));
 
-        assertTrue(requireNonNull(error.getMessage()).contains("drift"));
         var received = registryFolder(root).resolve("OrderPlaced.1.default.snap.received.json");
         assertArrayEquals(drifted, Files.readAllBytes(received));
+        assertInstanceOf(SnapshotResult.Drifted.class, result);
+        var drift = (SnapshotResult.Drifted) result;
+        assertArrayEquals(PAYLOAD, drift.approved().bytes());
+        assertArrayEquals(drifted, drift.received().bytes());
+        assertEquals(received, drift.receivedFile());
+        assertEquals(registryFolder(root).resolve("OrderPlaced.1.default.snap.approved.json"), drift.approvedFile());
+    }
+
+    @Test
+    void approve_reBaselinesTheApprovedFileAndClearsReceived(@TempDir Path root) throws Exception {
+        var storage = storageFor(SnapshotLayout.registry().rootPath(root.toString()));
+        var location = SnapshotLocation.of(MESSAGE_TYPE, "1", SnapshotVariant.UNSET, ".json");
+        storage.store(location, new SnapshotData(PAYLOAD));
+        var drifted = "{\"id\":2}".getBytes(UTF_8);
+        storage.store(location, new SnapshotData(drifted));
+
+        storage.approve(location, new SnapshotData(drifted));
+
+        assertArrayEquals(
+                drifted, Files.readAllBytes(registryFolder(root).resolve("OrderPlaced.1.default.snap.approved.json")));
+        assertTrue(Files.notExists(registryFolder(root).resolve("OrderPlaced.1.default.snap.received.json")));
     }
 
     @Test
@@ -144,9 +162,18 @@ final class FileSnapshotStorageLayoutTests {
     }
 
     @Test
+    void approve_whenTheDirectoryCannotBeCreated_wrapsTheIoFailure(@TempDir Path root) throws Exception {
+        var blocker = root.resolve("contract-registry");
+        Files.writeString(blocker, "not a directory");
+        var storage = storageRootedAt(root);
+        var location = SnapshotLocation.of(MESSAGE_TYPE, "1", SnapshotVariant.UNSET, ".json");
+
+        assertThrows(UncheckedIOException.class, () -> storage.approve(location, new SnapshotData(PAYLOAD)));
+    }
+
+    @Test
     void store_aBareRelativeLocation_writesAndDriftsWithoutAParentFolder() throws Exception {
-        var storage =
-                nonInteractiveStorage(SnapshotLayout.registry().rootPath("").wrapperFolder(""));
+        var storage = storageFor(SnapshotLayout.registry().rootPath("").wrapperFolder(""));
         var bareName = "FileSnapshotStorageLayoutTests-bare-" + System.nanoTime();
         var location = SnapshotLocation.ofRelativePath(Path.of(bareName + ".snap.approved.json"));
         var approved = Path.of(bareName + ".snap.approved.json");
@@ -156,7 +183,7 @@ final class FileSnapshotStorageLayoutTests {
             assertTrue(Files.exists(approved));
 
             var drifted = "{\"id\":2}".getBytes(UTF_8);
-            assertThrows(AssertionError.class, () -> storage.store(location, new SnapshotData(drifted)));
+            assertInstanceOf(SnapshotResult.Drifted.class, storage.store(location, new SnapshotData(drifted)));
             assertArrayEquals(drifted, Files.readAllBytes(received));
         } finally {
             Files.deleteIfExists(approved);

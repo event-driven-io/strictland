@@ -41,7 +41,8 @@ public class ThenContractStep<S> {
      */
     public void thenContractIsUnchanged() {
         var data = new SnapshotData(context.serializer().serialize(instance));
-        context.storage().store(snapshotLocation(), data);
+        var result = context.storage().store(snapshotLocation(), data);
+        context.reviewer().review(context.storage(), result);
     }
 
     private SnapshotLocation snapshotLocation() {

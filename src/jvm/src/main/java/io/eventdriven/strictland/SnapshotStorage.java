@@ -29,15 +29,28 @@ import java.util.List;
 public interface SnapshotStorage {
 
     /**
-     * Approves and persists a snapshot at one exact location. The first run saves it for you to review
-     * and commit; on a later run a matching payload passes, and one that has drifted throws an {@link
-     * AssertionError} to fail the check.
+     * Stores a snapshot at one exact location and reports what happened, without deciding what a drift
+     * means. The first run writes the approved snapshot ({@link SnapshotResult.Approved}); a later run
+     * that matches passes ({@link SnapshotResult.Unchanged}); one that differs writes the received
+     * payload beside the approved one and reports the drift ({@link SnapshotResult.Drifted}) for the
+     * caller to open, fail, or accept. It never throws to fail a check - only wraps a genuine I/O
+     * failure.
      *
      * @param location the exact file the snapshot is stored at
-     * @param data the serialized message to approve and persist
-     * @throws AssertionError when the payload differs from the approved snapshot
+     * @param data the serialized message to store
+     * @return what storing did: approved, unchanged, or drifted
      */
-    void store(SnapshotLocation location, SnapshotData data) throws AssertionError;
+    SnapshotResult store(SnapshotLocation location, SnapshotData data);
+
+    /**
+     * Re-baselines a location by overwriting its approved snapshot with a payload you've accepted, and
+     * clearing any received file. This is how {@code approve} review mode accepts an intended change; it
+     * assumes the caller has already decided the drift is wanted.
+     *
+     * @param location the exact file to re-baseline
+     * @param data the accepted payload to store as the new approved snapshot
+     */
+    void approve(SnapshotLocation location, SnapshotData data);
 
     /**
      * Reads back the one snapshot approved at an exact location, for a compatibility check that replays a
