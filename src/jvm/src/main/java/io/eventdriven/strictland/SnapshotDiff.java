@@ -37,6 +37,7 @@ final class SnapshotDiff {
     private static String unifiedDiff(List<String> approved, List<String> received) {
         var n = approved.size();
         var m = received.size();
+        var width = digits(Math.max(n, m));
         var lcs = new int[n + 1][m + 1];
         for (var i = n - 1; i >= 0; i--) {
             for (var j = m - 1; j >= 0; j--) {
@@ -45,31 +46,49 @@ final class SnapshotDiff {
                         : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
             }
         }
-        var out = new StringBuilder();
+        var out = new StringBuilder("Text content differs (- approved, + received):\n");
         var i = 0;
         var j = 0;
         while (i < n && j < m) {
             if (approved.get(i).equals(received.get(j))) {
-                out.append("  ").append(approved.get(i)).append('\n');
+                appendLine(out, ' ', i + 1, width, approved.get(i));
                 i++;
                 j++;
             } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
-                out.append("- ").append(approved.get(i)).append('\n');
+                appendLine(out, '-', i + 1, width, approved.get(i));
                 i++;
             } else {
-                out.append("+ ").append(received.get(j)).append('\n');
+                appendLine(out, '+', j + 1, width, received.get(j));
                 j++;
             }
         }
         while (i < n) {
-            out.append("- ").append(approved.get(i)).append('\n');
+            appendLine(out, '-', i + 1, width, approved.get(i));
             i++;
         }
         while (j < m) {
-            out.append("+ ").append(received.get(j)).append('\n');
+            appendLine(out, '+', j + 1, width, received.get(j));
             j++;
         }
         return out.toString();
+    }
+
+    private static void appendLine(StringBuilder out, char marker, int lineNumber, int width, String text) {
+        out.append(marker)
+                .append(' ')
+                .append(leftPad(lineNumber, width))
+                .append(" | ")
+                .append(text)
+                .append('\n');
+    }
+
+    private static int digits(int number) {
+        return Integer.toString(number).length();
+    }
+
+    private static String leftPad(int number, int width) {
+        var text = Integer.toString(number);
+        return " ".repeat(width - text.length()) + text;
     }
 
     private static String binarySummary(byte[] approved, byte[] received) {

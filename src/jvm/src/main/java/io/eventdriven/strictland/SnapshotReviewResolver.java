@@ -1,23 +1,22 @@
 package io.eventdriven.strictland;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Resolves the {@link SnapshotReview} a check runs under from the configuration chain. A {@code -D}
- * system property wins so {@code -Dstrictland.review.mode=approve} re-baselines any run; otherwise the
- * order is per-spec, then the global {@link Strictland} default, then {@code strictland.properties},
- * then the built-in {@link SnapshotReview#auto()}.
- */
 final class SnapshotReviewResolver {
 
     private SnapshotReviewResolver() {}
 
     static SnapshotReview resolve(@Nullable SnapshotReview perSpec) {
         return resolve(
-                perSpec, Strictland.snapshotReview(), SnapshotReviewProperties::fromClasspath, System.getProperties());
+                perSpec,
+                Strictland.snapshotReview(),
+                SnapshotReviewProperties::fromClasspath,
+                System.getProperties(),
+                System.getenv());
     }
 
     static SnapshotReview resolve(
@@ -25,9 +24,18 @@ final class SnapshotReviewResolver {
             Optional<SnapshotReview> global,
             Supplier<Optional<SnapshotReview>> file,
             Properties systemProps) {
-        var fromSystem = SnapshotReviewProperties.fromProperties(systemProps);
-        if (fromSystem.isPresent()) {
-            return fromSystem.get();
+        return resolve(perSpec, global, file, systemProps, Map.of());
+    }
+
+    static SnapshotReview resolve(
+            @Nullable SnapshotReview perSpec,
+            Optional<SnapshotReview> global,
+            Supplier<Optional<SnapshotReview>> file,
+            Properties systemProps,
+            Map<String, String> env) {
+        var fromRuntime = SnapshotReviewProperties.fromPropertiesAndEnv(systemProps, env);
+        if (fromRuntime.isPresent()) {
+            return fromRuntime.get();
         }
         if (perSpec != null) {
             return perSpec;

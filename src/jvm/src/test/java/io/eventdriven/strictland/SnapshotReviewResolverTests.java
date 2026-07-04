@@ -1,8 +1,10 @@
 package io.eventdriven.strictland;
 
+import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import org.jspecify.annotations.NullMarked;
@@ -16,9 +18,9 @@ final class SnapshotReviewResolverTests {
     private final SnapshotReview global = SnapshotReview.approve();
     private final SnapshotReview file = SnapshotReview.tool("meld");
 
-    private static Properties systemProps(String mode) {
+    private static Properties systemProps(String key, String value) {
         var props = new Properties();
-        props.setProperty("strictland.review.mode", mode);
+        props.setProperty(key, value);
         return props;
     }
 
@@ -30,15 +32,32 @@ final class SnapshotReviewResolverTests {
     @Test
     void systemProperty_winsOverEverythingSoAnyRunCanApprove() {
         var resolved = SnapshotReviewResolver.resolve(
-                perSpec, Optional.of(global), () -> Optional.of(file), systemProps("approve"));
+                perSpec,
+                Optional.of(global),
+                () -> Optional.of(file),
+                systemProps("strictland.review.mode", "approve"));
 
         assertEquals(ReviewMode.APPROVE, resolved.mode());
     }
 
     @Test
-    void perSpec_winsWhenNoSystemPropertyIsSet() {
-        var resolved =
-                SnapshotReviewResolver.resolve(perSpec, Optional.of(global), () -> Optional.of(file), new Properties());
+    void runtimeToolOrderEnvironmentWinsOverPerSpecGlobalAndFile() {
+        var resolved = SnapshotReviewResolver.resolve(
+                perSpec,
+                Optional.of(global),
+                () -> Optional.of(file),
+                new Properties(),
+                Map.of("STRICTLAND_REVIEW_TOOL_ORDER", "idea,meld"));
+
+        assertEquals(
+                java.util.List.of("idea", "meld"),
+                requireNonNull(resolved.toolPreference()).names());
+    }
+
+    @Test
+    void perSpec_winsWhenNoRuntimeOverrideIsSet() {
+        var resolved = SnapshotReviewResolver.resolve(
+                perSpec, Optional.of(global), () -> Optional.of(file), new Properties(), Map.of());
 
         assertSame(perSpec, resolved);
     }

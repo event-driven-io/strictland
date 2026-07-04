@@ -1,111 +1,155 @@
 package io.eventdriven.strictland;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
-/**
- * The curated registry of diff tools Strictland knows how to launch, plus the detection that picks one
- * that is actually installed. Package-private: callers reach it through {@link SnapshotReview} and the
- * {@code strictland.review.tool} setting rather than directly.
- *
- * <p>The registry is a single ordered list, most preferred first. Each tool lists every executable
- * name it might install as on any platform, so detection just probes those names on the {@code PATH}
- * without branching on the operating system.</p>
- */
 final class DiffTools {
-
-    private DiffTools() {}
-
-    static List<DiffTool> registry() {
-        return List.of(
-                new DiffTool("vscode", List.of("code", "code.cmd"), List.of("code", "--diff", "--wait", RECV, APPR)),
-                new DiffTool(
-                        "cursor", List.of("cursor", "cursor.cmd"), List.of("cursor", "--diff", "--wait", RECV, APPR)),
-                new DiffTool("idea", List.of("idea", "idea.sh", "idea.cmd"), List.of("idea", "diff", RECV, APPR)),
-                new DiffTool("meld", List.of("meld"), List.of("meld", RECV, APPR)),
-                new DiffTool("bcompare", List.of("bcompare", "BCompare.exe"), List.of("bcompare", RECV, APPR)),
-                new DiffTool("kdiff3", List.of("kdiff3"), List.of("kdiff3", RECV, APPR)),
-                new DiffTool("p4merge", List.of("p4merge"), List.of("p4merge", RECV, APPR)),
-                new DiffTool("winmerge", List.of("WinMergeU.exe"), List.of("WinMergeU", "/u", "/wl", RECV, APPR)),
-                new DiffTool("git", List.of("git"), List.of("git", "difftool", "--no-index", APPR, RECV)));
-    }
 
     private static final String RECV = "{received}";
     private static final String APPR = "{approved}";
 
-    /**
-     * Returns the registered tool with the given logical name, or empty when the name isn't one
-     * Strictland knows. Backs {@link SnapshotReview#tool(String)} and a {@code strictland.review.tool}
-     * value that names a registered tool.
-     */
+    private static final Pattern ORDER_SEPARATOR = Pattern.compile("[,|\\s]+");
+
+    private static final System.Logger LOGGER = System.getLogger(DiffTools.class.getName());
+
+    private static final List<DiffTool> REGISTRY = List.of(
+            new DiffTool("vscode", List.of("code", "code.cmd"), List.of("--diff", "--wait", RECV, APPR)),
+            new DiffTool("cursor", List.of("cursor", "cursor.cmd"), List.of("--diff", "--wait", RECV, APPR)),
+            new DiffTool("idea", List.of("idea", "idea.sh", "idea.cmd"), List.of("diff", RECV, APPR)),
+            new DiffTool("meld", List.of("meld"), List.of(RECV, APPR)),
+            new DiffTool("bcompare", List.of("bcompare", "BCompare.exe"), List.of(RECV, APPR)),
+            new DiffTool("kdiff3", List.of("kdiff3"), List.of(RECV, APPR)),
+            new DiffTool("p4merge", List.of("p4merge"), List.of(RECV, APPR)),
+            new DiffTool("winmerge", List.of("WinMergeU.exe"), List.of("/u", "/wl", RECV, APPR)),
+            new DiffTool("git", List.of("git"), List.of("difftool", "--no-index", APPR, RECV)));
+
+    private DiffTools() {}
+
+    static List<DiffTool> registry() {
+        return REGISTRY;
+    }
+
     static Optional<DiffTool> byName(String name) {
-        return registry().stream().filter(tool -> tool.name().equals(name)).findFirst();
-    }
-
-    /**
-     * Builds an ad-hoc tool from a full {@code path {received} {approved}} template, for a diff tool
-     * that isn't in the registry. The first token is the executable; the rest are its arguments.
-     */
-    static DiffTool custom(String template) {
-        var tokens = List.of(template.trim().split("\\s+", -1));
-        return new DiffTool("custom", List.of(tokens.get(0)), tokens);
-    }
-
-    /**
-     * Resolves a {@code strictland.review.tool} value: a registered tool by name, or, when the value
-     * holds spaces, a {@link #custom(String)} template. Never empty for a non-blank value.
-     */
-    static Optional<DiffTool> fromSetting(String value) {
-        var trimmed = value.trim();
-        if (trimmed.isEmpty()) {
-            return Optional.empty();
-        }
-        if (trimmed.contains(" ")) {
-            return Optional.of(custom(trimmed));
-        }
-        return byName(trimmed);
-    }
-
-    /**
-     * Returns the first registry tool whose executable {@code isInstalled} reports as present, or empty
-     * when none is. The predicate is the seam that keeps detection testable without probing the real
-     * machine.
-     */
-    static Optional<DiffTool> detect(Predicate<String> isInstalled) {
-        for (var tool : registry()) {
-            if (tool.candidates().stream().anyMatch(isInstalled)) {
+        for (var tool : REGISTRY) {
+            if (tool.name().equals(name)) {
                 return Optional.of(tool);
             }
         }
         return Optional.empty();
     }
 
-    /** Returns the first installed registry tool as found on the real {@code PATH}, or empty. */
-    static Optional<DiffTool> detect() {
-        return detect(DiffTools::onPath);
+    static String requireName(String name) {
+        var trimmed = name.trim();
+        if (trimmed.isEmpty() || byName(trimmed).isEmpty()) {
+            throw new IllegalArgumentException("Unknown diff tool: " + name + ". Known tools: " + knownNames());
+        }
+        return trimmed;
     }
 
-    /** True when {@code executable} is found as a runnable file on one of the real {@code PATH} entries. */
+    static ToolPreference fromToolSetting(String value) {
+        var trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Diff tool setting must not be blank.");
+        }
+        if (trimmed.contains(" ")) {
+            return ToolPreference.custom(trimmed);
+        }
+        return ToolPreference.single(requireName(trimmed));
+    }
+
+    static List<String> parseOrder(String value) {
+        var names = new ArrayList<String>();
+        ORDER_SEPARATOR
+                .splitAsStream(value.trim())
+                .filter(token -> !token.isBlank())
+                .map(DiffTools::requireName)
+                .forEach(names::add);
+        if (names.isEmpty()) {
+            throw new IllegalArgumentException("Tool order must name at least one registered diff tool.");
+        }
+        return List.copyOf(names);
+    }
+
+    static Optional<ResolvedDiffTool> resolve(@Nullable ToolPreference preference) {
+        return resolve(preference, DiffTools::onPath);
+    }
+
+    static Optional<ResolvedDiffTool> resolve(@Nullable ToolPreference preference, Predicate<String> isInstalled) {
+        if (preference == null) {
+            return firstAvailable(REGISTRY, isInstalled);
+        }
+        return switch (preference.kind()) {
+            case SINGLE -> resolveSingle(preference.names().get(0), isInstalled);
+            case ORDER -> firstAvailable(ordered(preference.names()), isInstalled);
+            case CUSTOM -> resolveCustom(requireNonNull(preference.template()), isInstalled);
+        };
+    }
+
     static boolean onPath(String executable) {
         return onPath(executable, System.getenv("PATH"));
     }
 
-    /** The pure scan behind {@link #onPath(String)}, taking the {@code PATH} string so it stays testable. */
     static boolean onPath(String executable, @Nullable String path) {
         if (path == null) {
             return false;
         }
         for (var dir : path.split(File.pathSeparator, -1)) {
-            if (dir.isEmpty()) {
-                continue;
-            }
-            if (new File(dir, executable).canExecute()) {
+            if (!dir.isEmpty() && new File(dir, executable).canExecute()) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static Optional<ResolvedDiffTool> resolveSingle(String name, Predicate<String> isInstalled) {
+        var resolved = byName(name).flatMap(tool -> tool.resolve(isInstalled));
+        if (resolved.isEmpty()) {
+            LOGGER.log(System.Logger.Level.DEBUG, "Configured diff tool is not available: " + name);
+        }
+        return resolved;
+    }
+
+    private static Optional<ResolvedDiffTool> firstAvailable(List<DiffTool> tools, Predicate<String> isInstalled) {
+        for (var tool : tools) {
+            var resolved = tool.resolve(isInstalled);
+            if (resolved.isPresent()) {
+                return resolved;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<ResolvedDiffTool> resolveCustom(String template, Predicate<String> isInstalled) {
+        var tokens = List.of(template.trim().split("\\s+", -1));
+        var executable = tokens.get(0);
+        if (!isInstalled.test(executable) && !new File(executable).canExecute()) {
+            LOGGER.log(System.Logger.Level.DEBUG, "Configured diff command is not available: " + executable);
+            return Optional.empty();
+        }
+        return Optional.of(new ResolvedDiffTool("custom", executable, tokens.subList(1, tokens.size())));
+    }
+
+    private static List<DiffTool> ordered(List<String> preferredNames) {
+        var tools = new ArrayList<DiffTool>();
+        for (var name : preferredNames) {
+            byName(name).ifPresent(tools::add);
+        }
+        for (var tool : REGISTRY) {
+            if (!preferredNames.contains(tool.name())) {
+                tools.add(tool);
+            }
+        }
+        return List.copyOf(tools);
+    }
+
+    private static List<String> knownNames() {
+        return REGISTRY.stream().map(DiffTool::name).toList();
     }
 }

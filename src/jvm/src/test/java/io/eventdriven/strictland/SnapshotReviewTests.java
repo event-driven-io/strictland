@@ -2,12 +2,11 @@ package io.eventdriven.strictland;
 
 import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +18,7 @@ final class SnapshotReviewTests {
         var review = SnapshotReview.auto();
 
         assertEquals(ReviewMode.AUTO, review.mode());
-        assertNull(review.tool());
+        assertNull(review.toolPreference());
     }
 
     @Test
@@ -37,44 +36,72 @@ final class SnapshotReviewTests {
         var review = SnapshotReview.tool("meld");
 
         assertEquals(ReviewMode.AUTO, review.mode());
-        var tool = review.tool();
-        assertEquals("meld", tool == null ? null : tool.name());
+        var preference = requireNonNull(review.toolPreference());
+        assertEquals(ToolPreference.Kind.SINGLE, preference.kind());
+        assertEquals(java.util.List.of("meld"), preference.names());
     }
 
     @Test
-    void toolByName_rejectsAnUnknownName() {
+    void toolOrder_selectsPreferredRegisteredToolsInAutoMode() {
+        var review = SnapshotReview.toolOrder("idea", "vscode");
+
+        assertEquals(ReviewMode.AUTO, review.mode());
+        var preference = requireNonNull(review.toolPreference());
+        assertEquals(ToolPreference.Kind.ORDER, preference.kind());
+        assertEquals(java.util.List.of("idea", "vscode"), preference.names());
+    }
+
+    @Test
+    void unknownToolNamesAreRejected() {
         var thrown = assertThrows(IllegalArgumentException.class, () -> SnapshotReview.tool("no-such-tool"));
 
         assertTrue(requireNonNull(thrown.getMessage()).contains("no-such-tool"));
     }
 
     @Test
-    void toolByInstance_carriesTheGivenTool() {
-        var custom = new DiffTool("acme", List.of("acme"), List.of("acme", "{received}", "{approved}"));
+    void unknownToolOrderNamesAreRejected() {
+        var thrown = assertThrows(IllegalArgumentException.class, () -> SnapshotReview.toolOrder("meld", "nope"));
 
-        var review = SnapshotReview.tool(custom);
-
-        assertEquals(ReviewMode.AUTO, review.mode());
-        assertSame(custom, review.tool());
+        assertTrue(requireNonNull(thrown.getMessage()).contains("nope"));
     }
 
     @Test
-    void withMode_keepsTheToolAndChangesTheMode() {
-        var custom = new DiffTool("acme", List.of("acme"), List.of("acme", "{received}", "{approved}"));
+    void emptyToolOrderIsRejected() {
+        var thrown = assertThrows(IllegalArgumentException.class, SnapshotReview::toolOrder);
 
-        var review = SnapshotReview.tool(custom).withMode(ReviewMode.OFF);
-
-        assertEquals(ReviewMode.OFF, review.mode());
-        assertSame(custom, review.tool());
+        assertTrue(requireNonNull(thrown.getMessage()).contains("at least one"));
     }
 
     @Test
-    void withTool_keepsTheModeAndSetsTheTool() {
-        var custom = new DiffTool("acme", List.of("acme"), List.of("acme", "{received}", "{approved}"));
+    void equalityAndHashCodeAreValueBased() {
+        var left = SnapshotReview.toolOrder("idea", "meld");
+        var right = SnapshotReview.toolOrder("idea", "meld");
 
-        var review = SnapshotReview.approve().withTool(custom);
+        assertEquals(left, right);
+        assertEquals(left.hashCode(), right.hashCode());
+        assertEquals(left.toString(), right.toString());
+    }
 
-        assertEquals(ReviewMode.APPROVE, review.mode());
-        assertSame(custom, review.tool());
+    @Test
+    void equalityHandlesIdentityOtherTypesAndDifferentValues() {
+        var review = SnapshotReview.tool("meld");
+
+        assertEquals(review, review);
+        assertNotEquals(review, "meld");
+        assertNotEquals(review, SnapshotReview.off());
+        assertNotEquals(review, SnapshotReview.tool("idea"));
+    }
+
+    @Test
+    void internalToolPreferenceRejectsInvalidStates() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new ToolPreference(ToolPreference.Kind.SINGLE, java.util.List.of("meld"), "template"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new ToolPreference(ToolPreference.Kind.CUSTOM, java.util.List.of(), "   "));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new ToolPreference(ToolPreference.Kind.ORDER, java.util.List.of(), null));
     }
 }

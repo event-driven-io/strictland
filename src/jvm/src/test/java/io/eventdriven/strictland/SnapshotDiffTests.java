@@ -19,10 +19,11 @@ final class SnapshotDiffTests {
         var diff = SnapshotDiff.render(utf8("a\nb\nc"), utf8("a\nx\nc"));
 
         assertEquals("""
-                  a
-                - b
-                + x
-                  c
+                Text content differs (- approved, + received):
+                  1 | a
+                - 2 | b
+                + 2 | x
+                  3 | c
                 """, diff);
     }
 
@@ -31,8 +32,9 @@ final class SnapshotDiffTests {
         var diff = SnapshotDiff.render(utf8("a"), utf8("a\nb"));
 
         assertEquals("""
-                  a
-                + b
+                Text content differs (- approved, + received):
+                  1 | a
+                + 2 | b
                 """, diff);
     }
 
@@ -41,8 +43,9 @@ final class SnapshotDiffTests {
         var diff = SnapshotDiff.render(utf8("a\nb"), utf8("a"));
 
         assertEquals("""
-                  a
-                - b
+                Text content differs (- approved, + received):
+                  1 | a
+                - 2 | b
                 """, diff);
     }
 
@@ -51,10 +54,11 @@ final class SnapshotDiffTests {
         var diff = SnapshotDiff.render(utf8("a\nb\nc\nd"), utf8("a\nd"));
 
         assertEquals("""
-                  a
-                - b
-                - c
-                  d
+                Text content differs (- approved, + received):
+                  1 | a
+                - 2 | b
+                - 3 | c
+                  4 | d
                 """, diff);
     }
 

@@ -138,9 +138,10 @@ When a snapshot check finds the message no longer matches its approved baseline,
 ```
 Snapshot drift: .../OrderPlaced.1.default.snap.approved.json differs from the approved snapshot.
 
-  {"id":1,"customer":"Alice"}
-- {"total":10}
-+ {"total":12}
+Text content differs (- approved, + received):
+  1 | {"id":1,"customer":"Alice"}
+- 2 | {"total":10}
++ 2 | {"total":12}
 
 received: .../OrderPlaced.1.default.snap.received.json
 approved: .../OrderPlaced.1.default.snap.approved.json
@@ -150,9 +151,11 @@ To accept this change, re-run with -Dstrictland.review.mode=approve, or save the
 
 A binary serializer falls back to a byte-length and hex summary instead of a line diff.
 
-**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a detected diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI or a headless machine nothing launches - the inline diff stands alone. Strictland auto-detects VS Code, Cursor, IntelliJ, Meld, Beyond Compare, kdiff3, P4Merge and WinMerge, and falls back to `git difftool`.
+**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a resolved diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI, a headless JVM, or Linux without `DISPLAY`/`WAYLAND_DISPLAY`, nothing launches - the inline diff stands alone.
 
-**Choosing the diff tool.** You're never stuck with auto-detection. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `cursor`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`, `git`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto-detection:
+Auto mode chooses conservatively: an explicit single tool first, then an explicit preferred order, then the built-in registry order. `git difftool --no-index` is the final fallback and is used only when `git` resolves.
+
+**Choosing the diff tool.** You're never stuck with auto selection. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `cursor`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`, `git`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto selection. If that single tool is unavailable, Strictland keeps the inline diff and does not silently launch a different GUI tool:
 
 ```java
 MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotReview.tool("meld")))
@@ -172,15 +175,17 @@ The `-D` property re-baselines whatever those tests touch and then you commit th
 
 ### Settings
 
-Both keys work in a `strictland.properties` file on the classpath or as `-D` system properties on a single run.
+Review settings work in a `strictland.properties` file on the classpath or as `-D` system properties on a single run. `STRICTLAND_REVIEW_TOOL_ORDER` is also read from the environment when no runtime review system property is set.
 
 | Setting | Values | Meaning |
 | --- | --- | --- |
 | `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: inline diff + launch a tool locally. `off`: inline diff only, never launch. `approve`: re-baseline on drift instead of failing. |
-| `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The diff tool to launch, overriding auto-detection. |
+| `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The single diff tool to launch, overriding auto selection without fallback to another GUI tool. |
+| `strictland.review.toolOrder` | registered names separated by commas, pipes, or whitespace | Preferred auto-mode order; listed available tools are tried before unlisted tools. |
+| `STRICTLAND_REVIEW_TOOL_ORDER` | registered names separated by commas, pipes, or whitespace | Environment fallback for the preferred auto-mode order. |
 | `strictland.review.root` | a path (default `src/test/resources/contract-registry`) | The registry root the `SnapshotApprove` sweep walks. |
 
-Resolution, highest priority first: a `-D` system property, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
+Resolution, highest priority first: runtime `-Dstrictland.review.*` properties, then `STRICTLAND_REVIEW_TOOL_ORDER`, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
 
 ### Re-baselining in bulk
 

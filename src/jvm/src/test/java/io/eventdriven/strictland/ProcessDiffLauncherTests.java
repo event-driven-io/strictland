@@ -3,6 +3,7 @@ package io.eventdriven.strictland;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.nio.file.Path;
+import java.util.List;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
@@ -15,15 +16,14 @@ final class ProcessDiffLauncherTests {
 
     @Test
     void launch_startsARealProcessWithoutBlocking() {
-        // "true" exists in the dev container, ignores its args, and exits immediately.
-        var tool = DiffTools.custom("true {received} {approved}");
+        var tool = new ResolvedDiffTool("custom", "true", List.of("{received}", "{approved}"));
 
         assertDoesNotThrow(() -> launcher.launch(tool, received, approved));
     }
 
     @Test
     void launch_swallowsAFailureToStartSoTheDriftFailureStands() {
-        var missing = DiffTools.custom("strictland-no-such-binary {received} {approved}");
+        var missing = new ResolvedDiffTool("custom", "strictland-no-such-binary", List.of("{received}", "{approved}"));
 
         assertDoesNotThrow(() -> launcher.launch(missing, received, approved));
     }

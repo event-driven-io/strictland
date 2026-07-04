@@ -89,15 +89,14 @@ Restores the diff-tool and approval experience dropped with ApprovalTests, behin
 
 - [x] **Inline diff** on every drift: `SnapshotDiff` embeds a unified diff (hex/length fallback for
   binary) in the `AssertionError`, so CI logs are self-explanatory.
-- [x] **Local diff-tool launch**: `DiffTool`/`DiffTools` registry + detection, `DiffLauncher` /
-  `ProcessDiffLauncher`, gated off on CI/headless by `CiDetector`; manual pick via
-  `SnapshotReview.tool(...)` or `strictland.review.tool`.
-- [x] **Approve mode**: `ReviewMode.APPROVE` re-baselines on drift; drive per-run with
+- [x] **Local diff-tool launch**: private diff-tool registry + resolved launcher, gated off on CI/headless/Linux-without-display by `CiDetector`; manual pick via
+  `SnapshotReview.tool(...)` or `strictland.review.tool`, and preferred auto order via
+  `SnapshotReview.toolOrder(...)`, `strictland.review.toolOrder`, or `STRICTLAND_REVIEW_TOOL_ORDER`.
+- [x] **Approve mode**: `SnapshotReview.approve()` re-baselines on drift; drive per-run with
   `-Dstrictland.review.mode=approve`, or sweep the registry with `SnapshotApprove` /
   `./gradlew approveSnapshots`.
-- [x] **Config chain**: `strictland.review.mode` / `strictland.review.tool` via
-  `SnapshotReviewProperties` + resolver, `SpecificationOptions.snapshotReview(...)`,
-  `Strictland.defaults().snapshotReview(...)`.
+- [x] **Config chain**: runtime properties/env override per-spec, global, file, and built-in defaults;
+  `SpecificationOptions.snapshotReview(...)` and `Strictland.defaults().snapshotReview(...)` stay as the public entry points.
 - [x] **Docs**: README "Reviewing a drift" section (workflow, tool table, settings, bulk approve).
 
 ## Release boundaries
