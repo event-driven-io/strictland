@@ -15,43 +15,28 @@ import java.util.stream.Stream;
  * lays out (defaulting to {@code test/resources/contract-registry}).
  * It stores approved snapshots in relative {@link SnapshotLocation} path under the root.
  *
- * <p>The first run writes the approved file for you to review and commit (with {@code .snap.approved} marker). A later run compares the
- * payload against it: a match passes, a difference is reviewed according to the {@link SnapshotReview}
- * this store was built with. In {@link ReviewMode#APPROVE} a difference re-baselines the approved file;
- * otherwise it writes a sibling {@code .snap.received} file, opens a diff tool when the run is local and
- * interactive, and fails the check with a message carrying an inline diff of what moved.</p>
+ * <p>The first run writes the approved file for you to review and commit (with {@code .snap.approved}
+ * marker) and reports {@link SnapshotResult.Approved}. A later run compares the payload against it: a
+ * match reports {@link SnapshotResult.Unchanged}, a difference writes a sibling {@code .snap.received}
+ * file and reports {@link SnapshotResult.Drifted}. Storage only reads and writes; what a drift means is
+ * decided by the caller.</p>
  */
 class FileSnapshotStorage implements SnapshotStorage {
 
     private static final String APPROVED_MARKER = ".approved.";
     private static final String RECEIVED_MARKER = ".received.";
-    static final String SNAP_APPROVED_MARKER = ".snap.approved.";
 
     private final Path root;
-    private final SnapshotReview review;
-    private final DiffReview diffReview;
 
     FileSnapshotStorage(SnapshotLayout layout) {
-        this(layout, SnapshotReview.auto());
-    }
-
-    FileSnapshotStorage(SnapshotLayout layout, SnapshotReview review) {
-        this(layout, review, DiffReview.forReview(review));
-    }
-
-    FileSnapshotStorage(SnapshotLayout layout, SnapshotReview review, DiffReview diffReview) {
         this.root = Path.of(layout.rootPath(), layout.wrapperFolder());
-        this.review = review;
-        this.diffReview = diffReview;
     }
 
     @Override
-    public void store(SnapshotLocation location, SnapshotData data) {
+    public SnapshotResult store(SnapshotLocation location, SnapshotData data) {
         var approved = approvedPath(location);
-        var fileName = approved.getFileName().toString();
-        var received = approved.resolveSibling(fileName.replace(APPROVED_MARKER, RECEIVED_MARKER));
+        var received = receivedSibling(approved);
         var payload = data.bytes();
-        byte[] approvedBytes;
         try {
             var parent = approved.getParent();
             if (!Files.exists(approved)) {
@@ -60,36 +45,36 @@ class FileSnapshotStorage implements SnapshotStorage {
                 }
                 Files.write(approved, payload);
                 Files.deleteIfExists(received);
-                return;
+                return new SnapshotResult.Approved(location);
             }
-            approvedBytes = Files.readAllBytes(approved);
+            var approvedBytes = Files.readAllBytes(approved);
             if (Arrays.equals(approvedBytes, payload)) {
                 Files.deleteIfExists(received);
-                return;
-            }
-            if (review.mode() == ReviewMode.APPROVE) {
-                SnapshotApproval.writeApproved(approved, received, payload);
-                return;
+                return new SnapshotResult.Unchanged(location);
             }
             var receivedParent = received.getParent();
             if (receivedParent != null) {
                 Files.createDirectories(receivedParent);
             }
             Files.write(received, payload);
+            return new SnapshotResult.Drifted(location, new SnapshotData(approvedBytes), data, approved, received);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to store snapshot at " + approved, e);
         }
-        diffReview.open(received, approved);
-        throw new AssertionError(driftMessage(approved, received, approvedBytes, payload));
     }
 
-    private static String driftMessage(Path approved, Path received, byte[] approvedBytes, byte[] payload) {
-        return "Snapshot drift: " + approved + " differs from the approved snapshot.\n\n"
-                + SnapshotDiff.render(approvedBytes, payload) + "\n"
-                + "received: " + received + "\n"
-                + "approved: " + approved + "\n\n"
-                + "To accept this change, re-run with -Dstrictland.review.mode=approve, "
-                + "or save the received payload over the approved file in the diff tool.";
+    @Override
+    public void approve(SnapshotLocation location, SnapshotData data) {
+        var approved = approvedPath(location);
+        try {
+            SnapshotApproval.writeApproved(approved, receivedSibling(approved), data.bytes());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to approve snapshot at " + approved, e);
+        }
+    }
+
+    private static Path receivedSibling(Path approved) {
+        return approved.resolveSibling(approved.getFileName().toString().replace(APPROVED_MARKER, RECEIVED_MARKER));
     }
 
     @Override

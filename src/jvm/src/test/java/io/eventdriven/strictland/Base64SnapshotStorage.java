@@ -17,6 +17,7 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 final class Base64SnapshotStorage implements SnapshotStorage {
     private static final String APPROVED_SUFFIX = ".approved.txt";
+    private static final String RECEIVED_SUFFIX = ".received.txt";
 
     private final Path dir;
 
@@ -25,7 +26,7 @@ final class Base64SnapshotStorage implements SnapshotStorage {
     }
 
     @Override
-    public void store(SnapshotLocation location, SnapshotData data) {
+    public SnapshotResult store(SnapshotLocation location, SnapshotData data) {
         var payload = data.bytes();
         var path = approvedPath(location.name());
         try {
@@ -34,17 +35,38 @@ final class Base64SnapshotStorage implements SnapshotStorage {
                 if (parent != null) {
                     Files.createDirectories(parent);
                 }
-                Files.writeString(path, Base64.getEncoder().encodeToString(payload), UTF_8);
-                return;
+                Files.writeString(path, encode(payload), UTF_8);
+                return new SnapshotResult.Approved(location);
             }
             var approved = Base64.getDecoder().decode(Files.readString(path, UTF_8));
-            if (!Arrays.equals(approved, payload)) {
-                throw new AssertionError("Snapshot drift for '" + location.name()
-                        + "': stored payload differs from the approved snapshot");
+            if (Arrays.equals(approved, payload)) {
+                return new SnapshotResult.Unchanged(location);
             }
+            var received = receivedPath(location.name());
+            Files.writeString(received, encode(payload), UTF_8);
+            return new SnapshotResult.Drifted(location, new SnapshotData(approved), data, path, received);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    @Override
+    public void approve(SnapshotLocation location, SnapshotData data) {
+        var path = approvedPath(location.name());
+        try {
+            var parent = path.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.writeString(path, encode(data.bytes()), UTF_8);
+            Files.deleteIfExists(receivedPath(location.name()));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static String encode(byte[] payload) {
+        return Base64.getEncoder().encodeToString(payload);
     }
 
     @Override
@@ -81,5 +103,9 @@ final class Base64SnapshotStorage implements SnapshotStorage {
 
     private Path approvedPath(String name) {
         return dir.resolve(name + APPROVED_SUFFIX);
+    }
+
+    private Path receivedPath(String name) {
+        return dir.resolve(name + RECEIVED_SUFFIX);
     }
 }

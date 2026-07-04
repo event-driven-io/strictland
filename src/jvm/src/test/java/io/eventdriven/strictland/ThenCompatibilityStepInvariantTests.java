@@ -14,7 +14,8 @@ final class ThenCompatibilityStepInvariantTests {
         var context = new ContractContext(
                 new JacksonMessageSerializer(new JsonMapper()),
                 new FileSnapshotStorage(SnapshotLayout.registry()),
-                MessageTypeMapper.fullyQualifiedName());
+                MessageTypeMapper.fullyQualifiedName(),
+                SnapshotReviewer.forReview(SnapshotReview.off()));
         var step = new ThenCompatibilityStep<>(
                 MessageSnapshot.ofTypeNamed("NeverWritten"), MessageSnapshot.DEFAULT_VERSION, Object.class, context);
 
