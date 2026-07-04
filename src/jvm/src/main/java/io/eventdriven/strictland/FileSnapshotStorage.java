@@ -8,9 +8,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -32,34 +29,20 @@ class FileSnapshotStorage implements SnapshotStorage {
 
     private final Path root;
     private final SnapshotReview review;
-    private final DiffLauncher launcher;
-    private final BooleanSupplier nonInteractive;
-    private final Supplier<Optional<ResolvedDiffTool>> toolResolver;
+    private final DiffReview diffReview;
 
     FileSnapshotStorage(SnapshotLayout layout) {
         this(layout, SnapshotReview.auto());
     }
 
     FileSnapshotStorage(SnapshotLayout layout, SnapshotReview review) {
-        this(layout, review, new ProcessDiffLauncher(), CiDetector::isNonInteractive);
+        this(layout, review, DiffReview.forReview(review));
     }
 
-    FileSnapshotStorage(
-            SnapshotLayout layout, SnapshotReview review, DiffLauncher launcher, BooleanSupplier nonInteractive) {
-        this(layout, review, launcher, nonInteractive, () -> DiffTools.resolve(review.toolPreference()));
-    }
-
-    FileSnapshotStorage(
-            SnapshotLayout layout,
-            SnapshotReview review,
-            DiffLauncher launcher,
-            BooleanSupplier nonInteractive,
-            Supplier<Optional<ResolvedDiffTool>> toolResolver) {
+    FileSnapshotStorage(SnapshotLayout layout, SnapshotReview review, DiffReview diffReview) {
         this.root = Path.of(layout.rootPath(), layout.wrapperFolder());
         this.review = review;
-        this.launcher = launcher;
-        this.nonInteractive = nonInteractive;
-        this.toolResolver = toolResolver;
+        this.diffReview = diffReview;
     }
 
     @Override
@@ -96,19 +79,8 @@ class FileSnapshotStorage implements SnapshotStorage {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to store snapshot at " + approved, e);
         }
-        maybeLaunch(received, approved);
+        diffReview.open(received, approved);
         throw new AssertionError(driftMessage(approved, received, approvedBytes, payload));
-    }
-
-    private void maybeLaunch(Path received, Path approved) {
-        if (review.mode() == ReviewMode.OFF || nonInteractive.getAsBoolean()) {
-            return;
-        }
-        effectiveTool().ifPresent(tool -> launcher.launch(tool, received, approved));
-    }
-
-    private Optional<ResolvedDiffTool> effectiveTool() {
-        return toolResolver.get();
     }
 
     private static String driftMessage(Path approved, Path received, byte[] approvedBytes, byte[] payload) {

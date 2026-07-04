@@ -32,10 +32,6 @@ final class DiffTools {
 
     private DiffTools() {}
 
-    static List<DiffTool> registry() {
-        return REGISTRY;
-    }
-
     static Optional<DiffTool> byName(String name) {
         for (var tool : REGISTRY) {
             if (tool.name().equals(name)) {
