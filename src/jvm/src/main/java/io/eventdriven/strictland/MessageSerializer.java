@@ -40,18 +40,13 @@ public interface MessageSerializer {
     <T> T deserialize(byte[] bytes, Class<T> type);
 
     /**
-     * The extension Strictland gives the snapshot file your bytes are written to, so a JSON snapshot
+     * The extension of your serialization format. Strictland uses it when storing snapshot files with serialized bytes, so a JSON snapshot
      * lands as {@code OrderPlaced.json} rather than a generic {@code .txt}. Override it to match your
-     * format and your approved files read at a glance. The leading dot is part of the contract: return
-     * {@code ".json"}, not {@code "json"}.
+     * format. Return the extension without its leading dot, e.g. {@code "json"}, not {@code ".json"}.
      *
-     * <pre>
-     * assertEquals(".csv", new CsvMessageSerializer().fileExtension());
-     * </pre>
-     *
-     * @return the snapshot file extension, including the leading dot
+     * @return the snapshot file extension, without the leading dot
      */
     default String fileExtension() {
-        return ".txt";
+        return "txt";
     }
 }

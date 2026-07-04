@@ -185,7 +185,7 @@ public class ThenCompatibilityStep<S, T> {
     }
 
     private List<byte[]> resolveSourceBytesList() {
-        var ext = serializer.fileExtension();
+        var ext = "." + serializer.fileExtension();
         return switch (source) {
             case MessageSnapshot.OfInstance<?> v -> {
                 var instance = v.message();

@@ -16,7 +16,7 @@ final class SimpleBinaryMessageSerializer implements MessageSerializer {
 
     @Override
     public String fileExtension() {
-        return ".bin";
+        return "bin";
     }
 
     @Override

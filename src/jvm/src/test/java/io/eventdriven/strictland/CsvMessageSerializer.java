@@ -12,7 +12,7 @@ final class CsvMessageSerializer implements MessageSerializer {
 
     @Override
     public String fileExtension() {
-        return ".csv";
+        return "csv";
     }
 
     @Override

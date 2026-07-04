@@ -1,10 +1,10 @@
 package io.eventdriven.strictland;
 
 /**
- * The wiring one contract check carries from {@code given(...)} through to a {@code then} step: the
- * serializer that turns a message into bytes, the storage that reads and writes snapshots, and the type
- * mapper that names a message type. Folding the three into one value keeps the step constructors short
- * and stops a layout or a file extension leaking through every step, since both derive at the use site.
+ * The shared context between {@code given(...)} through to a {@code then} step: <br/>
+ * - the serializer that turns a message into bytes, <br/>
+ * - the storage that reads and writes snapshots, <br/>
+ * - the type mapper that names a message type.
  *
  * @param serializer turns a message into the bytes the contract compares, and back
  * @param storage reads and writes approved snapshots
