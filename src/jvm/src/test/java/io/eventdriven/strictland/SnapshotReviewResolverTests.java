@@ -1,12 +1,9 @@
 package io.eventdriven.strictland;
 
-import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -14,15 +11,10 @@ import org.junit.jupiter.api.Test;
 @NullMarked
 final class SnapshotReviewResolverTests {
 
+    private final SnapshotReview runtime = SnapshotReview.approve();
     private final SnapshotReview perSpec = SnapshotReview.off();
-    private final SnapshotReview global = SnapshotReview.approve();
-    private final SnapshotReview file = SnapshotReview.tool("meld");
-
-    private static Properties systemProps(String key, String value) {
-        var props = new Properties();
-        props.setProperty(key, value);
-        return props;
-    }
+    private final SnapshotReview global = SnapshotReview.tool("meld");
+    private final SnapshotReview file = SnapshotReview.tool("vscode");
 
     @AfterEach
     void resetGlobalDefaults() {
@@ -30,63 +22,44 @@ final class SnapshotReviewResolverTests {
     }
 
     @Test
-    void systemProperty_winsOverEverythingSoAnyRunCanApprove() {
-        var resolved = SnapshotReviewResolver.resolve(
-                perSpec,
-                Optional.of(global),
-                () -> Optional.of(file),
-                systemProps("strictland.review.mode", "approve"));
+    void runtimeOverride_winsOverEverythingSoAnyRunCanApprove() {
+        var resolved =
+                SnapshotReviewResolver.resolve(Optional.of(runtime), perSpec, Optional.of(global), Optional.of(file));
 
-        assertEquals(ReviewMode.APPROVE, resolved.mode());
+        assertSame(runtime, resolved);
     }
 
     @Test
-    void runtimeToolOrderEnvironmentWinsOverPerSpecGlobalAndFile() {
-        var resolved = SnapshotReviewResolver.resolve(
-                perSpec,
-                Optional.of(global),
-                () -> Optional.of(file),
-                new Properties(),
-                Map.of("STRICTLAND_REVIEW_TOOL_ORDER", "idea,meld"));
-
-        assertEquals(
-                java.util.List.of("idea", "meld"),
-                requireNonNull(resolved.toolPreference()).names());
-    }
-
-    @Test
-    void perSpec_winsWhenNoRuntimeOverrideIsSet() {
-        var resolved = SnapshotReviewResolver.resolve(
-                perSpec, Optional.of(global), () -> Optional.of(file), new Properties(), Map.of());
+    void perSpec_winsWhenThereIsNoRuntimeOverride() {
+        var resolved =
+                SnapshotReviewResolver.resolve(Optional.empty(), perSpec, Optional.of(global), Optional.of(file));
 
         assertSame(perSpec, resolved);
     }
 
     @Test
-    void global_winsOverFileAndDefault_whenPerSpecUnset() {
-        var resolved =
-                SnapshotReviewResolver.resolve(null, Optional.of(global), () -> Optional.of(file), new Properties());
+    void global_winsOverFileWhenPerSpecUnset() {
+        var resolved = SnapshotReviewResolver.resolve(Optional.empty(), null, Optional.of(global), Optional.of(file));
 
         assertSame(global, resolved);
     }
 
     @Test
-    void file_winsOverDefault_whenPerSpecAndGlobalUnset() {
-        var resolved =
-                SnapshotReviewResolver.resolve(null, Optional.empty(), () -> Optional.of(file), new Properties());
+    void file_winsWhenPerSpecAndGlobalUnset() {
+        var resolved = SnapshotReviewResolver.resolve(Optional.empty(), null, Optional.empty(), Optional.of(file));
 
         assertSame(file, resolved);
     }
 
     @Test
-    void builtInDefaultIsAuto_whenEverythingUnset() {
-        var resolved = SnapshotReviewResolver.resolve(null, Optional.empty(), Optional::empty, new Properties());
+    void defaultsToAuto_whenEverythingUnset() {
+        var resolved = SnapshotReviewResolver.resolve(Optional.empty(), null, Optional.empty(), Optional.empty());
 
         assertEquals(SnapshotReview.auto(), resolved);
     }
 
     @Test
-    void globalDefaultReadsFromStrictland_whenSetThroughTheHolder() {
+    void productionResolve_readsTheGlobalDefaultFromStrictland() {
         Strictland.defaults().snapshotReview(global);
 
         var resolved = SnapshotReviewResolver.resolve(null);

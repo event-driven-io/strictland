@@ -39,8 +39,10 @@ public class MessageContract {
                 : new FileSnapshotStorage(SnapshotLayoutResolver.resolve(options.snapshotLayout()));
         var configuredTypeMapper = options.typeMapper();
         var typeMapper = configuredTypeMapper != null ? configuredTypeMapper : MessageTypeMapper.fullyQualifiedName();
-        var reviewer = SnapshotReviewer.forReview(SnapshotReviewResolver.resolve(options.review()));
-        this.context = new ContractContext(serializer, storage, typeMapper, reviewer);
+        var review = SnapshotReviewResolver.resolve(options.review());
+        var reviewer = new SnapshotReviewer(review);
+        var diffReview = DiffReview.forReview(review);
+        this.context = new ContractContext(serializer, storage, typeMapper, reviewer, diffReview);
     }
 
     /**

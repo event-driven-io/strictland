@@ -42,7 +42,15 @@ public class ThenContractStep<S> {
     public void thenContractIsUnchanged() {
         var data = new SnapshotData(context.serializer().serialize(instance));
         var result = context.storage().store(snapshotLocation(), data);
-        context.reviewer().review(context.storage(), result);
+        switch (context.reviewer().decide(result)) {
+            case SnapshotReviewer.Verdict.Passed ignored -> {}
+            case SnapshotReviewer.Verdict.ReBaseline reBaseline ->
+                context.storage().approve(reBaseline.location(), reBaseline.data());
+            case SnapshotReviewer.Verdict.Fail fail -> {
+                context.diffReview().open(fail.receivedFile(), fail.approvedFile());
+                throw new AssertionError(fail.message());
+            }
+        }
     }
 
     private SnapshotLocation snapshotLocation() {

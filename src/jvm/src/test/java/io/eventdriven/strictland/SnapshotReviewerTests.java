@@ -1,16 +1,13 @@
 package io.eventdriven.strictland;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
-import java.util.List;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 @NullMarked
@@ -27,97 +24,37 @@ final class SnapshotReviewerTests {
                 LOCATION, new SnapshotData(approved), new SnapshotData(received), APPROVED_FILE, RECEIVED_FILE);
     }
 
-    private static final class RecordingDiffReview implements DiffReview {
-        private int opens;
+    @Test
+    void aFirstRunApprovalPasses() {
+        var verdict = new SnapshotReviewer(SnapshotReview.auto()).decide(new SnapshotResult.Approved(LOCATION));
 
-        @Nullable private Path received;
-
-        @Nullable private Path approved;
-
-        @Override
-        public void open(Path received, Path approved) {
-            this.opens++;
-            this.received = received;
-            this.approved = approved;
-        }
-    }
-
-    /** A storage that only records {@code approve} calls; the reviewer never reaches its other methods. */
-    private static final class RecordingStorage implements SnapshotStorage {
-        private int approvals;
-
-        @Nullable private SnapshotLocation location;
-
-        @Nullable private SnapshotData data;
-
-        @Override
-        public SnapshotResult store(SnapshotLocation location, SnapshotData data) {
-            throw new AssertionError("store is not used by the reviewer");
-        }
-
-        @Override
-        public void approve(SnapshotLocation location, SnapshotData data) {
-            this.approvals++;
-            this.location = location;
-            this.data = data;
-        }
-
-        @Override
-        public SnapshotData read(SnapshotLocation location) {
-            throw new AssertionError("read is not used by the reviewer");
-        }
-
-        @Override
-        public List<SnapshotData> readAll(SnapshotFilter filter) {
-            throw new AssertionError("readAll is not used by the reviewer");
-        }
+        assertInstanceOf(SnapshotReviewer.Verdict.Passed.class, verdict);
     }
 
     @Test
-    void aFirstRunApprovalPassesWithoutOpeningOrThrowing() {
-        var diffReview = new RecordingDiffReview();
-        var reviewer = new SnapshotReviewer(SnapshotReview.auto(), diffReview);
+    void anUnchangedMatchPasses() {
+        var verdict = new SnapshotReviewer(SnapshotReview.auto()).decide(new SnapshotResult.Unchanged(LOCATION));
 
-        reviewer.review(new RecordingStorage(), new SnapshotResult.Approved(LOCATION));
-
-        assertEquals(0, diffReview.opens);
+        assertInstanceOf(SnapshotReviewer.Verdict.Passed.class, verdict);
     }
 
     @Test
-    void anUnchangedMatchPassesWithoutOpeningOrThrowing() {
-        var diffReview = new RecordingDiffReview();
-        var reviewer = new SnapshotReviewer(SnapshotReview.auto(), diffReview);
+    void aDriftFailsCarryingTheReceivedAndApprovedFilesForTheCallerToOpen() {
+        var verdict = new SnapshotReviewer(SnapshotReview.auto())
+                .decide(drift("{\"id\":1}".getBytes(UTF_8), "{\"id\":2}".getBytes(UTF_8)));
 
-        reviewer.review(new RecordingStorage(), new SnapshotResult.Unchanged(LOCATION));
-
-        assertEquals(0, diffReview.opens);
-    }
-
-    @Test
-    void aDriftOpensTheReviewOnceWithReceivedThenApprovedAndFails() {
-        var diffReview = new RecordingDiffReview();
-        var reviewer = new SnapshotReviewer(SnapshotReview.auto(), diffReview);
-
-        assertThrows(
-                AssertionError.class,
-                () -> reviewer.review(
-                        new RecordingStorage(), drift("{\"id\":1}".getBytes(UTF_8), "{\"id\":2}".getBytes(UTF_8))));
-
-        assertEquals(1, diffReview.opens);
-        assertEquals(RECEIVED_FILE, diffReview.received);
-        assertEquals(APPROVED_FILE, diffReview.approved);
+        var fail = assertInstanceOf(SnapshotReviewer.Verdict.Fail.class, verdict);
+        assertEquals(RECEIVED_FILE, fail.receivedFile());
+        assertEquals(APPROVED_FILE, fail.approvedFile());
     }
 
     @Test
     void aDriftFailureCarriesTheInlineDiffBothPathsAndTheApproveHint() {
-        var reviewer = new SnapshotReviewer(SnapshotReview.off(), (received, approved) -> {});
+        var verdict = new SnapshotReviewer(SnapshotReview.off())
+                .decide(drift("{\"id\":1}".getBytes(UTF_8), "{\"id\":2}".getBytes(UTF_8)));
 
-        var error = assertThrows(
-                AssertionError.class,
-                () -> reviewer.review(
-                        new RecordingStorage(), drift("{\"id\":1}".getBytes(UTF_8), "{\"id\":2}".getBytes(UTF_8))));
-
-        var message = requireNonNull(error.getMessage());
+        var message =
+                assertInstanceOf(SnapshotReviewer.Verdict.Fail.class, verdict).message();
         assertTrue(message.contains("Text content differs (- approved, + received):"), message);
         assertTrue(message.contains("- 1 | {\"id\":1}"), message);
         assertTrue(message.contains("+ 1 | {\"id\":2}"), message);
@@ -128,27 +65,23 @@ final class SnapshotReviewerTests {
 
     @Test
     void aDriftFailureFallsBackToAHexSummaryForBinaryPayloads() {
-        var reviewer = new SnapshotReviewer(SnapshotReview.off(), (received, approved) -> {});
+        var verdict =
+                new SnapshotReviewer(SnapshotReview.off()).decide(drift(new byte[] {0, 1, 2}, new byte[] {0, 1, 3}));
 
-        var error = assertThrows(
-                AssertionError.class,
-                () -> reviewer.review(new RecordingStorage(), drift(new byte[] {0, 1, 2}, new byte[] {0, 1, 3})));
-
-        assertTrue(requireNonNull(error.getMessage()).contains("Binary content differs"), error.getMessage());
+        var message =
+                assertInstanceOf(SnapshotReviewer.Verdict.Fail.class, verdict).message();
+        assertTrue(message.contains("Binary content differs"), message);
     }
 
     @Test
-    void approveModeReBaselinesViaStorageWithoutOpeningOrThrowing() {
-        var diffReview = new RecordingDiffReview();
-        var storage = new RecordingStorage();
-        var reviewer = new SnapshotReviewer(SnapshotReview.approve(), diffReview);
+    void approveModeAsksToReBaselineWithTheReceivedPayload() {
         var received = "{\"id\":2}".getBytes(UTF_8);
 
-        reviewer.review(storage, drift("{\"id\":1}".getBytes(UTF_8), received));
+        var verdict =
+                new SnapshotReviewer(SnapshotReview.approve()).decide(drift("{\"id\":1}".getBytes(UTF_8), received));
 
-        assertEquals(0, diffReview.opens);
-        assertEquals(1, storage.approvals);
-        assertEquals(LOCATION, storage.location);
-        assertArrayEquals(received, requireNonNull(storage.data).bytes());
+        var reBaseline = assertInstanceOf(SnapshotReviewer.Verdict.ReBaseline.class, verdict);
+        assertEquals(LOCATION, reBaseline.location());
+        assertArrayEquals(received, reBaseline.data().bytes());
     }
 }
