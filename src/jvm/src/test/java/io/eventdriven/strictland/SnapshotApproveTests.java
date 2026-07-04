@@ -31,7 +31,7 @@ final class SnapshotApproveTests {
         Files.write(approved, APPROVED);
         Files.write(received, RECEIVED);
 
-        var promoted = SnapshotApprove.approve(root);
+        var promoted = SnapshotApproval.approve(root);
 
         assertEquals(1, promoted);
         assertArrayEquals(RECEIVED, Files.readAllBytes(approved));
@@ -40,12 +40,12 @@ final class SnapshotApproveTests {
 
     @Test
     void approve_returnsZeroWhenThereIsNothingToPromote(@TempDir Path root) {
-        assertEquals(0, SnapshotApprove.approve(root));
+        assertEquals(0, SnapshotApproval.approve(root));
     }
 
     @Test
     void approve_returnsZeroForARootThatDoesNotExist(@TempDir Path root) {
-        assertEquals(0, SnapshotApprove.approve(root.resolve("missing")));
+        assertEquals(0, SnapshotApproval.approve(root.resolve("missing")));
     }
 
     @Test
@@ -60,7 +60,7 @@ final class SnapshotApproveTests {
         }
         Assumptions.assumeFalse(Files.isWritable(dir), "directory is still writable (running as root?)");
         try {
-            assertThrows(UncheckedIOException.class, () -> SnapshotApprove.approve(root));
+            assertThrows(UncheckedIOException.class, () -> SnapshotApproval.approve(root));
         } finally {
             Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("rwxr-xr-x"));
         }

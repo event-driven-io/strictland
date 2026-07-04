@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -23,18 +25,20 @@ final class FileSnapshotStorageReviewTests {
             SnapshotLocation.of(MESSAGE_TYPE, "1", SnapshotVariant.UNSET, ".json");
     private static final byte[] APPROVED = "{\"id\":1}".getBytes(UTF_8);
     private static final byte[] DRIFTED = "{\"id\":2}".getBytes(UTF_8);
+    private static final ResolvedDiffTool TOOL =
+            new ResolvedDiffTool("acme", "acme", List.of("{received}", "{approved}"));
 
     private static final class RecordingLauncher implements DiffLauncher {
         private int launches;
 
-        @Nullable private DiffTool tool;
+        @Nullable private ResolvedDiffTool tool;
 
         @Nullable private Path received;
 
         @Nullable private Path approved;
 
         @Override
-        public void launch(DiffTool tool, Path received, Path approved) {
+        public void launch(ResolvedDiffTool tool, Path received, Path approved) {
             this.launches++;
             this.tool = tool;
             this.received = received;
@@ -56,8 +60,31 @@ final class FileSnapshotStorageReviewTests {
 
     private static FileSnapshotStorage storage(
             Path root, SnapshotReview review, DiffLauncher launcher, boolean nonInteractive) {
+        return storage(root, review, launcher, nonInteractive, Optional.of(TOOL));
+    }
+
+    private static FileSnapshotStorage storage(
+            Path root,
+            SnapshotReview review,
+            DiffLauncher launcher,
+            boolean nonInteractive,
+            Optional<ResolvedDiffTool> resolvedTool) {
         return new FileSnapshotStorage(
-                SnapshotLayout.registry().rootPath(root.toString()), review, launcher, () -> nonInteractive);
+                SnapshotLayout.registry().rootPath(root.toString()),
+                review,
+                launcher,
+                () -> nonInteractive,
+                () -> resolvedTool);
+    }
+
+    private static boolean fileAppears(Path file) throws InterruptedException {
+        for (var attempt = 0; attempt < 50; attempt++) {
+            if (Files.exists(file)) {
+                return true;
+            }
+            Thread.sleep(20);
+        }
+        return false;
     }
 
     private static void seedApproved(FileSnapshotStorage storage) {
@@ -78,11 +105,9 @@ final class FileSnapshotStorageReviewTests {
     }
 
     @Test
-    void autoMode_local_launchesTheExplicitToolOnceWithReceivedThenApproved(@TempDir Path root) {
-        var acme =
-                new DiffTool("acme", java.util.List.of("acme"), java.util.List.of("acme", "{received}", "{approved}"));
+    void autoMode_local_launchesTheResolvedToolOnceWithReceivedThenApproved(@TempDir Path root) {
         var launcher = new RecordingLauncher();
-        var storage = storage(root, SnapshotReview.tool(acme), launcher, false);
+        var storage = storage(root, SnapshotReview.tool("meld"), launcher, false);
         seedApproved(storage);
 
         assertThrows(AssertionError.class, () -> storage.store(LOCATION, new SnapshotData(DRIFTED)));
@@ -94,15 +119,31 @@ final class FileSnapshotStorageReviewTests {
     }
 
     @Test
-    void autoMode_local_detectsAToolWhenNoneIsExplicit(@TempDir Path root) {
-        var launcher = new RecordingLauncher();
-        var storage = storage(root, SnapshotReview.auto(), launcher, false);
+    void autoMode_local_runsTheDiffProcessWhenSnapshotDrifts(@TempDir Path root) throws Exception {
+        var script = root.resolve("record-diff-tool.sh");
+        var marker = root.resolve("diff-tool-args.txt");
+        Files.writeString(script, "#!/usr/bin/env sh\nprintf '%s\n%s\n' \"$1\" \"$2\" > \"$3\"\n");
+        assertTrue(script.toFile().setExecutable(true));
+        var tool = new ResolvedDiffTool(
+                "record", script.toString(), List.of("{received}", "{approved}", marker.toString()));
+        var storage = storage(root, SnapshotReview.auto(), new ProcessDiffLauncher(), false, Optional.of(tool));
         seedApproved(storage);
 
         assertThrows(AssertionError.class, () -> storage.store(LOCATION, new SnapshotData(DRIFTED)));
 
-        // git is installed in the dev container, so detection finds a tool to launch.
-        assertEquals(1, launcher.launches);
+        assertTrue(fileAppears(marker), "diff tool should have been launched by snapshot storage");
+        assertEquals(receivedFile(root) + "\n" + approvedFile(root) + "\n", Files.readString(marker));
+    }
+
+    @Test
+    void autoMode_local_doesNotLaunchWhenResolutionFindsNothing(@TempDir Path root) {
+        var launcher = new RecordingLauncher();
+        var storage = storage(root, SnapshotReview.auto(), launcher, false, Optional.empty());
+        seedApproved(storage);
+
+        assertThrows(AssertionError.class, () -> storage.store(LOCATION, new SnapshotData(DRIFTED)));
+
+        assertEquals(0, launcher.launches);
     }
 
     @Test
@@ -136,8 +177,9 @@ final class FileSnapshotStorageReviewTests {
         var error = assertThrows(AssertionError.class, () -> storage.store(LOCATION, new SnapshotData(DRIFTED)));
 
         var message = requireNonNull(error.getMessage());
-        assertTrue(message.contains("- {\"id\":1}"), message);
-        assertTrue(message.contains("+ {\"id\":2}"), message);
+        assertTrue(message.contains("Text content differs (- approved, + received):"), message);
+        assertTrue(message.contains("- 1 | {\"id\":1}"), message);
+        assertTrue(message.contains("+ 1 | {\"id\":2}"), message);
         assertTrue(message.contains("received: " + receivedFile(root)), message);
         assertTrue(message.contains("approved: " + approvedFile(root)), message);
         assertTrue(message.contains("-Dstrictland.review.mode=approve"), message);

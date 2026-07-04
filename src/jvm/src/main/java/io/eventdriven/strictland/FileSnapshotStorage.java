@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -29,12 +30,11 @@ class FileSnapshotStorage implements SnapshotStorage {
     private static final String RECEIVED_MARKER = ".received.";
     static final String SNAP_APPROVED_MARKER = ".snap.approved.";
 
-    private static final System.Logger LOGGER = System.getLogger(FileSnapshotStorage.class.getName());
-
     private final Path root;
     private final SnapshotReview review;
     private final DiffLauncher launcher;
     private final BooleanSupplier nonInteractive;
+    private final Supplier<Optional<ResolvedDiffTool>> toolResolver;
 
     FileSnapshotStorage(SnapshotLayout layout) {
         this(layout, SnapshotReview.auto());
@@ -46,10 +46,20 @@ class FileSnapshotStorage implements SnapshotStorage {
 
     FileSnapshotStorage(
             SnapshotLayout layout, SnapshotReview review, DiffLauncher launcher, BooleanSupplier nonInteractive) {
+        this(layout, review, launcher, nonInteractive, () -> DiffTools.resolve(review.toolPreference()));
+    }
+
+    FileSnapshotStorage(
+            SnapshotLayout layout,
+            SnapshotReview review,
+            DiffLauncher launcher,
+            BooleanSupplier nonInteractive,
+            Supplier<Optional<ResolvedDiffTool>> toolResolver) {
         this.root = Path.of(layout.rootPath(), layout.wrapperFolder());
         this.review = review;
         this.launcher = launcher;
         this.nonInteractive = nonInteractive;
+        this.toolResolver = toolResolver;
     }
 
     @Override
@@ -75,9 +85,7 @@ class FileSnapshotStorage implements SnapshotStorage {
                 return;
             }
             if (review.mode() == ReviewMode.APPROVE) {
-                Files.write(approved, payload);
-                Files.deleteIfExists(received);
-                LOGGER.log(System.Logger.Level.INFO, () -> "Approved snapshot: " + approved);
+                SnapshotApproval.writeApproved(approved, received, payload);
                 return;
             }
             var receivedParent = received.getParent();
@@ -99,9 +107,8 @@ class FileSnapshotStorage implements SnapshotStorage {
         effectiveTool().ifPresent(tool -> launcher.launch(tool, received, approved));
     }
 
-    private Optional<DiffTool> effectiveTool() {
-        var explicit = review.tool();
-        return explicit != null ? Optional.of(explicit) : DiffTools.detect();
+    private Optional<ResolvedDiffTool> effectiveTool() {
+        return toolResolver.get();
     }
 
     private static String driftMessage(Path approved, Path received, byte[] approvedBytes, byte[] payload) {

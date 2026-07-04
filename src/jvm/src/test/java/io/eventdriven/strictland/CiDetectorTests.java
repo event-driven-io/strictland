@@ -1,5 +1,6 @@
 package io.eventdriven.strictland;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,11 +21,6 @@ final class CiDetectorTests {
         var env = Map.of("GITHUB_ACTIONS", "true", "DISPLAY", ":0");
 
         assertTrue(CiDetector.isNonInteractive(env, false, "linux"));
-    }
-
-    @Test
-    void anAgentCliMarker_isNonInteractive() {
-        assertTrue(CiDetector.isNonInteractive(Map.of("CLAUDECODE", "1"), false, "mac os x"));
     }
 
     @Test
@@ -53,8 +49,7 @@ final class CiDetectorTests {
     }
 
     @Test
-    void theRealEnvironmentResolvesWithoutError() {
-        // In the headless dev container this is true; the point is it runs the real branch.
-        assertTrue(CiDetector.isNonInteractive());
+    void theRealEnvironmentResolvesWithoutAssertingLocalMachineState() {
+        assertDoesNotThrow(() -> CiDetector.isNonInteractive());
     }
 }

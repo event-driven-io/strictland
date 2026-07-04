@@ -1,7 +1,9 @@
 package io.eventdriven.strictland;
 
+import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -17,86 +19,129 @@ import org.junit.jupiter.api.io.TempDir;
 final class DiffToolTests {
 
     @Test
-    void command_substitutesReceivedAndApprovedIntoTheTemplate() {
-        var meld = new DiffTool("meld", List.of("meld"), List.of("meld", "{received}", "{approved}"));
+    void resolvedCommandUsesTheExecutableThatWasActuallyFound() {
+        var vscode = DiffTools.byName("vscode").orElseThrow();
 
-        var argv = meld.command("/tmp/x.received.json", "/tmp/x.approved.json");
+        var resolved = vscode.resolve(exe -> exe.equals("code.cmd")).orElseThrow();
 
-        assertEquals(List.of("meld", "/tmp/x.received.json", "/tmp/x.approved.json"), argv);
+        assertEquals(List.of("code.cmd", "--diff", "--wait", "recv", "appr"), resolved.command("recv", "appr"));
     }
 
     @Test
-    void command_leavesLiteralArgumentsUntouched() {
-        var winmerge = new DiffTool(
-                "winmerge", List.of("WinMergeU.exe"), List.of("WinMergeU", "/u", "/wl", "{received}", "{approved}"));
+    void executablePathCandidateResolvesEvenWhenItIsNotOnThePath(@TempDir Path dir) throws IOException {
+        var executable = Files.createFile(dir.resolve("acme-diff")).toFile();
+        assertTrue(executable.setExecutable(true));
+        var tool = new DiffTool("acme", List.of(executable.getAbsolutePath()), List.of("{received}", "{approved}"));
 
-        var argv = winmerge.command("recv", "appr");
+        var resolved = tool.resolve(candidate -> false).orElseThrow();
 
-        assertEquals(List.of("WinMergeU", "/u", "/wl", "recv", "appr"), argv);
+        assertEquals(executable.getAbsolutePath(), resolved.executable());
     }
 
     @Test
-    void byName_returnsTheRegisteredTool() {
-        var tool = DiffTools.byName("meld").orElseThrow();
+    void nonExecutablePathCandidateDoesNotResolve(@TempDir Path dir) {
+        var tool = new DiffTool("acme", List.of(dir.resolve("missing-diff").toString()), List.of("{received}"));
 
-        assertEquals("meld", tool.name());
-        assertEquals(List.of("meld", "recv", "appr"), tool.command("recv", "appr"));
-    }
-
-    @Test
-    void byName_isEmptyForAnUnknownName() {
-        assertTrue(DiffTools.byName("no-such-tool").isEmpty());
+        assertTrue(tool.resolve(candidate -> false).isEmpty());
     }
 
     @Test
     void gitFallback_putsApprovedOnTheLeftForDifftool() {
         var git = DiffTools.byName("git").orElseThrow();
 
-        assertEquals(List.of("git", "difftool", "--no-index", "appr", "recv"), git.command("recv", "appr"));
+        var resolved = git.resolve(exe -> exe.equals("git")).orElseThrow();
+
+        assertEquals(List.of("git", "difftool", "--no-index", "appr", "recv"), resolved.command("recv", "appr"));
     }
 
     @Test
-    void custom_buildsAToolFromAFullTemplate() {
-        var tool = DiffTools.custom("my-diff --wait {received} {approved}");
+    void explicitSingleToolWinsAndDoesNotFallbackWhenUnavailable() {
+        var resolved = DiffTools.resolve(ToolPreference.single("idea"), exe -> exe.equals("code"));
 
-        assertEquals("custom", tool.name());
-        assertEquals(List.of("my-diff", "--wait", "recv", "appr"), tool.command("recv", "appr"));
+        assertTrue(resolved.isEmpty());
     }
 
     @Test
-    void fromSetting_resolvesARegisteredNameOrACustomTemplate() {
-        assertEquals("meld", DiffTools.fromSetting("meld").orElseThrow().name());
+    void explicitSingleToolCoversTheAvailablePath() {
+        var resolved = DiffTools.resolve(ToolPreference.single("meld"), exe -> exe.equals("meld"))
+                .orElseThrow();
+
+        assertEquals("meld", resolved.name());
+    }
+
+    @Test
+    void explicitOrderPutsListedAvailableToolsBeforeUnlistedTools() {
+        var preference = ToolPreference.order(List.of("meld", "idea"));
+
+        var resolved = DiffTools.resolve(preference, exe -> exe.equals("idea") || exe.equals("code"))
+                .orElseThrow();
+
+        assertEquals("idea", resolved.name());
+    }
+
+    @Test
+    void builtInRegistryOrderAppliesWhenNoPreferenceExists() {
+        var resolved = DiffTools.resolve(null, exe -> exe.equals("meld") || exe.equals("git"))
+                .orElseThrow();
+
+        assertEquals("meld", resolved.name());
+    }
+
+    @Test
+    void gitFallbackIsLastAndOnlyUsedWhenResolved() {
+        assertTrue(DiffTools.resolve(null, exe -> false).isEmpty());
         assertEquals(
-                "custom",
-                DiffTools.fromSetting("my-diff {received} {approved}")
-                        .orElseThrow()
-                        .name());
+                "git",
+                DiffTools.resolve(null, exe -> exe.equals("git")).orElseThrow().name());
     }
 
     @Test
-    void fromSetting_isEmptyForBlankOrUnknown() {
-        assertTrue(DiffTools.fromSetting("   ").isEmpty());
-        assertTrue(DiffTools.fromSetting("no-such-tool").isEmpty());
+    void customConfigCommandResolvesOnlyWhenTheExecutableExists() {
+        var resolved = DiffTools.resolve(
+                        ToolPreference.custom("my-diff --wait {received} {approved}"), exe -> exe.equals("my-diff"))
+                .orElseThrow();
+
+        assertEquals(List.of("my-diff", "--wait", "recv", "appr"), resolved.command("recv", "appr"));
+        assertTrue(DiffTools.resolve(ToolPreference.custom("missing {received} {approved}"), exe -> false)
+                .isEmpty());
     }
 
     @Test
-    void detect_returnsTheFirstInstalledToolInRegistryOrder() {
-        // Only "meld" is reported installed, so it wins over the tools listed before it.
-        var detected = DiffTools.detect(exe -> exe.equals("meld")).orElseThrow();
+    void customConfigCommandCanResolveByExecutablePath(@TempDir Path dir) throws IOException {
+        var executable = Files.createFile(dir.resolve("custom-diff")).toFile();
+        assertTrue(executable.setExecutable(true));
 
-        assertEquals("meld", detected.name());
+        var resolved = DiffTools.resolve(
+                        ToolPreference.custom(executable.getAbsolutePath() + " {received} {approved}"), exe -> false)
+                .orElseThrow();
+
+        assertEquals(executable.getAbsolutePath(), resolved.executable());
     }
 
     @Test
-    void detect_isEmptyWhenNothingIsInstalled() {
-        assertTrue(DiffTools.detect(exe -> false).isEmpty());
+    void parseOrderAcceptsCommaPipeWhitespaceAndBlankSegments() {
+        assertEquals(List.of("idea", "vscode", "meld"), DiffTools.parseOrder("idea,vscode|meld"));
+        assertEquals(List.of("idea", "vscode"), DiffTools.parseOrder("idea  vscode"));
+    }
+
+    @Test
+    void unknownAndBlankToolNamesAreRejected() {
+        assertTrue(DiffTools.byName("no-such-tool").isEmpty());
+        assertTrue(requireNonNull(assertThrows(IllegalArgumentException.class, () -> DiffTools.requireName("   "))
+                        .getMessage())
+                .contains("Unknown diff tool"));
+        assertTrue(requireNonNull(assertThrows(IllegalArgumentException.class, () -> DiffTools.fromToolSetting("   "))
+                        .getMessage())
+                .contains("blank"));
+        assertTrue(requireNonNull(assertThrows(IllegalArgumentException.class, () -> DiffTools.parseOrder("   "))
+                        .getMessage())
+                .contains("at least one"));
     }
 
     @Test
     void onPath_findsARunnableInAPathEntryWhileSkippingEmptyOnes(@TempDir Path dir) throws IOException {
         var tool = Files.createFile(dir.resolve("faux-diff")).toFile();
         assertTrue(tool.setExecutable(true));
-        // Leading empty entry exercises the skip; the temp dir holds the runnable.
         var path = File.pathSeparator + dir;
 
         assertTrue(DiffTools.onPath("faux-diff", path));
@@ -110,16 +155,5 @@ final class DiffToolTests {
     @Test
     void onPath_isFalseWhenPathIsUnset() {
         assertFalse(DiffTools.onPath("anything", null));
-    }
-
-    @Test
-    void onPath_overTheRealPathResolvesAToolThatExists() {
-        assertTrue(DiffTools.onPath("sh"), "sh should be on PATH in the dev container");
-    }
-
-    @Test
-    void detect_overTheRealPathResolvesWithoutError() {
-        // git is present in the dev container, so real detection finds a tool.
-        assertTrue(DiffTools.detect().isPresent());
     }
 }

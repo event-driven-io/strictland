@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import org.jspecify.annotations.NullMarked;
@@ -57,21 +58,25 @@ final class SnapshotReviewPropertiesTests {
     }
 
     @Test
-    void tool_byRegistryName_isResolved() {
+    void tool_byRegistryName_isResolvedAsAnExplicitSinglePreference() {
         var review = SnapshotReviewProperties.fromProperties(props("strictland.review.tool", "meld"))
                 .orElseThrow();
 
         assertEquals(ReviewMode.AUTO, review.mode());
-        assertEquals("meld", requireNonNull(review.tool()).name());
+        var preference = requireNonNull(review.toolPreference());
+        assertEquals(ToolPreference.Kind.SINGLE, preference.kind());
+        assertEquals(java.util.List.of("meld"), preference.names());
     }
 
     @Test
-    void tool_asAFullTemplate_buildsACustomTool() {
+    void tool_asAFullTemplate_buildsACustomPreference() {
         var review = SnapshotReviewProperties.fromProperties(
                         props("strictland.review.tool", "my-diff {received} {approved}"))
                 .orElseThrow();
 
-        assertEquals("custom", requireNonNull(review.tool()).name());
+        assertEquals(
+                ToolPreference.Kind.CUSTOM,
+                requireNonNull(review.toolPreference()).kind());
     }
 
     @Test
@@ -79,7 +84,35 @@ final class SnapshotReviewPropertiesTests {
         var review = SnapshotReviewProperties.fromProperties(props("strictland.review.tool", "   "))
                 .orElseThrow();
 
-        assertNull(review.tool());
+        assertNull(review.toolPreference());
+    }
+
+    @Test
+    void toolOrder_isParsedFromPropertiesAndEnvironment() {
+        var review = SnapshotReviewProperties.fromProperties(props("strictland.review.toolOrder", "idea,vscode|meld"))
+                .orElseThrow();
+        assertEquals(
+                java.util.List.of("idea", "vscode", "meld"),
+                requireNonNull(review.toolPreference()).names());
+
+        var fromEnv = SnapshotReviewProperties.fromPropertiesAndEnv(
+                        new Properties(), Map.of("STRICTLAND_REVIEW_TOOL_ORDER", "meld idea"))
+                .orElseThrow();
+        assertEquals(
+                java.util.List.of("meld", "idea"),
+                requireNonNull(fromEnv.toolPreference()).names());
+    }
+
+    @Test
+    void toolWinsOverToolOrderInTheSameConfigLayer() {
+        var props = props("strictland.review.tool", "meld");
+        props.setProperty("strictland.review.toolOrder", "idea,vscode");
+
+        var review = SnapshotReviewProperties.fromProperties(props).orElseThrow();
+
+        var preference = requireNonNull(review.toolPreference());
+        assertEquals(ToolPreference.Kind.SINGLE, preference.kind());
+        assertEquals(java.util.List.of("meld"), preference.names());
     }
 
     @Test
@@ -97,7 +130,9 @@ final class SnapshotReviewPropertiesTests {
                 .orElseThrow();
 
         assertEquals(ReviewMode.APPROVE, review.mode());
-        assertEquals("meld", requireNonNull(review.tool()).name());
+        assertEquals(
+                java.util.List.of("meld"),
+                requireNonNull(review.toolPreference()).names());
     }
 
     @Test
@@ -128,5 +163,39 @@ final class SnapshotReviewPropertiesTests {
                 assertThrows(UncheckedIOException.class, () -> SnapshotReviewProperties.fromStream("failing", failing));
 
         assertTrue(requireNonNull(thrown.getMessage()).contains("failing"));
+    }
+
+    @Test
+    void blankToolOrderFallsThroughToEnvironmentOrNoPreference() {
+        var props = props("strictland.review.toolOrder", "   ");
+
+        var noPreference = SnapshotReviewProperties.fromProperties(props).orElseThrow();
+        assertNull(noPreference.toolPreference());
+
+        var fromEnv = SnapshotReviewProperties.fromPropertiesAndEnv(
+                        props, Map.of("STRICTLAND_REVIEW_TOOL_ORDER", "vscode"))
+                .orElseThrow();
+        assertEquals(
+                java.util.List.of("vscode"),
+                requireNonNull(fromEnv.toolPreference()).names());
+    }
+
+    @Test
+    void blankEnvironmentToolOrderIsIgnored() {
+        var fromEnv = SnapshotReviewProperties.fromPropertiesAndEnv(
+                new Properties(), Map.of("STRICTLAND_REVIEW_TOOL_ORDER", "   "));
+
+        assertEquals(Optional.empty(), fromEnv);
+    }
+
+    @Test
+    void blankEnvironmentToolOrderDoesNotOverrideOtherSettings() {
+        var props = props("strictland.review.mode", "auto");
+
+        var review = SnapshotReviewProperties.fromPropertiesAndEnv(props, Map.of("STRICTLAND_REVIEW_TOOL_ORDER", "   "))
+                .orElseThrow();
+
+        assertEquals(ReviewMode.AUTO, review.mode());
+        assertNull(review.toolPreference());
     }
 }
