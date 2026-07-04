@@ -12,10 +12,10 @@ import java.util.stream.Stream;
 
 /**
  * File-backed snapshot storage, rooted at the {@code rootPath/wrapperFolder} a {@link SnapshotLayout}
- * lays out. It owns the root, the {@code .snap.approved} marker, and the {@code .received} sibling, and
- * joins a {@link SnapshotLocation} or {@link SnapshotFilter} into a path under that root.
+ * lays out (defaulting to {@code test/resources/contract-registry}).
+ * It stores approved snapshots in relative {@link SnapshotLocation} path under the root.
  *
- * <p>The first run writes the approved file for you to review and commit. A later run compares the
+ * <p>The first run writes the approved file for you to review and commit (with {@code .snap.approved} marker). A later run compares the
  * payload against it: a match passes, a difference writes a sibling {@code .received} file for diffing
  * and fails the check.</p>
  */

@@ -84,7 +84,7 @@ final class SimpleBinaryMessageSerializerTests {
         var storage = new Base64SnapshotStorage(tmp);
         var original = new OrderPlaced(FIXED_ID, "Alice");
         var location = SnapshotLocation.of(
-                MessageTypeName.of("RoundTrip"), "1", SnapshotVariant.DEFAULT, serializer.fileExtension());
+                MessageTypeName.of("RoundTrip"), "1", SnapshotVariant.DEFAULT, "." + serializer.fileExtension());
 
         storage.store(location, new SnapshotData(serializer.serialize(original)));
 
@@ -134,7 +134,7 @@ final class SimpleBinaryMessageSerializerTests {
         var serializer = new SimpleBinaryMessageSerializer();
         var storage = new Base64SnapshotStorage(tmp);
         var location = SnapshotLocation.of(
-                MessageTypeName.of("Drifting"), "1", SnapshotVariant.DEFAULT, serializer.fileExtension());
+                MessageTypeName.of("Drifting"), "1", SnapshotVariant.DEFAULT, "." + serializer.fileExtension());
         storage.store(location, new SnapshotData(serializer.serialize(new OrderPlaced(FIXED_ID, "Alice"))));
 
         var error = assertThrows(

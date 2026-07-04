@@ -10,17 +10,17 @@ final class MessageSerializerTests {
 
     @Test
     void jacksonSerializerReportsJsonExtension() {
-        assertEquals(".json", JacksonMessageSerializer.withDefaults().fileExtension());
+        assertEquals("json", JacksonMessageSerializer.withDefaults().fileExtension());
     }
 
     @Test
     void csvSerializerReportsCsvExtension() {
-        assertEquals(".csv", new CsvMessageSerializer().fileExtension());
+        assertEquals("csv", new CsvMessageSerializer().fileExtension());
     }
 
     @Test
     void binarySerializerReportsBinExtension() {
-        assertEquals(".bin", new SimpleBinaryMessageSerializer().fileExtension());
+        assertEquals("bin", new SimpleBinaryMessageSerializer().fileExtension());
     }
 
     @Test
@@ -37,6 +37,6 @@ final class MessageSerializerTests {
             }
         };
 
-        assertEquals(".txt", bare.fileExtension());
+        assertEquals("txt", bare.fileExtension());
     }
 }

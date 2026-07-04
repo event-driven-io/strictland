@@ -45,7 +45,7 @@ public class ThenContractStep<S> {
     }
 
     private SnapshotLocation snapshotLocation() {
-        var ext = context.serializer().fileExtension();
+        var ext = "." + context.serializer().fileExtension();
         return switch (destination) {
             case null ->
                 SnapshotLocation.of(

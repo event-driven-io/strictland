@@ -114,7 +114,7 @@ public class MessageContract {
     }
 
     /**
-     * Defines the version under contract: the message as your current code builds it.
+     * Defines the message contract using the message as your current code builds it.
      *
      * <p>From here, lock its shape so accidental changes get caught with {@link
      * GivenStep#whenSerialized()}, or read it as another version to check the two are compatible with
@@ -129,11 +129,10 @@ public class MessageContract {
     }
 
     /**
-     * Defines the version under contract: the message as your current code builds it, pinned to a
-     * snapshot version you name.
+     * Defines the message contract using the message as your current code builds it, pinned to a specific contract version.
      *
-     * <p>Like {@link #given(Object)}, but the snapshot's name carries the {@code version} you give
-     * rather than the default, so several versions of one message type keep distinct snapshots. A {@code
+     * <p>Use this method instead of {@link #given(Object)} if you're testing different versions of the same message type.
+     * Thanks to that, each version of one message type will keep distinct snapshots you can compare to. A {@code
      * whenSerializedAs(...)} snapshot that pins its own version overrides this one.</p>
      *
      * @param instance the message to pin or read with another version
