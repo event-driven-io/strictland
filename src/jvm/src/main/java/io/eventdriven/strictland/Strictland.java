@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 public final class Strictland {
 
     private static volatile @Nullable SnapshotLayout snapshotLayout;
+    private static volatile @Nullable SnapshotReview snapshotReview;
 
     private Strictland() {}
 
@@ -63,10 +64,15 @@ public final class Strictland {
      */
     public static void resetDefaults() {
         snapshotLayout = null;
+        snapshotReview = null;
     }
 
     static Optional<SnapshotLayout> snapshotLayout() {
         return Optional.ofNullable(snapshotLayout);
+    }
+
+    static Optional<SnapshotReview> snapshotReview() {
+        return Optional.ofNullable(snapshotReview);
     }
 
     /**
@@ -95,6 +101,23 @@ public final class Strictland {
          */
         public Config snapshotLayout(SnapshotLayout layout) {
             Strictland.snapshotLayout = layout;
+            return this;
+        }
+
+        /**
+         * Sets the global default snapshot review, used by any specification that doesn't set its own,
+         * for choosing suite-wide how a drift is reviewed. Pair it with {@link Strictland#resetDefaults()}
+         * in teardown so it doesn't outlive the test.
+         *
+         * <pre>
+         * Strictland.defaults().snapshotReview(SnapshotReview.off());
+         * </pre>
+         *
+         * @param review the review to fall back to when a spec sets none
+         * @return this configuration, so you can chain further calls
+         */
+        public Config snapshotReview(SnapshotReview review) {
+            Strictland.snapshotReview = review;
             return this;
         }
     }

@@ -25,6 +25,12 @@ final class FileSnapshotStorageLayoutTests {
         return new FileSnapshotStorage(SnapshotLayout.registry().rootPath(root.toString()));
     }
 
+    // A drift here should assert on files and the thrown error only, never open a real diff tool,
+    // whatever machine the suite runs on - so wire a no-op launcher and a non-interactive gate.
+    private static FileSnapshotStorage nonInteractiveStorage(SnapshotLayout layout) {
+        return new FileSnapshotStorage(layout, SnapshotReview.auto(), (tool, received, approved) -> {}, () -> true);
+    }
+
     private static Path registryFolder(Path root) {
         return root.resolve("contract-registry").resolve("io/eventdriven/strictland/OrderPlaced");
     }
@@ -115,7 +121,7 @@ final class FileSnapshotStorageLayoutTests {
 
     @Test
     void store_aDriftedPayload_writesAReceivedFileAndThrows(@TempDir Path root) throws Exception {
-        var storage = storageRootedAt(root);
+        var storage = nonInteractiveStorage(SnapshotLayout.registry().rootPath(root.toString()));
         var location = SnapshotLocation.of(MESSAGE_TYPE, "1", SnapshotVariant.UNSET, ".json");
         storage.store(location, new SnapshotData(PAYLOAD));
 
@@ -140,7 +146,7 @@ final class FileSnapshotStorageLayoutTests {
     @Test
     void store_aBareRelativeLocation_writesAndDriftsWithoutAParentFolder() throws Exception {
         var storage =
-                new FileSnapshotStorage(SnapshotLayout.registry().rootPath("").wrapperFolder(""));
+                nonInteractiveStorage(SnapshotLayout.registry().rootPath("").wrapperFolder(""));
         var bareName = "FileSnapshotStorageLayoutTests-bare-" + System.nanoTime();
         var location = SnapshotLocation.ofRelativePath(Path.of(bareName + ".snap.approved.json"));
         var approved = Path.of(bareName + ".snap.approved.json");

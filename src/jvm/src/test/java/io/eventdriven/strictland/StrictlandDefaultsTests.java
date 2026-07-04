@@ -48,4 +48,37 @@ final class StrictlandDefaultsTests {
         assertSame(config, returned);
         assertEquals("approved", Strictland.snapshotLayout().orElseThrow().wrapperFolder());
     }
+
+    @Test
+    void snapshotReview_whenUnset_isEmpty() {
+        assertTrue(Strictland.snapshotReview().isEmpty());
+    }
+
+    @Test
+    void snapshotReview_whenSet_isReadBack() {
+        var review = SnapshotReview.approve();
+
+        Strictland.defaults().snapshotReview(review);
+
+        assertSame(review, Strictland.snapshotReview().orElseThrow());
+    }
+
+    @Test
+    void snapshotReview_whenReset_returnsToUnset() {
+        Strictland.defaults().snapshotReview(SnapshotReview.approve());
+
+        Strictland.resetDefaults();
+
+        assertTrue(Strictland.snapshotReview().isEmpty());
+    }
+
+    @Test
+    void config_snapshotReview_chainsAndReturnsSameInstance() {
+        var config = Strictland.defaults();
+
+        var returned = config.snapshotReview(SnapshotReview.off());
+
+        assertSame(config, returned);
+        assertEquals(ReviewMode.OFF, Strictland.snapshotReview().orElseThrow().mode());
+    }
 }
