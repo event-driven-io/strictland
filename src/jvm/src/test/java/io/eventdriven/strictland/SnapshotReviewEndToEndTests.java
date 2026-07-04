@@ -3,6 +3,7 @@ package io.eventdriven.strictland;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -18,9 +19,13 @@ final class SnapshotReviewEndToEndTests {
     private record ReviewOrder(String orderId, String customer) {}
 
     private static SpecificationOptions options(Path root) {
+        return options(root, SnapshotReview.off());
+    }
+
+    private static SpecificationOptions options(Path root, SnapshotReview review) {
         return Json.Jackson.defaults()
                 .snapshotLayout(SnapshotLayout.registry().rootPath(root.toString()))
-                .snapshotReview(SnapshotReview.off());
+                .snapshotReview(review);
     }
 
     private static MessageSnapshot snapshot() {
@@ -68,5 +73,24 @@ final class SnapshotReviewEndToEndTests {
         assertTrue(message.contains("+ 1 | {\"orderId\":\"order-1\",\"customer\":\"Bob\"}"), message);
         assertTrue(message.contains("received: " + receivedFile(root)), message);
         assertTrue(message.contains("approved: " + approvedFile(root)), message);
+    }
+
+    @Test
+    void contractCheck_inApproveMode_whenPayloadDrifts_reBaselinesTheApprovedFileWithoutFailing(@TempDir Path root)
+            throws Exception {
+        MessageContract.specification(options(root))
+                .given(new ReviewOrder("order-1", "Alice"))
+                .whenSerializedAs(snapshot())
+                .thenContractIsUnchanged();
+
+        MessageContract.specification(options(root, SnapshotReview.approve()))
+                .given(new ReviewOrder("order-1", "Bob"))
+                .whenSerializedAs(snapshot())
+                .thenContractIsUnchanged();
+
+        assertArrayEquals(
+                "{\"orderId\":\"order-1\",\"customer\":\"Bob\"}".getBytes(UTF_8),
+                Files.readAllBytes(approvedFile(root)));
+        assertFalse(Files.exists(receivedFile(root)));
     }
 }

@@ -15,7 +15,8 @@ final class ThenCompatibilityStepInvariantTests {
                 new JacksonMessageSerializer(new JsonMapper()),
                 new FileSnapshotStorage(SnapshotLayout.registry()),
                 MessageTypeMapper.fullyQualifiedName(),
-                SnapshotReviewer.forReview(SnapshotReview.off()));
+                new SnapshotReviewer(SnapshotReview.off()),
+                DiffReview.forReview(SnapshotReview.off()));
         var step = new ThenCompatibilityStep<>(
                 MessageSnapshot.ofTypeNamed("NeverWritten"), MessageSnapshot.DEFAULT_VERSION, Object.class, context);
 

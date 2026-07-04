@@ -5,9 +5,10 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * Opens a diff tool for a drifted snapshot pair on behalf of {@link FileSnapshotStorage}. Whether a
- * tool opens at all is decided while selecting one: {@link #selectTool} yields no tool when the review
- * is off or the machine is non-interactive, so a run with nothing to open simply launches nothing.
+ * Opens the developer's diff tool on a drifted snapshot's received and approved files, so a failing
+ * check can be eyeballed and, if the change is wanted, accepted from the tool. Whether anything opens
+ * is settled up front when the tool is selected: {@link #selectTool} yields no tool when review is off
+ * or the machine is non-interactive (CI or headless), so on those runs opening is simply a no-op.
  */
 interface DiffReview {
 
