@@ -1,6 +1,7 @@
 package io.eventdriven.strictland;
 
 import java.nio.file.Path;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 /**
@@ -13,11 +14,21 @@ interface DiffReview {
     void open(Path received, Path approved);
 
     static DiffReview forReview(SnapshotReview review) {
-        return new Launching(review, DiffTools::onPath, CiDetector.isNonInteractive(), new ProcessDiffLauncher());
+        return new Launching(
+                review,
+                DiffTools::onPath,
+                DiffTools::gitDiffToolConfigured,
+                CiDetector.isNonInteractive(),
+                new ProcessDiffLauncher());
     }
 
     /** Resolves the tool for the review against the environment and launches it, unless there is nothing to open. */
-    record Launching(SnapshotReview review, Predicate<String> installed, boolean nonInteractive, DiffLauncher launcher)
+    record Launching(
+            SnapshotReview review,
+            Predicate<String> installed,
+            BooleanSupplier gitDiffToolConfigured,
+            boolean nonInteractive,
+            DiffLauncher launcher)
             implements DiffReview {
 
         @Override
@@ -25,7 +36,7 @@ interface DiffReview {
             if (review.mode() == ReviewMode.OFF || nonInteractive) {
                 return;
             }
-            DiffTools.command(review.toolPreference(), received, approved, installed)
+            DiffTools.command(review.toolPreference(), received, approved, installed, gitDiffToolConfigured)
                     .ifPresent(launcher::launch);
         }
     }
