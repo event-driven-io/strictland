@@ -18,91 +18,72 @@ import org.junit.jupiter.api.io.TempDir;
 @NullMarked
 final class DiffToolTests {
 
+    private static final Path RECEIVED = Path.of("recv");
+    private static final Path APPROVED = Path.of("appr");
+
     @Test
-    void resolvedCommandUsesTheExecutableThatWasActuallyFound() {
-        var vscode = DiffTools.byName("vscode").orElseThrow();
+    void commandUsesTheCandidateThatWasActuallyFound() {
+        var command = DiffTool.VSCODE.command(RECEIVED, APPROVED, exe -> exe.equals("code.cmd"));
 
-        var resolved = vscode.resolve(exe -> exe.equals("code.cmd")).orElseThrow();
-
-        assertEquals(List.of("code.cmd", "--diff", "--wait", "recv", "appr"), resolved.command("recv", "appr"));
+        assertEquals(List.of("code.cmd", "--diff", "--wait", "recv", "appr"), command.orElseThrow());
     }
 
     @Test
-    void executablePathCandidateResolvesEvenWhenItIsNotOnThePath(@TempDir Path dir) throws IOException {
-        var executable = Files.createFile(dir.resolve("acme-diff")).toFile();
-        assertTrue(executable.setExecutable(true));
-        var tool = new DiffTool("acme", List.of(executable.getAbsolutePath()), List.of("{received}", "{approved}"));
-
-        var resolved = tool.resolve(candidate -> false).orElseThrow();
-
-        assertEquals(executable.getAbsolutePath(), resolved.executable());
-    }
-
-    @Test
-    void nonExecutablePathCandidateDoesNotResolve(@TempDir Path dir) {
-        var tool = new DiffTool("acme", List.of(dir.resolve("missing-diff").toString()), List.of("{received}"));
-
-        assertTrue(tool.resolve(candidate -> false).isEmpty());
+    void commandIsEmptyWhenNoCandidateIsInstalled() {
+        assertTrue(DiffTool.MELD.command(RECEIVED, APPROVED, exe -> false).isEmpty());
     }
 
     @Test
     void gitFallback_putsApprovedOnTheLeftForDifftool() {
-        var git = DiffTools.byName("git").orElseThrow();
+        var command = DiffTool.GIT.command(RECEIVED, APPROVED, exe -> exe.equals("git"));
 
-        var resolved = git.resolve(exe -> exe.equals("git")).orElseThrow();
-
-        assertEquals(List.of("git", "difftool", "--no-index", "appr", "recv"), resolved.command("recv", "appr"));
+        assertEquals(List.of("git", "difftool", "--no-index", "appr", "recv"), command.orElseThrow());
     }
 
     @Test
-    void explicitSingleToolWinsAndDoesNotFallbackWhenUnavailable() {
-        var resolved = DiffTools.resolve(ToolPreference.single("idea"), exe -> exe.equals("code"));
+    void explicitToolWinsAndDoesNotFallBackWhenUnavailable() {
+        var command = DiffTools.command(
+                new ToolPreference.Named(DiffTool.IDEA), RECEIVED, APPROVED, exe -> exe.equals("code"));
 
-        assertTrue(resolved.isEmpty());
+        assertTrue(command.isEmpty());
     }
 
     @Test
-    void explicitSingleToolCoversTheAvailablePath() {
-        var resolved = DiffTools.resolve(ToolPreference.single("meld"), exe -> exe.equals("meld"))
-                .orElseThrow();
+    void explicitToolCoversTheAvailablePath() {
+        var command = DiffTools.command(
+                new ToolPreference.Named(DiffTool.MELD), RECEIVED, APPROVED, exe -> exe.equals("meld"));
 
-        assertEquals("meld", resolved.name());
-    }
-
-    @Test
-    void explicitOrderPutsListedAvailableToolsBeforeUnlistedTools() {
-        var preference = ToolPreference.order(List.of("meld", "idea"));
-
-        var resolved = DiffTools.resolve(preference, exe -> exe.equals("idea") || exe.equals("code"))
-                .orElseThrow();
-
-        assertEquals("idea", resolved.name());
+        assertEquals(List.of("meld", "recv", "appr"), command.orElseThrow());
     }
 
     @Test
     void builtInRegistryOrderAppliesWhenNoPreferenceExists() {
-        var resolved = DiffTools.resolve(null, exe -> exe.equals("meld") || exe.equals("git"))
-                .orElseThrow();
+        var command = DiffTools.command(null, RECEIVED, APPROVED, exe -> exe.equals("meld") || exe.equals("git"));
 
-        assertEquals("meld", resolved.name());
+        assertEquals("meld", command.orElseThrow().get(0));
     }
 
     @Test
     void gitFallbackIsLastAndOnlyUsedWhenResolved() {
-        assertTrue(DiffTools.resolve(null, exe -> false).isEmpty());
+        assertTrue(DiffTools.command(null, RECEIVED, APPROVED, exe -> false).isEmpty());
         assertEquals(
                 "git",
-                DiffTools.resolve(null, exe -> exe.equals("git")).orElseThrow().name());
+                DiffTools.command(null, RECEIVED, APPROVED, exe -> exe.equals("git"))
+                        .orElseThrow()
+                        .get(0));
     }
 
     @Test
     void customConfigCommandResolvesOnlyWhenTheExecutableExists() {
-        var resolved = DiffTools.resolve(
-                        ToolPreference.custom("my-diff --wait {received} {approved}"), exe -> exe.equals("my-diff"))
-                .orElseThrow();
+        var command = DiffTools.command(
+                new ToolPreference.Custom("my-diff --wait {received} {approved}"),
+                RECEIVED,
+                APPROVED,
+                exe -> exe.equals("my-diff"));
 
-        assertEquals(List.of("my-diff", "--wait", "recv", "appr"), resolved.command("recv", "appr"));
-        assertTrue(DiffTools.resolve(ToolPreference.custom("missing {received} {approved}"), exe -> false)
+        assertEquals(List.of("my-diff", "--wait", "recv", "appr"), command.orElseThrow());
+        assertTrue(DiffTools.command(
+                        new ToolPreference.Custom("missing {received} {approved}"), RECEIVED, APPROVED, exe -> false)
                 .isEmpty());
     }
 
@@ -111,31 +92,24 @@ final class DiffToolTests {
         var executable = Files.createFile(dir.resolve("custom-diff")).toFile();
         assertTrue(executable.setExecutable(true));
 
-        var resolved = DiffTools.resolve(
-                        ToolPreference.custom(executable.getAbsolutePath() + " {received} {approved}"), exe -> false)
-                .orElseThrow();
+        var command = DiffTools.command(
+                new ToolPreference.Custom(executable.getAbsolutePath() + " {received} {approved}"),
+                RECEIVED,
+                APPROVED,
+                DiffTools::onPath);
 
-        assertEquals(executable.getAbsolutePath(), resolved.executable());
-    }
-
-    @Test
-    void parseOrderAcceptsCommaPipeWhitespaceAndBlankSegments() {
-        assertEquals(List.of("idea", "vscode", "meld"), DiffTools.parseOrder("idea,vscode|meld"));
-        assertEquals(List.of("idea", "vscode"), DiffTools.parseOrder("idea  vscode"));
+        assertEquals(executable.getAbsolutePath(), command.orElseThrow().get(0));
     }
 
     @Test
     void unknownAndBlankToolNamesAreRejected() {
-        assertTrue(DiffTools.byName("no-such-tool").isEmpty());
+        assertTrue(DiffTool.byName("no-such-tool").isEmpty());
         assertTrue(requireNonNull(assertThrows(IllegalArgumentException.class, () -> DiffTools.requireName("   "))
                         .getMessage())
                 .contains("Unknown diff tool"));
         assertTrue(requireNonNull(assertThrows(IllegalArgumentException.class, () -> DiffTools.fromToolSetting("   "))
                         .getMessage())
                 .contains("blank"));
-        assertTrue(requireNonNull(assertThrows(IllegalArgumentException.class, () -> DiffTools.parseOrder("   "))
-                        .getMessage())
-                .contains("at least one"));
     }
 
     @Test
@@ -145,6 +119,15 @@ final class DiffToolTests {
         var path = File.pathSeparator + dir;
 
         assertTrue(DiffTools.onPath("faux-diff", path));
+    }
+
+    @Test
+    void onPath_resolvesAnAbsolutePathCandidateWithoutSearchingThePath(@TempDir Path dir) throws IOException {
+        var tool = Files.createFile(dir.resolve("faux-diff")).toFile();
+        assertTrue(tool.setExecutable(true));
+
+        assertTrue(DiffTools.onPath(tool.getAbsolutePath(), null));
+        assertFalse(DiffTools.onPath(dir.resolve("missing").toString(), null));
     }
 
     @Test

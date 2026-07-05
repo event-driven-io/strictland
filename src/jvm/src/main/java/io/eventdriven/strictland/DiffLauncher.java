@@ -1,8 +1,8 @@
 package io.eventdriven.strictland;
 
-import java.nio.file.Path;
+import java.util.List;
 
 interface DiffLauncher {
 
-    void launch(ResolvedDiffTool tool, Path received, Path approved);
+    void launch(List<String> command);
 }

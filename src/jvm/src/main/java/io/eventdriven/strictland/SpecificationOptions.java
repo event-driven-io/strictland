@@ -100,7 +100,7 @@ public record SpecificationOptions(
      * reviewed - launch a particular diff tool, silence the tool, or re-baseline on purpose.
      *
      * <pre>
-     * SpecificationOptions options = Json.Jackson.defaults().snapshotReview(SnapshotReview.tool("meld"));
+     * SpecificationOptions options = Json.Jackson.defaults().snapshotReview(SnapshotReview.tool(DiffTool.MELD));
      * </pre>
      *
      * @param review how a drift is reviewed for this spec
