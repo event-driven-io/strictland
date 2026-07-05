@@ -31,8 +31,10 @@ public final class SnapshotReview {
     }
 
     /**
-     * The default review: render the inline diff, and on a local, interactive machine open a detected
-     * diff tool. On CI or a headless machine the inline diff stands alone.
+     * The default review: render the inline diff, and on a local, interactive machine open a diff tool.
+     * It opens your git-configured tool when {@code git config diff.tool} is set, otherwise the first
+     * installed tool from {@link DiffTool}'s built-in roster. On CI or a headless machine the inline diff
+     * stands alone.
      *
      * @return the default automatic review
      */

@@ -8,11 +8,11 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
- * A diff tool Strictland knows how to launch on a drifted snapshot's received and approved files. Pick
- * one with {@link SnapshotReview#tool(DiffTool)} when you have a favourite; otherwise {@link
- * SnapshotReview#auto()} tries them in the order declared here and launches the first one installed,
- * with {@link #GIT}'s no-index difftool as the always-available fallback. For a tool not listed here,
- * use {@link SnapshotReview#customTool(String)}.
+ * A GUI diff application Strictland knows how to launch on a drifted snapshot's received and approved
+ * files. Pick one with {@link SnapshotReview#tool(DiffTool)} when you have a favourite; otherwise {@link
+ * SnapshotReview#auto()} opens your git-configured diff tool when {@code git config diff.tool} is set,
+ * and falls back to the first of these found installed. For a tool not listed here, use {@link
+ * SnapshotReview#customTool(String)}.
  *
  * <pre>
  * SpecificationOptions options = Json.Jackson.defaults().snapshotReview(SnapshotReview.tool(DiffTool.MELD));
@@ -39,10 +39,7 @@ public enum DiffTool {
     P4MERGE(List.of("p4merge"), List.of("{received}", "{approved}")),
 
     /** WinMerge. */
-    WINMERGE(List.of("WinMergeU.exe"), List.of("/u", "/wl", "{received}", "{approved}")),
-
-    /** Git's {@code difftool --no-index}, the fallback that works wherever Git is installed. */
-    GIT(List.of("git"), List.of("difftool", "--no-index", "{approved}", "{received}"));
+    WINMERGE(List.of("WinMergeU.exe"), List.of("/u", "/wl", "{received}", "{approved}"));
 
     private static final String RECEIVED = "{received}";
     private static final String APPROVED = "{approved}";

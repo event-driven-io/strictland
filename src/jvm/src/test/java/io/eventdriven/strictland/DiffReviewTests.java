@@ -1,11 +1,12 @@
 package io.eventdriven.strictland;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Predicate;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -29,17 +30,20 @@ final class DiffReviewTests {
     }
 
     private static DiffReview.Launching launching(
-            SnapshotReview review, boolean nonInteractive, DiffLauncher launcher) {
-        // git is a registered tool always present in the build environment, so this drives the real
-        // command resolution rather than an injected tool.
-        return new DiffReview.Launching(review, exe -> exe.equals("git"), nonInteractive, launcher);
+            SnapshotReview review,
+            Predicate<String> installed,
+            boolean gitConfigured,
+            boolean nonInteractive,
+            DiffLauncher launcher) {
+        return new DiffReview.Launching(review, installed, () -> gitConfigured, nonInteractive, launcher);
     }
 
     @Test
-    void open_launchesTheResolvedToolWithApprovedThenReceived() {
+    void open_launchesTheGitConfiguredDifftoolWithApprovedThenReceived() {
         var launcher = new RecordingLauncher();
 
-        launching(SnapshotReview.tool(DiffTool.GIT), false, launcher).open(RECEIVED, APPROVED);
+        launching(SnapshotReview.auto(), exe -> exe.equals("git"), true, false, launcher)
+                .open(RECEIVED, APPROVED);
 
         assertEquals(1, launcher.launches);
         assertEquals(
@@ -47,10 +51,21 @@ final class DiffReviewTests {
     }
 
     @Test
+    void open_launchesTheFirstInstalledGuiWhenGitHasNoConfiguredTool() {
+        var launcher = new RecordingLauncher();
+
+        launching(SnapshotReview.auto(), exe -> exe.equals("meld"), false, false, launcher)
+                .open(RECEIVED, APPROVED);
+
+        assertEquals(1, launcher.launches);
+        assertEquals(List.of("meld", RECEIVED.toString(), APPROVED.toString()), launcher.command);
+    }
+
+    @Test
     void open_launchesNothingWhenTheReviewIsOff() {
         var launcher = new RecordingLauncher();
 
-        launching(SnapshotReview.off(), false, launcher).open(RECEIVED, APPROVED);
+        launching(SnapshotReview.off(), exe -> true, true, false, launcher).open(RECEIVED, APPROVED);
 
         assertEquals(0, launcher.launches);
         assertNull(launcher.command);
@@ -60,7 +75,7 @@ final class DiffReviewTests {
     void open_launchesNothingWhenTheMachineIsNonInteractive() {
         var launcher = new RecordingLauncher();
 
-        launching(SnapshotReview.tool(DiffTool.GIT), true, launcher).open(RECEIVED, APPROVED);
+        launching(SnapshotReview.auto(), exe -> true, true, true, launcher).open(RECEIVED, APPROVED);
 
         assertEquals(0, launcher.launches);
     }
@@ -68,19 +83,22 @@ final class DiffReviewTests {
     @Test
     void open_launchesNothingWhenNoToolIsInstalled() {
         var launcher = new RecordingLauncher();
-        var review = new DiffReview.Launching(SnapshotReview.tool(DiffTool.MELD), exe -> false, false, launcher);
 
-        review.open(RECEIVED, APPROVED);
+        launching(SnapshotReview.tool(DiffTool.MELD), exe -> false, false, false, launcher)
+                .open(RECEIVED, APPROVED);
 
         assertEquals(0, launcher.launches);
     }
 
     @Test
-    void forReview_wiresTheEnvironmentWithoutThrowing() {
-        // On the headless build the review is a safe no-op; this still drives the production wiring
-        // (real interactivity check and process launcher).
-        var review = DiffReview.forReview(SnapshotReview.tool(DiffTool.GIT));
+    void forReview_wiresTheReviewIntoTheProductionLauncher() {
+        // Only construct the production wiring - deliberately do NOT call open() here. open() resolves
+        // and launches the real tool, which on an interactive machine spawns a diff GUI. That launch is
+        // covered above with a recording launcher; the resolution seams are covered in DiffToolTests.
+        var review = SnapshotReview.auto();
 
-        assertDoesNotThrow(() -> review.open(RECEIVED, APPROVED));
+        var wired = DiffReview.forReview(review);
+
+        assertEquals(review, assertInstanceOf(DiffReview.Launching.class, wired).review());
     }
 }

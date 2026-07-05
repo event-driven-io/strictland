@@ -1,6 +1,7 @@
 package io.eventdriven.strictland;
 
 import static java.util.Objects.requireNonNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,16 +35,9 @@ final class DiffToolTests {
     }
 
     @Test
-    void gitFallback_putsApprovedOnTheLeftForDifftool() {
-        var command = DiffTool.GIT.command(RECEIVED, APPROVED, exe -> exe.equals("git"));
-
-        assertEquals(List.of("git", "difftool", "--no-index", "appr", "recv"), command.orElseThrow());
-    }
-
-    @Test
     void explicitToolWinsAndDoesNotFallBackWhenUnavailable() {
         var command = DiffTools.command(
-                new ToolPreference.Named(DiffTool.IDEA), RECEIVED, APPROVED, exe -> exe.equals("code"));
+                new ToolPreference.Named(DiffTool.IDEA), RECEIVED, APPROVED, exe -> exe.equals("code"), () -> false);
 
         assertTrue(command.isEmpty());
     }
@@ -51,26 +45,58 @@ final class DiffToolTests {
     @Test
     void explicitToolCoversTheAvailablePath() {
         var command = DiffTools.command(
-                new ToolPreference.Named(DiffTool.MELD), RECEIVED, APPROVED, exe -> exe.equals("meld"));
+                new ToolPreference.Named(DiffTool.MELD), RECEIVED, APPROVED, exe -> exe.equals("meld"), () -> false);
 
         assertEquals(List.of("meld", "recv", "appr"), command.orElseThrow());
     }
 
     @Test
-    void builtInRegistryOrderAppliesWhenNoPreferenceExists() {
-        var command = DiffTools.command(null, RECEIVED, APPROVED, exe -> exe.equals("meld") || exe.equals("git"));
+    void auto_opensTheGitConfiguredDifftoolWithApprovedOnTheLeft() {
+        var command = DiffTools.command(null, RECEIVED, APPROVED, exe -> exe.equals("git"), () -> true);
 
-        assertEquals("meld", command.orElseThrow().get(0));
+        assertEquals(List.of("git", "difftool", "--no-index", "appr", "recv"), command.orElseThrow());
     }
 
     @Test
-    void gitFallbackIsLastAndOnlyUsedWhenResolved() {
-        assertTrue(DiffTools.command(null, RECEIVED, APPROVED, exe -> false).isEmpty());
-        assertEquals(
-                "git",
-                DiffTools.command(null, RECEIVED, APPROVED, exe -> exe.equals("git"))
-                        .orElseThrow()
-                        .get(0));
+    void auto_fallsBackToTheFirstInstalledGuiWhenGitHasNoConfiguredTool() {
+        // git is "installed" here too, but with no configured diff.tool it must not hijack the GUI probe.
+        var command = DiffTools.command(
+                null, RECEIVED, APPROVED, exe -> exe.equals("meld") || exe.equals("git"), () -> false);
+
+        assertEquals(List.of("meld", "recv", "appr"), command.orElseThrow());
+    }
+
+    @Test
+    void auto_fallsBackToTheGuiProbeWhenGitIsConfiguredButNotInstalled() {
+        var command = DiffTools.command(null, RECEIVED, APPROVED, exe -> exe.equals("meld"), () -> true);
+
+        assertEquals(List.of("meld", "recv", "appr"), command.orElseThrow());
+    }
+
+    @Test
+    void auto_isEmptyWhenNothingIsAvailable() {
+        assertTrue(DiffTools.command(null, RECEIVED, APPROVED, exe -> false, () -> false)
+                .isEmpty());
+    }
+
+    @Test
+    void gitDiffToolConfigured_isTrueWhenGitReportsAConfiguredTool() {
+        assertTrue(DiffTools.gitDiffToolConfigured(new ProcessBuilder("echo", "meld")));
+    }
+
+    @Test
+    void gitDiffToolConfigured_isFalseWhenGitReportsNothing() {
+        assertFalse(DiffTools.gitDiffToolConfigured(new ProcessBuilder("true")));
+    }
+
+    @Test
+    void gitDiffToolConfigured_isFalseWhenTheProbeCannotStart() {
+        assertFalse(DiffTools.gitDiffToolConfigured(new ProcessBuilder("strictland-no-such-binary")));
+    }
+
+    @Test
+    void gitDiffToolConfigured_probesTheRealGitConfigWithoutThrowing() {
+        assertDoesNotThrow(() -> DiffTools.gitDiffToolConfigured());
     }
 
     @Test
@@ -79,11 +105,16 @@ final class DiffToolTests {
                 new ToolPreference.Custom("my-diff --wait {received} {approved}"),
                 RECEIVED,
                 APPROVED,
-                exe -> exe.equals("my-diff"));
+                exe -> exe.equals("my-diff"),
+                () -> false);
 
         assertEquals(List.of("my-diff", "--wait", "recv", "appr"), command.orElseThrow());
         assertTrue(DiffTools.command(
-                        new ToolPreference.Custom("missing {received} {approved}"), RECEIVED, APPROVED, exe -> false)
+                        new ToolPreference.Custom("missing {received} {approved}"),
+                        RECEIVED,
+                        APPROVED,
+                        exe -> false,
+                        () -> false)
                 .isEmpty());
     }
 
@@ -96,7 +127,8 @@ final class DiffToolTests {
                 new ToolPreference.Custom(executable.getAbsolutePath() + " {received} {approved}"),
                 RECEIVED,
                 APPROVED,
-                DiffTools::onPath);
+                DiffTools::onPath,
+                () -> false);
 
         assertEquals(executable.getAbsolutePath(), command.orElseThrow().get(0));
     }
@@ -138,5 +170,10 @@ final class DiffToolTests {
     @Test
     void onPath_isFalseWhenPathIsUnset() {
         assertFalse(DiffTools.onPath("anything", null));
+    }
+
+    @Test
+    void onPath_singleArg_readsTheProcessPathAndDoesNotFindABogusBinary() {
+        assertFalse(DiffTools.onPath("strictland-no-such-binary"));
     }
 }
