@@ -2,7 +2,6 @@ package io.eventdriven.strictland;
 
 import static java.util.Objects.requireNonNull;
 
-import java.util.Arrays;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -14,11 +13,11 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Start from a factory that reads as the intent: {@link #auto()} to diff and, on a local machine,
  * open a tool; {@link #off()} to keep the inline diff but never open a tool; {@link #approve()} to
- * re-baseline a change on purpose. Pick a single diff tool by registered name with {@link
- * #tool(String)}, or give auto mode a preferred order with {@link #toolOrder(String...)}.</p>
+ * re-baseline a change on purpose. Pick a specific diff tool with {@link #tool(DiffTool)}, or a custom
+ * command line for a tool Strictland does not know with {@link #customTool(String)}.</p>
  *
  * <pre>
- * SpecificationOptions options = Json.Jackson.defaults().snapshotReview(SnapshotReview.tool("meld"));
+ * SpecificationOptions options = Json.Jackson.defaults().snapshotReview(SnapshotReview.tool(DiffTool.MELD));
  * </pre>
  */
 public final class SnapshotReview {
@@ -62,41 +61,36 @@ public final class SnapshotReview {
     }
 
     /**
-     * A review that launches the named diff tool rather than an auto-selected one. If that tool is not
-     * available at launch time, Strictland keeps the inline diff and does not silently choose another
-     * GUI tool. The name is one Strictland knows, such as {@code "vscode"}, {@code "idea"}, or {@code
-     * "meld"}.
+     * A review that launches a specific known diff tool rather than an auto-selected one. If that tool
+     * is not available at launch time, Strictland keeps the inline diff and does not silently choose
+     * another GUI tool.
      *
      * <pre>
-     * SnapshotReview review = SnapshotReview.tool("meld");
+     * SnapshotReview review = SnapshotReview.tool(DiffTool.MELD);
      * </pre>
      *
-     * @param name the logical name of a registered diff tool
-     * @return an automatic review that launches the named tool when it is available
-     * @throws IllegalArgumentException when no registered tool has that name
+     * @param tool the diff tool to launch
+     * @return an automatic review that launches the given tool when it is available
      */
-    public static SnapshotReview tool(String name) {
-        return new SnapshotReview(ReviewMode.AUTO, ToolPreference.single(DiffTools.requireName(name)));
+    public static SnapshotReview tool(DiffTool tool) {
+        return new SnapshotReview(ReviewMode.AUTO, new ToolPreference.Named(requireNonNull(tool, "tool")));
     }
 
     /**
-     * A review that gives auto mode a preferred registered tool order. Listed tools are tried first in
-     * the order provided, then the remaining built-in tools, with Git's no-index difftool fallback last.
+     * A review that launches a custom diff command, for a tool Strictland does not list. The command's
+     * first token is the executable; {@code {received}} and {@code {approved}} are replaced with the two
+     * files. If the executable is not available at launch time, Strictland keeps the inline diff.
      *
      * <pre>
-     * SnapshotReview review = SnapshotReview.toolOrder("idea", "vscode", "meld");
+     * SnapshotReview review = SnapshotReview.customTool("my-diff --wait {received} {approved}");
      * </pre>
      *
-     * @param names registered tool names in preferred order
-     * @return an automatic review with the supplied tool preference order
-     * @throws IllegalArgumentException when the order is empty or contains an unknown tool name
+     * @param command the command line to launch, with {@code {received}} and {@code {approved}} placeholders
+     * @return an automatic review that launches the custom command when its executable is available
+     * @throws IllegalArgumentException when the command is blank
      */
-    public static SnapshotReview toolOrder(String... names) {
-        var ordered = Arrays.stream(names).map(DiffTools::requireName).toList();
-        if (ordered.isEmpty()) {
-            throw new IllegalArgumentException("Tool order must name at least one registered diff tool.");
-        }
-        return new SnapshotReview(ReviewMode.AUTO, ToolPreference.order(ordered));
+    public static SnapshotReview customTool(String command) {
+        return new SnapshotReview(ReviewMode.AUTO, new ToolPreference.Custom(command));
     }
 
     ReviewMode mode() {

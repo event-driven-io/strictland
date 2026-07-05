@@ -13,8 +13,8 @@ final class SnapshotReviewResolverTests {
 
     private final SnapshotReview runtime = SnapshotReview.approve();
     private final SnapshotReview perSpec = SnapshotReview.off();
-    private final SnapshotReview global = SnapshotReview.tool("meld");
-    private final SnapshotReview file = SnapshotReview.tool("vscode");
+    private final SnapshotReview global = SnapshotReview.tool(DiffTool.MELD);
+    private final SnapshotReview file = SnapshotReview.tool(DiffTool.VSCODE);
 
     @AfterEach
     void resetGlobalDefaults() {

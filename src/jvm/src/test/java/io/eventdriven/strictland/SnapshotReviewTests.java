@@ -32,50 +32,32 @@ final class SnapshotReviewTests {
     }
 
     @Test
-    void toolByName_selectsAKnownToolInAutoMode() {
-        var review = SnapshotReview.tool("meld");
+    void tool_selectsAKnownToolInAutoMode() {
+        var review = SnapshotReview.tool(DiffTool.MELD);
 
         assertEquals(ReviewMode.AUTO, review.mode());
-        var preference = requireNonNull(review.toolPreference());
-        assertEquals(ToolPreference.Kind.SINGLE, preference.kind());
-        assertEquals(java.util.List.of("meld"), preference.names());
+        assertEquals(new ToolPreference.Named(DiffTool.MELD), review.toolPreference());
     }
 
     @Test
-    void toolOrder_selectsPreferredRegisteredToolsInAutoMode() {
-        var review = SnapshotReview.toolOrder("idea", "vscode");
+    void customTool_selectsACustomCommandInAutoMode() {
+        var review = SnapshotReview.customTool("my-diff {received} {approved}");
 
         assertEquals(ReviewMode.AUTO, review.mode());
-        var preference = requireNonNull(review.toolPreference());
-        assertEquals(ToolPreference.Kind.ORDER, preference.kind());
-        assertEquals(java.util.List.of("idea", "vscode"), preference.names());
+        assertEquals(new ToolPreference.Custom("my-diff {received} {approved}"), review.toolPreference());
     }
 
     @Test
-    void unknownToolNamesAreRejected() {
-        var thrown = assertThrows(IllegalArgumentException.class, () -> SnapshotReview.tool("no-such-tool"));
+    void customTool_rejectsABlankCommand() {
+        var thrown = assertThrows(IllegalArgumentException.class, () -> SnapshotReview.customTool("   "));
 
-        assertTrue(requireNonNull(thrown.getMessage()).contains("no-such-tool"));
-    }
-
-    @Test
-    void unknownToolOrderNamesAreRejected() {
-        var thrown = assertThrows(IllegalArgumentException.class, () -> SnapshotReview.toolOrder("meld", "nope"));
-
-        assertTrue(requireNonNull(thrown.getMessage()).contains("nope"));
-    }
-
-    @Test
-    void emptyToolOrderIsRejected() {
-        var thrown = assertThrows(IllegalArgumentException.class, SnapshotReview::toolOrder);
-
-        assertTrue(requireNonNull(thrown.getMessage()).contains("at least one"));
+        assertTrue(requireNonNull(thrown.getMessage()).contains("blank"));
     }
 
     @Test
     void equalityAndHashCodeAreValueBased() {
-        var left = SnapshotReview.toolOrder("idea", "meld");
-        var right = SnapshotReview.toolOrder("idea", "meld");
+        var left = SnapshotReview.tool(DiffTool.IDEA);
+        var right = SnapshotReview.tool(DiffTool.IDEA);
 
         assertEquals(left, right);
         assertEquals(left.hashCode(), right.hashCode());
@@ -84,24 +66,11 @@ final class SnapshotReviewTests {
 
     @Test
     void equalityHandlesIdentityOtherTypesAndDifferentValues() {
-        var review = SnapshotReview.tool("meld");
+        var review = SnapshotReview.tool(DiffTool.MELD);
 
         assertEquals(review, review);
         assertNotEquals(review, "meld");
         assertNotEquals(review, SnapshotReview.off());
-        assertNotEquals(review, SnapshotReview.tool("idea"));
-    }
-
-    @Test
-    void internalToolPreferenceRejectsInvalidStates() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new ToolPreference(ToolPreference.Kind.SINGLE, java.util.List.of("meld"), "template"));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new ToolPreference(ToolPreference.Kind.CUSTOM, java.util.List.of(), "   "));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new ToolPreference(ToolPreference.Kind.ORDER, java.util.List.of(), null));
+        assertNotEquals(review, SnapshotReview.tool(DiffTool.IDEA));
     }
 }

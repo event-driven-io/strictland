@@ -10,7 +10,7 @@ final class SnapshotReviewResolver {
 
     static SnapshotReview resolve(@Nullable SnapshotReview perSpec) {
         return resolve(
-                SnapshotReviewProperties.fromPropertiesAndEnv(System.getProperties(), System.getenv()),
+                SnapshotReviewProperties.fromProperties(System.getProperties()),
                 perSpec,
                 Strictland.snapshotReview(),
                 SnapshotReviewProperties.fromClasspath());

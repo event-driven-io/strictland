@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import org.jspecify.annotations.Nullable;
@@ -13,8 +12,6 @@ final class SnapshotReviewProperties {
 
     static final String MODE_KEY = "strictland.review.mode";
     static final String TOOL_KEY = "strictland.review.tool";
-    static final String TOOL_ORDER_KEY = "strictland.review.toolOrder";
-    static final String TOOL_ORDER_ENV = "STRICTLAND_REVIEW_TOOL_ORDER";
 
     private static final String DEFAULT_RESOURCE = "strictland.properties";
 
@@ -43,43 +40,19 @@ final class SnapshotReviewProperties {
     }
 
     static Optional<SnapshotReview> fromProperties(Properties props) {
-        return fromPropertiesAndEnv(props, Map.of());
-    }
-
-    static Optional<SnapshotReview> fromPropertiesAndEnv(Properties props, Map<String, String> env) {
         var mode = props.getProperty(MODE_KEY);
         var tool = props.getProperty(TOOL_KEY);
-        var order = props.getProperty(TOOL_ORDER_KEY);
-        var envOrder = env.get(TOOL_ORDER_ENV);
-        if (mode == null && tool == null && order == null && (envOrder == null || envOrder.isBlank())) {
+        if (mode == null && (tool == null || tool.isBlank())) {
             return Optional.empty();
         }
         var review = SnapshotReview.auto();
         if (mode != null) {
             review = review.withMode(parseMode(mode));
         }
-        var preference = preference(tool, order, envOrder);
-        if (preference != null) {
-            review = review.withToolPreference(preference);
+        if (tool != null && !tool.isBlank()) {
+            review = review.withToolPreference(DiffTools.fromToolSetting(tool));
         }
         return Optional.of(review);
-    }
-
-    private static @Nullable ToolPreference preference(
-            @Nullable String tool, @Nullable String order, @Nullable String envOrder) {
-        if (tool != null && !tool.isBlank()) {
-            return DiffTools.fromToolSetting(tool);
-        }
-        if (order != null && !order.isBlank()) {
-            return ToolPreference.order(DiffTools.parseOrder(order));
-        }
-        if (envOrder == null) {
-            return null;
-        }
-        if (envOrder.isBlank()) {
-            return null;
-        }
-        return ToolPreference.order(DiffTools.parseOrder(envOrder));
     }
 
     private static ReviewMode parseMode(String value) {
