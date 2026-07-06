@@ -116,12 +116,12 @@ The snapshot then records the shape your mapper actually produces, snake_case ke
 {"shipment_id":"00000000-0000-0000-0000-000000000001","recipient_name":"Alice Smith","scheduled_at":"2024-01-01T12:00:00Z"}
 ```
 
-A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. Every check already uses a default one, named after the message and kept next to your test. You reach for `Snapshot` only to point at a different file, by message-type name when the snapshot is named after a logical type rather than a Java class, by class, or by path:
+A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. Every check already uses a default one, named after the message and kept next to your test. You reach for `MessageSnapshot` only to point at a different file, by message-type name when the snapshot is named after a logical type rather than a Java class, by class, or by path:
 
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new OrderInitiated(orderId, null, initiatedAt))
-    .whenSerialized(Snapshot.ofTypeNamed("OrderInitiated_NullPromotion"))
+    .whenSerializedAs(MessageSnapshot.ofTypeNamed("OrderInitiated_NullPromotion"))
     .thenContractIsUnchanged();
 ```
 
@@ -136,7 +136,7 @@ When a snapshot check finds the message no longer matches its approved baseline,
 **The failure message carries the diff.** Every drift writes the new payload to a `.snap.received` file next to the approved one and fails with a unified diff of what moved, so a CI log explains itself with no extra tooling:
 
 ```
-Snapshot drift: .../OrderPlaced.1.default.snap.approved.json differs from the approved snapshot.
+MessageSnapshot drift: .../OrderPlaced.1.default.snap.approved.json differs from the approved snapshot.
 
 Text content differs (- approved, + received):
   1 | {"id":1,"customer":"Alice"}
@@ -208,7 +208,7 @@ You can pin a message so its type can't change by accident, the kind of field th
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new InvoiceIssued(invoiceId, new BigDecimal("99.99")))
-    .whenSerialized(Snapshot.ofTypeNamed("InvoiceIssuedEvent"))
+    .whenSerializedAs(MessageSnapshot.ofTypeNamed("InvoiceIssuedEvent"))
     .thenContractIsUnchanged();
 ```
 
@@ -238,7 +238,7 @@ Read a snapshot you saved from an old version with today's type, to prove the cu
 
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
-    .given(Snapshot.of(CustomerRegisteredV1.class))
+    .given(MessageSnapshot.of(CustomerRegisteredV1.class))
     .whenDeserializedAs(CustomerRegisteredV2.class)
     .thenBackwardCompatible(event -> assertNull(event.referralCode()));
 ```
