@@ -129,78 +129,6 @@ You can also define your own serializer, if you're using unsupported (yet?) form
 - [CsvMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializer.java) and its [tests](src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializerTests.java) or,
 - [SimpleBinaryMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializer.java) and its [tests](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializerTests.java).
 
-## Reviewing a drift
-
-When a snapshot check finds the message no longer matches its approved baseline, the failure is meant to be actionable, not a chore.
-
-**The failure message carries the diff.** Every drift writes the new payload to a `.snap.received` file next to the approved one and fails with a unified diff of what moved, so a CI log explains itself with no extra tooling:
-
-```
-MessageSnapshot drift: .../OrderPlaced.1.default.snap.approved.json differs from the approved snapshot.
-
-Text content differs (- approved, + received):
-  1 | {"id":1,"customer":"Alice"}
-- 2 | {"total":10}
-+ 2 | {"total":12}
-
-received: .../OrderPlaced.1.default.snap.received.json
-approved: .../OrderPlaced.1.default.snap.approved.json
-
-To accept this change, re-run with -Dstrictland.review.mode=approve, or save the received payload over the approved file in the diff tool.
-```
-
-A binary serializer falls back to a byte-length and hex summary instead of a line diff.
-
-**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a resolved diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI, a headless JVM, or Linux without `DISPLAY`/`WAYLAND_DISPLAY`, nothing launches - the inline diff stands alone.
-
-Auto mode follows the diff tool you already told git about. When `git config diff.tool` is set, it opens `git difftool --no-index`, so the drift shows up in the same tool you use for every other diff, with no Strictland-specific setup. When git has no configured diff tool, it falls back to the first installed tool from the built-in roster (VS Code, IntelliJ IDEA, Meld, Beyond Compare, KDiff3, P4Merge, WinMerge).
-
-**Choosing the diff tool.** You're never stuck with auto selection. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto selection. If that single tool is unavailable, Strictland keeps the inline diff and does not silently launch a different GUI tool:
-
-```java
-MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotReview.tool(DiffTool.MELD)))
-    .given(new OrderPlaced(orderId, "Alice", placedAt))
-    .whenSerialized()
-    .thenContractIsUnchanged();
-```
-
-**Accepting a change you made on purpose.** Re-run the tests with the review mode set to `approve`, and each drift re-baselines its snapshot instead of failing - the Jest `-u` / `cargo insta accept` model:
-
-```shell
-cd src/jvm
-./gradlew test -Dstrictland.review.mode=approve
-```
-
-The `-D` property re-baselines whatever those tests touch and then you commit the updated `.snap.approved` files alongside the code. You can also set the mode in code for one spec (`SnapshotReview.approve()`), globally for a suite (`Strictland.defaults().snapshotReview(SnapshotReview.approve())`), or in `strictland.properties`. To re-baseline everything already written without re-running the suite, run the sweep task (below).
-
-### Settings
-
-Review settings work in a `strictland.properties` file on the classpath or as `-D` system properties on a single run.
-
-| Setting | Values | Meaning |
-| --- | --- | --- |
-| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: inline diff + launch a tool locally. `off`: inline diff only, never launch. `approve`: re-baseline on drift instead of failing. |
-| `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The single diff tool to launch, overriding auto selection without fallback to another GUI tool. |
-| `strictland.review.root` | a path (default `src/test/resources/contract-registry`) | The registry root the `SnapshotApprove` sweep walks. |
-
-Resolution, highest priority first: runtime `-Dstrictland.review.*` properties, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
-
-### Re-baselining in bulk
-
-[`SnapshotApprove`](./src/jvm/src/main/java/io/eventdriven/strictland/SnapshotApprove.java) promotes every `.snap.received` file over its approved sibling as a filesystem sweep, with no test run. Wire it into your build once. This repository ships the Gradle task, so `./gradlew approveSnapshots` works here:
-
-```kotlin
-// build.gradle.kts
-tasks.register<JavaExec>("approveSnapshots") {
-    mainClass = "io.eventdriven.strictland.SnapshotApprove"
-    classpath = sourceSets.test.get().runtimeClasspath
-}
-```
-
-```xml
-<!-- Maven: mvn exec:java -Dexec.mainClass=io.eventdriven.strictland.SnapshotApprove -Dexec.classpathScope=test -->
-```
-
 ## Examples
 
 You can pin a message so its type can't change by accident, the kind of field that's invisible in the Java type but breaks deserialization the moment it's renamed:
@@ -244,6 +172,117 @@ MessageContract.specification(Json.Jackson.of(yourObjectMapper))
 ```
 
 You'll find these and more in the test suite, [`SerializationContractTests`](./src/jvm/src/test/java/io/eventdriven/strictland/SerializationContractTests.java), [`BackwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/BackwardCompatibilityTests.java), and [`ForwardCompatibilityTests`](./src/jvm/src/test/java/io/eventdriven/strictland/ForwardCompatibilityTests.java), each written as a worked example of the cases above.
+
+## Reviewing a drift
+
+When a snapshot check finds the message no longer matches its approved baseline, the failure is meant to be actionable, not a chore.
+
+**The failure message carries the diff.** Every drift writes the new payload to a `.snap.received` file next to the approved one and fails with a unified diff of what moved, so a CI log explains itself with no extra tooling:
+
+```
+MessageSnapshot drift: .../OrderPlaced.1.default.snap.approved.json differs from the approved snapshot.
+
+Text content differs (- approved, + received):
+  1 | {"id":1,"customer":"Alice"}
+- 2 | {"total":10}
++ 2 | {"total":12}
+
+received: .../OrderPlaced.1.default.snap.received.json
+approved: .../OrderPlaced.1.default.snap.approved.json
+
+To accept this change, re-run with -Dstrictland.review.mode=approve, or save the received payload over the approved file in the diff tool.
+```
+
+A binary serializer falls back to a byte-length and hex summary instead of a line diff.
+
+**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a resolved diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI, a headless JVM, or Linux without `DISPLAY`/`WAYLAND_DISPLAY`, nothing launches - the inline diff stands alone.
+
+Auto mode follows the diff tool you already told git about. When `git config diff.tool` is set, it opens `git difftool --no-index`, so the drift shows up in the same tool you use for every other diff, with no Strictland-specific setup. When git has no configured diff tool, it falls back to the first installed tool from the built-in roster (VS Code, IntelliJ IDEA, Meld, Beyond Compare, KDiff3, P4Merge, WinMerge).
+
+**Choosing the diff tool.** You're never stuck with auto selection. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto selection. If that single tool is unavailable, Strictland keeps the inline diff and does not silently launch a different GUI tool:
+
+```java
+MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotReview.tool(DiffTool.MELD)))
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerialized()
+    .thenContractIsUnchanged();
+```
+
+**Accepting a change you made on purpose.** Re-run the tests with the review mode set to `approve`, and each drift re-baselines its snapshot instead of failing - the Jest `-u` / `cargo insta accept` model:
+
+```shell
+cd src/jvm
+./gradlew test -Dstrictland.review.mode=approve
+```
+
+The `-D` property re-baselines whatever those tests touch and then you commit the updated `.snap.approved` files alongside the code. You can also set the mode in code for one spec (`SnapshotReview.approve()`), globally for a suite (`Strictland.defaults().snapshotReview(SnapshotReview.approve())`), or in `strictland.properties`.
+
+**Replacing approved snapshots with the latest output.** If the contract has not been released yet, or you have reviewed the drift and want the current output to become the new baseline, [`SnapshotApprove`](./src/jvm/src/main/java/io/eventdriven/strictland/SnapshotApprove.java) replaces each `.snap.approved` file with its matching `.snap.received` file. It does this as a filesystem sweep, so you can accept the latest state without rerunning the test suite. Wire it into your build once. This repository ships the Gradle task, so `./gradlew approveSnapshots` works here:
+
+```kotlin
+// build.gradle.kts
+tasks.register<JavaExec>("approveSnapshots") {
+    mainClass = "io.eventdriven.strictland.SnapshotApprove"
+    classpath = sourceSets.test.get().runtimeClasspath
+}
+```
+
+```xml
+<!-- Maven: mvn exec:java -Dexec.mainClass=io.eventdriven.strictland.SnapshotApprove -Dexec.classpathScope=test -->
+```
+
+By default, the sweep walks `src/test/resources/contract-registry`. To sweep another directory, pass it as the first argument or set `-Dstrictland.review.root=...` for that run.
+
+**Review settings.** The default review flow is usually enough: failed tests show the inline diff, local runs open a diff tool when one is available, and CI keeps to the text output. Configure it only when you want to turn tool launching off, choose a specific tool, or approve drift during an intentional update.
+
+| Setting | Values | Meaning |
+| --- | --- | --- |
+| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: inline diff + launch a tool locally. `off`: inline diff only, never launch. `approve`: re-baseline on drift instead of failing. |
+| `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The single diff tool to launch, overriding auto selection without fallback to another GUI tool. |
+
+Review settings work in a `strictland.properties` file on the classpath or as `-D` system properties on a single run. Resolution, highest priority first: runtime `-Dstrictland.review.*` properties, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
+
+## Configuration
+
+Strictland can be used without project-specific configuration. By default, approved snapshots are stored in a committed contract registry under `src/test/resources/contract-registry`. Configure the layout only when the repository needs a different root directory or folder name.
+
+### The contract registry
+
+The contract registry is where Strictland keeps the serialized message shapes you have approved. Treat it like test fixtures: review it, commit it, and change it only when the message contract intentionally changes.
+
+By default, the registry lives under `src/test/resources/contract-registry`. It is grouped by message contract, so several contracts produce a tree like this:
+
+```text
+src/test/resources/
+  contract-registry/
+    io/eventdriven/orders/OrderPlaced/
+      OrderPlaced.1.default.snap.approved.json
+      OrderPlaced.1.WithCoupon.snap.approved.json
+    io/eventdriven/invoices/InvoiceIssued/
+      InvoiceIssued.1.default.snap.approved.json
+    io/eventdriven/shipping/ShipmentScheduled/
+      ShipmentScheduled.1.default.snap.approved.json
+```
+
+That structure keeps contract files out of source packages, keeps each message contract in one place, and gives compatibility checks a stable location for older shapes. The approved files are the baselines your tests compare against. When current code writes a different shape, Strictland puts the new payload next to it as `.snap.received` so you can inspect the change before accepting it.
+
+The file name carries the message name, version marker, variant label, snapshot state, and serializer extension:
+
+```text
+OrderPlaced.1.default.snap.approved.json
+OrderPlaced.1.default.snap.received.json
+```
+
+### Changing where snapshots live
+
+Change these settings when the repository layout needs a different root or a different wrapper folder name.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `strictland.layout.rootPath` | `src/test/resources` | The directory the snapshot tree is rooted at. |
+| `strictland.layout.wrapperFolder` | `contract-registry` | The folder under the root that holds the per-message snapshot folders. |
+
+Snapshot location settings work in a `strictland.properties` file on the classpath, or in code with `snapshotLayout(...)`. Resolution, highest priority first: a per-spec `snapshotLayout(...)`, then the global `Strictland.defaults().snapshotLayout(...)`, then `strictland.properties`, then the built-in registry layout.
 
 ## Is it production ready?
 
