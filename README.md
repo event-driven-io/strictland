@@ -1,6 +1,6 @@
 [![](https://dcbadge.vercel.app/api/server/fTpqUTMmVa?style=flat)](https://discord.gg/fTpqUTMmVa)[![Github Sponsors](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&link=https://github.com/sponsors/event-driven-io)](https://github.com/sponsors/event-driven-io) [![blog](https://img.shields.io/badge/blog-event--driven.io-brightgreen)](https://event-driven.io/?utm_source=event_sourcing_nodejs) [![blog](https://img.shields.io/badge/%F0%9F%9A%80-Architecture%20Weekly-important)](https://www.architecture-weekly.com/?utm_source=event_sourcing_nodejs) [<img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" height="20px" />](https://www.linkedin.com/in/oskardudycz/) 
 
-# Strictland - contract testing for your messages compatibility
+# Strictland - contract testing for message compatibility
 
 ![](./assets/logo.png)
 
@@ -44,7 +44,7 @@ Maven:
 </dependency>
 ```
 
-Then add new test with:
+Then add a new test:
 
 ```java
 MessageContract.specification(Json.Jackson.defaults())
@@ -53,13 +53,13 @@ MessageContract.specification(Json.Jackson.defaults())
     .thenContractIsUnchanged();
 ```
 
-The first run serializes the message and writes the result to an approved file named after the class, [`OrderPlaced.approved.txt`](./src/jvm/src/test/java/io/eventdriven/strictland/OrderPlaced.approved.txt), saved next to the test:
+The first run serializes the message and writes the result to a file in your repository:
 
 ```json
 {"orderId":"00000000-0000-0000-0000-000000000001","customer":"Alice","placedAt":"2024-01-01T12:00:00Z"}
 ```
 
-You review that file and commit it. From then on the check compares against it and fails if the format drifts, so a later change to the format shows up in the same pull request as the code that caused it.
+Review that file and commit it with the test. From then on, Strictland treats the committed file as the approved snapshot: the expected message format for later runs. By default, Strictland keeps those snapshots under `src/test/resources/contract-registry`, grouped by message contract. If the serialized format changes, the test fails and the diff appears in the same pull request as the code that caused it.
 
 ## Why Strictland
 
@@ -72,7 +72,7 @@ If you've used consumer-driven contract testing, the usual shape is to run both 
 **Because it's only serialization and a file, the setup stays small:**
 
 - **The checks are ordinary unit tests in your existing suite**, so there's no broker, schema registry, or mock service to run, and nothing to start in Docker.
-- **The contract is the serialized JSON committed next to the test**, so a format change appears in a normal diff and is reviewed like any other code.
+- **The contract is the serialized JSON committed to the same repository as your tests**, so a format change appears in a normal diff and is reviewed like any other code.
 - **You write the check beside the message it covers** and get the answer in the same **fast feedback loop** as the rest of your tests.
 - **The check uses your application's own serializer**, so the snapshot is the exact bytes you ship.
 
@@ -84,10 +84,9 @@ A message under contract goes through one of two checks.
 
 A **snapshot check** confirms the message still serializes exactly as it did when you last approved it, so nothing reading it downstream breaks. A failure means the format changed: a field renamed, a date format switched, a value newly dropped or added.
 
-A **compatibility check** is for the version you evolve on purpose, so changing a message doesn't strand the ones already in your store or on the wire. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote, the events you stored last year or a request already sent. Use `thenForwardCompatible()` to confirm a reader that hasn't upgraded yet still reads a message the newer version writes, so you can ship the new shape before everyone reading it has caught up. Both compare the fields the two versions share and fail if a required one is missing or a shared value changed.
+A **compatibility check** is for intentional message evolution. It protects messages that already exist: stored events, queued messages, sent requests, or responses another service may still read. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote. Use `thenForwardCompatible()` to confirm an older reader still reads a message the newer version writes. Both compare the fields the two versions share and fail if a required one is missing or a shared value changed.
 
-
-Strictland provides an implementation of a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read. You can use it with `Json.Jackson.defaults()`:
+Strictland includes a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read. You can use it with `Json.Jackson.defaults()`:
 
 ```java
 MessageContract.specification(Json.Jackson.defaults())
@@ -96,42 +95,112 @@ MessageContract.specification(Json.Jackson.defaults())
     .thenContractIsUnchanged();
 ```
 
-
-Yet, we encourage to use your application's object mapper. Pass the same `ObjectMapper` it uses, so the test checks the exact bytes you ship, snake_case naming, a custom date format, `NON_NULL` inclusion, and so on. Against any other serializer you'd be pinning a shape your consumers never see:
+In production code, prefer your application's object mapper. Pass the same `ObjectMapper` it uses, so the test checks the exact bytes you ship: field naming, date format, null handling, and other serialization rules. Against any other serializer, you would be pinning a shape your consumers never see:
 
 ```java
-var snakeCase = JsonMapper.builder()
-    .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-    .build();
-
-MessageContract.specification(Json.Jackson.of(snakeCase))
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .given(new ShipmentScheduled(shipmentId, "Alice Smith", scheduledAt))
     .whenSerialized()
     .thenContractIsUnchanged();
 ```
 
-The snapshot then records the shape your mapper actually produces, snake_case keys and all:
+For instance, if your mapper writes snake_case fields, the snapshot records that exact shape:
 
 ```json
 {"shipment_id":"00000000-0000-0000-0000-000000000001","recipient_name":"Alice Smith","scheduled_at":"2024-01-01T12:00:00Z"}
 ```
 
-A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. Every check already uses a default one, named after the message and kept next to your test. You reach for `MessageSnapshot` only to point at a different file, by message-type name when the snapshot is named after a logical type rather than a Java class, by class, or by path:
+A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. If you do not choose a snapshot name, Strictland names it after the message class. Use `MessageSnapshot` when you need to point at another snapshot explicitly: by message-type name when the snapshot is named after a logical type rather than a Java class, by class, or by path.
+
+## The contract registry
+
+Strictland keeps approved snapshots as files in the same Git repository as your tests. There is no external broker or cloud registry to run. By default, those files live under `src/test/resources/contract-registry`.
+
+The registry groups snapshots by message type. Several contracts produce a tree like this:
+
+```text
+src/test/resources/
+  contract-registry/
+    com/acme/orders/OrderPlaced/
+      OrderPlaced.1.default.snap.approved.json
+      OrderPlaced.2.default.snap.approved.json
+    com/acme/orders/OrderInitiated/
+      OrderInitiated.1.WithPromotion.snap.approved.json
+      OrderInitiated.1.NoPromotion.snap.approved.json
+    InvoiceIssuedEvent/
+      InvoiceIssuedEvent.1.default.snap.approved.json
+```
+
+That structure keeps contract files out of source packages without scattering them across the project. Each message contract has one place to look, and compatibility checks have a stable location for older shapes. The approved files are the baselines your tests compare against. When current code writes a different shape, Strictland puts the new payload next to it as `.snap.received` so you can inspect the change before accepting it.
+
+The file name carries the message name, contract version, example label, snapshot state, and serializer extension:
+
+```text
+OrderPlaced.1.default.snap.approved.json
+OrderPlaced.1.default.snap.received.json
+```
+
+## Versions and variants
+
+Version and variant answer different questions. A version identifies which revision of the message format you are protecting. A variant identifies which example of that version you are protecting.
+
+Use a version when the same Java class represents more than one version of the message format. For example, `OrderPlaced` may have version `1` in production, then the class evolves and starts writing version `2`. Version `1` messages can still exist in storage, queues, or traffic, so keep their approved snapshot separate from version `2`:
 
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
-    .given(new OrderInitiated(orderId, null, initiatedAt))
-    .whenSerializedAs(MessageSnapshot.ofTypeNamed("OrderInitiated_NullPromotion"))
+    .given(new OrderPlaced(orderId, "Alice", placedAt), "2")
+    .whenSerialized()
     .thenContractIsUnchanged();
 ```
 
-You can also define your own serializer, if you're using unsupported (yet?) format or serializer type. See basic examples in:
-- [CsvMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializer.java) and its [tests](src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializerTests.java) or,
-- [SimpleBinaryMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializer.java) and its [tests](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializerTests.java).
+Then read that version explicitly in a compatibility check:
 
-## Examples
+```java
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+    .given(MessageSnapshot.of(OrderPlaced.class).version("2"))
+    .whenDeserializedAs(OrderPlaced.class)
+    .thenBackwardCompatible();
+```
 
-You can pin a message so its type can't change by accident, the kind of field that's invisible in the Java type but breaks deserialization the moment it's renamed:
+One version of a message can still have more than one important shape. For example, keep one snapshot with optional data present and another with only the required data, so compatibility checks cover both cases. In the API, those examples are called variants:
+
+```java
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+    .given(new OrderInitiated(orderId, "Alice", "WELCOME"))
+    .whenSerializedAs(SnapshotVariant.named("WithPromotion"))
+    .thenContractIsUnchanged();
+
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+    .given(new OrderInitiated(orderId, "Alice", null))
+    .whenSerializedAs(SnapshotVariant.named("NoPromotion"))
+    .thenContractIsUnchanged();
+```
+
+When a compatibility check reads `MessageSnapshot.of(OrderInitiated.class)` without a variant, Strictland replays all approved variants for that message type and version. Add `.variant("WithPromotion")` when the check should read only one example.
+
+```java
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+    .given(MessageSnapshot.of(OrderInitiated.class).variant("NoPromotion"))
+    .whenDeserializedAs(OrderInitiated.class)
+    .thenBackwardCompatible();
+```
+
+Versions and variants can be combined. That lets one message type keep several examples for version `1` and several examples for version `2`, then read the exact case a compatibility check is meant to protect:
+
+```java
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+    .given(MessageSnapshot.of(OrderInitiated.class)
+        .version("2")
+        .variant("NoPromotion"))
+    .whenDeserializedAs(OrderInitiated.class)
+    .thenBackwardCompatible();
+```
+
+## Common checks
+
+### Catch accidental format changes
+
+Use a snapshot check when the serialized message should stay exactly the same unless you approve the change. This is useful for fields that are easy to change in code but visible to other systems, such as a type discriminator:
 
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
@@ -144,7 +213,9 @@ MessageContract.specification(Json.Jackson.of(yourObjectMapper))
 {"type":"InvoiceIssued","invoiceId":"00000000-0000-0000-0000-000000000001","amount":99.99}
 ```
 
-Confirm a newer type still reads what an older one wrote (backward compatible):
+### Check backward compatibility
+
+Use a backward compatibility check before moving readers to a newer message type. It confirms the newer type can still read messages written by the older one:
 
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
@@ -153,7 +224,9 @@ MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .thenBackwardCompatible(order -> assertNull(order.couponCode()));
 ```
 
-Confirm a consumer that hasn't upgraded yet still can deserialize what a newer type writes (forward compatible):
+### Check forward compatibility
+
+Use a forward compatibility check when newer code may write a message before every reader has upgraded. It confirms an older type can still read the newer message:
 
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
@@ -162,7 +235,9 @@ MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .thenForwardCompatible();
 ```
 
-Read a snapshot you saved from an old version with today's type, to prove the current code still deserializes what production stored last year:
+### Read an approved older snapshot
+
+Use `MessageSnapshot` when the old shape is already saved in the contract registry. This checks current code against the same bytes that were previously approved, instead of rebuilding the old message in the test:
 
 ```java
 MessageContract.specification(Json.Jackson.of(yourObjectMapper))
@@ -175,7 +250,7 @@ You'll find these and more in the test suite, [`SerializationContractTests`](./s
 
 ## Reviewing a drift
 
-When a snapshot check finds the message no longer matches its approved baseline, the failure is meant to be actionable, not a chore.
+When a snapshot check finds the message no longer matches its approved baseline, the failure is meant to show what changed and how to review it.
 
 **The failure message carries the diff.** Every drift writes the new payload to a `.snap.received` file next to the approved one and fails with a unified diff of what moved, so a CI log explains itself with no extra tooling:
 
@@ -195,11 +270,11 @@ To accept this change, re-run with -Dstrictland.review.mode=approve, or save the
 
 A binary serializer falls back to a byte-length and hex summary instead of a line diff.
 
-**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a resolved diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI, a headless JVM, or Linux without `DISPLAY`/`WAYLAND_DISPLAY`, nothing launches - the inline diff stands alone.
+**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI, a headless JVM, or Linux without `DISPLAY`/`WAYLAND_DISPLAY`, nothing launches - the inline diff stands alone.
 
 Auto mode follows the diff tool you already told git about. When `git config diff.tool` is set, it opens `git difftool --no-index`, so the drift shows up in the same tool you use for every other diff, with no Strictland-specific setup. When git has no configured diff tool, it falls back to the first installed tool from the built-in roster (VS Code, IntelliJ IDEA, Meld, Beyond Compare, KDiff3, P4Merge, WinMerge).
 
-**Choosing the diff tool.** You're never stuck with auto selection. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto selection. If that single tool is unavailable, Strictland keeps the inline diff and does not silently launch a different GUI tool:
+**Choosing the diff tool.** Auto selection is only the default. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto selection. If that single tool is unavailable, Strictland keeps the inline diff and does not silently launch a different GUI tool:
 
 ```java
 MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotReview.tool(DiffTool.MELD)))
@@ -208,14 +283,14 @@ MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotRev
     .thenContractIsUnchanged();
 ```
 
-**Accepting a change you made on purpose.** Re-run the tests with the review mode set to `approve`, and each drift re-baselines its snapshot instead of failing - the Jest `-u` / `cargo insta accept` model:
+**Accepting a change you made on purpose.** Re-run the tests with the review mode set to `approve`, and each drift updates its approved snapshot instead of failing - the Jest `-u` / `cargo insta accept` model:
 
 ```shell
 cd src/jvm
 ./gradlew test -Dstrictland.review.mode=approve
 ```
 
-The `-D` property re-baselines whatever those tests touch and then you commit the updated `.snap.approved` files alongside the code. You can also set the mode in code for one spec (`SnapshotReview.approve()`), globally for a suite (`Strictland.defaults().snapshotReview(SnapshotReview.approve())`), or in `strictland.properties`.
+The `-D` property updates the approved snapshots touched by that test run. You then commit the updated `.snap.approved` files alongside the code. You can also set the mode in code for one spec (`SnapshotReview.approve()`), globally for a suite (`Strictland.defaults().snapshotReview(SnapshotReview.approve())`), or in `strictland.properties`.
 
 **Replacing approved snapshots with the latest output.** If the contract has not been released yet, or you have reviewed the drift and want the current output to become the new baseline, [`SnapshotApprove`](./src/jvm/src/main/java/io/eventdriven/strictland/SnapshotApprove.java) replaces each `.snap.approved` file with its matching `.snap.received` file. It does this as a filesystem sweep, so you can accept the latest state without rerunning the test suite. Wire it into your build once. This repository ships the Gradle task, so `./gradlew approveSnapshots` works here:
 
@@ -233,56 +308,48 @@ tasks.register<JavaExec>("approveSnapshots") {
 
 By default, the sweep walks `src/test/resources/contract-registry`. To sweep another directory, pass it as the first argument or set `-Dstrictland.review.root=...` for that run.
 
-**Review settings.** The default review flow is usually enough: failed tests show the inline diff, local runs open a diff tool when one is available, and CI keeps to the text output. Configure it only when you want to turn tool launching off, choose a specific tool, or approve drift during an intentional update.
+**Review settings.** By default, failed tests show the inline diff, local runs open a diff tool when one is available, and CI keeps to the text output. Configure review only when you want to turn tool launching off, choose a specific tool, or approve drift during an intentional update.
 
 | Setting | Values | Meaning |
 | --- | --- | --- |
-| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: inline diff + launch a tool locally. `off`: inline diff only, never launch. `approve`: re-baseline on drift instead of failing. |
+| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: inline diff + launch a tool locally. `off`: inline diff only, never launch. `approve`: update the approved snapshot on drift instead of failing. |
 | `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The single diff tool to launch, overriding auto selection without fallback to another GUI tool. |
 
-Review settings work in a `strictland.properties` file on the classpath or as `-D` system properties on a single run. Resolution, highest priority first: runtime `-Dstrictland.review.*` properties, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
+For project-wide review settings, add `strictland.properties` to your test resources. For one run, pass `-D` system properties. Strictland resolves review settings in this order: runtime `-Dstrictland.review.*` properties, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
 
 ## Configuration
 
-Strictland can be used without project-specific configuration. By default, approved snapshots are stored in a committed contract registry under `src/test/resources/contract-registry`. Configure the layout only when the repository needs a different root directory or folder name.
-
-### The contract registry
-
-The contract registry is where Strictland keeps the serialized message shapes you have approved. Treat it like test fixtures: review it, commit it, and change it only when the message contract intentionally changes.
-
-By default, the registry lives under `src/test/resources/contract-registry`. It is grouped by message contract, so several contracts produce a tree like this:
-
-```text
-src/test/resources/
-  contract-registry/
-    io/eventdriven/orders/OrderPlaced/
-      OrderPlaced.1.default.snap.approved.json
-      OrderPlaced.1.WithCoupon.snap.approved.json
-    io/eventdriven/invoices/InvoiceIssued/
-      InvoiceIssued.1.default.snap.approved.json
-    io/eventdriven/shipping/ShipmentScheduled/
-      ShipmentScheduled.1.default.snap.approved.json
-```
-
-That structure keeps contract files out of source packages, keeps each message contract in one place, and gives compatibility checks a stable location for older shapes. The approved files are the baselines your tests compare against. When current code writes a different shape, Strictland puts the new payload next to it as `.snap.received` so you can inspect the change before accepting it.
-
-The file name carries the message name, version marker, variant label, snapshot state, and serializer extension:
-
-```text
-OrderPlaced.1.default.snap.approved.json
-OrderPlaced.1.default.snap.received.json
-```
-
-### Changing where snapshots live
-
-Change these settings when the repository layout needs a different root or a different wrapper folder name.
+Strictland can be used without project-specific configuration. Configure the snapshot location only when the repository needs a different root directory or wrapper folder name.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `strictland.layout.rootPath` | `src/test/resources` | The directory the snapshot tree is rooted at. |
 | `strictland.layout.wrapperFolder` | `contract-registry` | The folder under the root that holds the per-message snapshot folders. |
 
-Snapshot location settings work in a `strictland.properties` file on the classpath, or in code with `snapshotLayout(...)`. Resolution, highest priority first: a per-spec `snapshotLayout(...)`, then the global `Strictland.defaults().snapshotLayout(...)`, then `strictland.properties`, then the built-in registry layout.
+For project-wide snapshot location settings, add `strictland.properties` to your test resources, or set them in code with `snapshotLayout(...)`. Strictland resolves the layout in this order: a per-spec `snapshotLayout(...)`, then the global `Strictland.defaults().snapshotLayout(...)`, then `strictland.properties`, then the built-in registry layout.
+
+`Strictland.defaults()` is process-wide. It is useful in shared test setup when the whole suite should use the same review or layout settings. If a test changes it for one scenario, reset it in teardown with `Strictland.resetDefaults()` so another test does not inherit that setting by accident.
+
+The default message type mapper stores snapshots by the message class's fully-qualified name, which is why package names appear as folders in the registry. Use `messageTypeMapper(...)` when the contract should be named after another source of truth, such as the message type recorded by an event store or message bus.
+
+### Custom serializers
+
+Strictland provides Jackson support for JSON. If your messages use another format, implement `MessageSerializer` with the same serialization rules your application uses. Return the snapshot file extension without the leading dot:
+
+```java
+final class CsvMessageSerializer implements MessageSerializer {
+    @Override
+    public String fileExtension() {
+        return "csv";
+    }
+
+    // implement serialize(...) and deserialize(...) with the format your application uses
+}
+```
+
+See complete examples in:
+- [CsvMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializer.java) and its [tests](src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializerTests.java) or,
+- [SimpleBinaryMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializer.java) and its [tests](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializerTests.java).
 
 ## Is it production ready?
 
