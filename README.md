@@ -30,7 +30,7 @@ Strictland is on Maven Central as `io.event-driven:strictland`. It runs on JDK 2
 Gradle (Kotlin DSL):
 
 ```kotlin
-testImplementation("io.event-driven:strictland:0.3.0")
+testImplementation("io.event-driven:strictland:0.4.0")
 ```
 
 Maven:
@@ -39,7 +39,7 @@ Maven:
 <dependency>
   <groupId>io.event-driven</groupId>
   <artifactId>strictland</artifactId>
-  <version>0.3.0</version>
+  <version>0.4.0</version>
   <scope>test</scope>
 </dependency>
 ```

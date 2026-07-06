@@ -19,7 +19,7 @@ plugins {
 }
 
 group = "io.event-driven"
-version = providers.gradleProperty("version").getOrElse("0.3.0-SNAPSHOT")
+version = providers.gradleProperty("version").getOrElse("0.4.0-SNAPSHOT")
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(26) }
