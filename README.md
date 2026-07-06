@@ -133,6 +133,8 @@ src/test/resources/
 
 That structure keeps contract files out of source packages without scattering them across the project. Each message contract has one place to look, and compatibility checks have a stable location for older shapes. The approved files are the baselines your tests compare against. When current code writes a different shape, Strictland puts the new payload next to it as `.snap.received` so you can inspect the change before accepting it.
 
+By default, Strictland names a contract from the message class's fully-qualified name. A class such as `com.acme.orders.OrderPlaced` is stored under `com/acme/orders/OrderPlaced`. If you name a contract explicitly, for example with `MessageSnapshot.ofTypeNamed("InvoiceIssuedEvent")`, that logical name decides where the snapshot is stored.
+
 The file name carries the message name, contract version, example label, snapshot state, and serializer extension:
 
 ```text
@@ -320,29 +322,93 @@ tasks.register<JavaExec>("approveSnapshots") {
 
 By default, the sweep walks `src/test/resources/contract-registry`. To sweep another directory, pass it as the first argument or set `-Dstrictland.review.root=...` for that run.
 
-**Review settings.** By default, failed tests show the drift in the failure message, local runs open a diff tool when one is available, and CI stays with the failure message only. Configure review only when you want to turn tool launching off, choose a specific tool, or approve drift during an intentional update.
-
-| Setting | Values | Meaning |
-| --- | --- | --- |
-| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: failure message + launch a tool locally. `off`: failure message only, never launch. `approve`: update the approved snapshot on drift instead of failing. |
-| `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The single diff tool to launch, overriding auto selection without fallback to another GUI tool. |
-
-For project-wide review settings, add `strictland.properties` to your test resources. For one run, pass `-D` system properties. Strictland resolves review settings in this order: runtime `-Dstrictland.review.*` properties, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
-
 ## Configuration
 
-Strictland can be used without project-specific configuration. Configure the snapshot location only when the repository needs a different root directory or wrapper folder name.
+Strictland is meant to work without project-specific configuration. The defaults keep snapshots under `src/test/resources/contract-registry`, show a useful failure message when a snapshot drifts, open a local diff tool when one is available, and stay with the failure message on CI.
+
+Configure it only when the project needs a different registry location, a fixed review policy, or a specific diff tool.
+
+### Project configuration file
+
+For project-wide settings, add `strictland.properties` to your test resources:
+
+```text
+src/test/resources/strictland.properties
+```
+
+Only include the settings you want to change. For example:
+
+```properties
+strictland.layout.wrapperFolder=message-contracts
+strictland.review.mode=off
+strictland.review.tool=nvim -d {approved} {received}
+```
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `strictland.layout.rootPath` | `src/test/resources` | The directory the snapshot tree is rooted at. |
 | `strictland.layout.wrapperFolder` | `contract-registry` | The folder under the root that holds the per-message snapshot folders. |
+| `strictland.review.mode` | `auto` | `auto`: show the failure message and open a diff tool locally. `off`: show the failure message only. `approve`: replace the approved snapshot when a drift is found. |
+| `strictland.review.tool` | auto-selected | A registered tool name (`vscode`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`) or a custom command with `{approved}` and `{received}` placeholders. |
 
-For project-wide snapshot location settings, add `strictland.properties` to your test resources, or set them in code with `snapshotLayout(...)`. Strictland resolves the layout in this order: a per-spec `snapshotLayout(...)`, then the global `Strictland.defaults().snapshotLayout(...)`, then `strictland.properties`, then the built-in registry layout.
+Review settings can also be passed for one run:
 
-`Strictland.defaults()` is process-wide. It is useful in shared test setup when the whole suite should use the same review or layout settings. If a test changes it for one scenario, reset it in teardown with `Strictland.resetDefaults()` so another test does not inherit that setting by accident.
+```shell
+./gradlew test -Dstrictland.review.mode=approve
+```
 
-The default message type mapper stores snapshots by the message class's fully-qualified name, which is why package names appear as folders in the registry. Use `messageTypeMapper(...)` when the contract should be named after another source of truth, such as the message type recorded by an event store or message bus.
+### Per-spec configuration
+
+Use code configuration when the setting belongs to a test, not to the whole project. A per-spec option affects only that `MessageContract`:
+
+```java
+var options = Json.Jackson.of(yourObjectMapper)
+    .snapshotLayout(SnapshotLayout.registry().wrapperFolder("message-contracts"))
+    .snapshotReview(SnapshotReview.off());
+
+MessageContract.specification(options)
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerialized()
+    .thenContractIsUnchanged();
+```
+
+### Global code defaults
+
+Use `Strictland.defaults()` when the suite should share the same Strictland settings but you prefer to keep them in test setup code instead of `strictland.properties`. This is useful when the setting is assembled in code, or when a test fixture needs to control the defaults for the scope of that suite.
+
+Each setting is independent. If you set only `snapshotReview(...)`, the layout still falls through to `strictland.properties` or the built-in registry layout:
+
+```java
+@BeforeAll
+static void configureStrictland() {
+    Strictland.defaults()
+        .snapshotReview(SnapshotReview.off());
+}
+
+@AfterAll
+static void resetStrictland() {
+    Strictland.resetDefaults();
+}
+```
+
+You can set layout the same way when the whole suite should use a different registry folder:
+
+```java
+@BeforeAll
+static void configureStrictland() {
+    Strictland.defaults()
+        .snapshotLayout(SnapshotLayout.registry().wrapperFolder("message-contracts"));
+}
+```
+
+`Strictland.defaults()` is process-wide. Reset it in teardown when a test suite changes it, so another suite does not inherit that setting by accident.
+
+The lookup order is:
+
+| Setting type | Lookup order |
+| --- | --- |
+| Layout | per-spec `snapshotLayout(...)`, then `Strictland.defaults().snapshotLayout(...)`, then `strictland.properties`, then the built-in registry layout. |
+| Review | runtime `-Dstrictland.review.*` properties, then per-spec `snapshotReview(...)`, then `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then `auto`. |
 
 ### Custom serializers
 
@@ -362,6 +428,84 @@ final class CsvMessageSerializer implements MessageSerializer {
 See complete examples in:
 - [CsvMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializer.java) and its [tests](src/jvm/src/test/java/io/eventdriven/strictland/CsvMessageSerializerTests.java) or,
 - [SimpleBinaryMessageSerializer](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializer.java) and its [tests](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializerTests.java).
+
+### Message type names
+
+Use `messageTypeMapper(...)` when the contract name should come from your system rather than from the Java class. This is common when an event store or message bus records a logical message type, and you want the snapshot registry to use the same name reviewers already see in production.
+
+Implement `MessageTypeMapper`. `name(...)` maps a Java class to the contract name used in the registry. If your mapper cannot resolve a stored name back to a Java class, `type(...)` can return `Optional.empty()`:
+
+```java
+final class RegisteredMessageTypes implements MessageTypeMapper {
+    private final Map<Class<?>, String> namesByClass = Map.of(
+        OrderPlaced.class, "orders.OrderPlaced",
+        OrderCancelled.class, "orders.OrderCancelled");
+
+    private final Map<String, Class<?>> classesByName = Map.of(
+        "orders.OrderPlaced", OrderPlaced.class,
+        "orders.OrderCancelled", OrderCancelled.class);
+
+    @Override
+    public MessageTypeName name(Class<?> type) {
+        return Optional.ofNullable(namesByClass.get(type))
+            .map(MessageTypeName::of)
+            .orElseGet(() -> MessageTypeName.of(type));
+    }
+
+    @Override
+    public Optional<Class<?>> type(String name) {
+        return Optional.ofNullable(classesByName.get(name));
+    }
+}
+
+var options = Json.Jackson.of(yourObjectMapper)
+    .messageTypeMapper(new RegisteredMessageTypes());
+```
+
+With that mapper, `OrderPlaced` snapshots are stored under `contract-registry/orders/OrderPlaced` even if the Java class lives in another package.
+
+### Custom snapshot storage
+
+Use `snapshotStorage(...)` only when snapshots should be read from and written to something other than Strictland's file registry. If you only want a different folder, use `snapshotLayout(...)` or `strictland.layout.*` settings instead.
+
+Implement `SnapshotStorage`. `store(...)` writes or compares a snapshot, `approve(...)` accepts a received payload, `read(...)` loads one approved snapshot, and `readAll(...)` loads a family of approved snapshots, for example all variants of one message version.
+
+```java
+final class MySnapshotStorage implements SnapshotStorage {
+    @Override
+    public SnapshotResult store(SnapshotLocation location, SnapshotData received) {
+        // write the first approved snapshot, return Unchanged when it matches,
+        // or write a received snapshot and return Drifted when it differs
+    }
+
+    @Override
+    public void approve(SnapshotLocation location, SnapshotData received) {
+        // replace the approved snapshot with the received payload
+    }
+
+    @Override
+    public SnapshotData read(SnapshotLocation location) {
+        // read one approved snapshot
+    }
+
+    @Override
+    public List<SnapshotData> readAll(SnapshotFilter filter) {
+        // read all approved snapshots matching this message type and version
+    }
+}
+```
+
+```java
+var options = SpecificationOptions.serializer(new CsvMessageSerializer())
+    .snapshotStorage(new MySnapshotStorage());
+
+MessageContract.specification(options)
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerialized()
+    .thenContractIsUnchanged();
+```
+
+See [Base64SnapshotStorage](./src/jvm/src/test/java/io/eventdriven/strictland/Base64SnapshotStorage.java) and its [tests](./src/jvm/src/test/java/io/eventdriven/strictland/SimpleBinaryMessageSerializerTests.java) for a complete custom storage example.
 
 ## Is it production ready?
 
