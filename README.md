@@ -252,7 +252,7 @@ You'll find these and more in the test suite, [`SerializationContractTests`](./s
 
 When a snapshot check finds the message no longer matches its approved baseline, the failure is meant to show what changed and how to review it.
 
-**The failure message carries the diff.** Every drift writes the new payload to a `.snap.received` file next to the approved one and fails with a unified diff of what moved, so a CI log explains itself with no extra tooling:
+**The failure message shows what changed.** Every drift writes the new payload to a `.snap.received` file next to the approved one and includes the approved and received paths in the failure. For text payloads, such as JSON or CSV, the failure also includes a line diff, so a CI log explains itself with no extra tooling:
 
 ```
 MessageSnapshot drift: .../OrderPlaced.1.default.snap.approved.json differs from the approved snapshot.
@@ -268,13 +268,13 @@ approved: .../OrderPlaced.1.default.snap.approved.json
 To accept this change, re-run with -Dstrictland.review.mode=approve, or save the received payload over the approved file in the diff tool.
 ```
 
-A binary serializer falls back to a byte-length and hex summary instead of a line diff.
+For payloads that cannot be shown as text, the failure uses the byte length and a short hex preview instead of a line diff.
 
-**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI, a headless JVM, or Linux without `DISPLAY`/`WAYLAND_DISPLAY`, nothing launches - the inline diff stands alone.
+**On your machine, a diff tool opens.** Locally, the same drift also opens the received payload next to the approved one in a diff tool, where you review it as you would any other change and save over the approved file to accept it. On CI, a headless JVM, or Linux without `DISPLAY`/`WAYLAND_DISPLAY`, nothing launches; the failure message is the review output.
 
 Auto mode follows the diff tool you already told git about. When `git config diff.tool` is set, it opens `git difftool --no-index`, so the drift shows up in the same tool you use for every other diff, with no Strictland-specific setup. When git has no configured diff tool, it falls back to the first installed tool from the built-in roster (VS Code, IntelliJ IDEA, Meld, Beyond Compare, KDiff3, P4Merge, WinMerge).
 
-**Choosing the diff tool.** Auto selection is only the default. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`) or a full `path {received} {approved}` template for a tool Strictland doesn't know. An explicitly chosen tool wins over auto selection. If that single tool is unavailable, Strictland keeps the inline diff and does not silently launch a different GUI tool:
+**Using a specific diff tool.** You usually do not need to configure this. Auto mode uses your git diff tool when one is configured, then looks for a known local tool. Set a tool only when a project or a test suite should always ask for the same one. In code, name a tool for a spec or globally; in configuration, set `strictland.review.tool` to a registered name (`vscode`, `idea`, `meld`, `bcompare`, `kdiff3`, `p4merge`, `winmerge`). If that tool is unavailable, Strictland keeps the failure message and does not silently launch a different GUI tool:
 
 ```java
 MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotReview.tool(DiffTool.MELD)))
@@ -282,6 +282,18 @@ MessageContract.specification(Json.Jackson.defaults().snapshotReview(SnapshotRev
     .whenSerialized()
     .thenContractIsUnchanged();
 ```
+
+Use a custom command only for a tool Strictland does not list, or when the command needs project-specific arguments. Include `{received}` and `{approved}` placeholders; Strictland replaces them with the two snapshot files. For example, to open the approved file on the left and the received file on the right in Neovim diff mode:
+
+```java
+MessageContract.specification(Json.Jackson.defaults()
+        .snapshotReview(SnapshotReview.customTool("nvim -d {approved} {received}")))
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerialized()
+    .thenContractIsUnchanged();
+```
+
+If there is a diff tool you use often and Strictland should support it directly, open an [issue](https://github.com/event-driven-io/strictland/issues/new).
 
 **Accepting a change you made on purpose.** Re-run the tests with the review mode set to `approve`, and each drift updates its approved snapshot instead of failing - the Jest `-u` / `cargo insta accept` model:
 
@@ -308,11 +320,11 @@ tasks.register<JavaExec>("approveSnapshots") {
 
 By default, the sweep walks `src/test/resources/contract-registry`. To sweep another directory, pass it as the first argument or set `-Dstrictland.review.root=...` for that run.
 
-**Review settings.** By default, failed tests show the inline diff, local runs open a diff tool when one is available, and CI keeps to the text output. Configure review only when you want to turn tool launching off, choose a specific tool, or approve drift during an intentional update.
+**Review settings.** By default, failed tests show the drift in the failure message, local runs open a diff tool when one is available, and CI stays with the failure message only. Configure review only when you want to turn tool launching off, choose a specific tool, or approve drift during an intentional update.
 
 | Setting | Values | Meaning |
 | --- | --- | --- |
-| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: inline diff + launch a tool locally. `off`: inline diff only, never launch. `approve`: update the approved snapshot on drift instead of failing. |
+| `strictland.review.mode` | `auto` (default), `off`, `approve` | `auto`: failure message + launch a tool locally. `off`: failure message only, never launch. `approve`: update the approved snapshot on drift instead of failing. |
 | `strictland.review.tool` | a registered name, or a `path {received} {approved}` template | The single diff tool to launch, overriding auto selection without fallback to another GUI tool. |
 
 For project-wide review settings, add `strictland.properties` to your test resources. For one run, pass `-D` system properties. Strictland resolves review settings in this order: runtime `-Dstrictland.review.*` properties, then a per-spec `snapshotReview(...)`, then the global `Strictland.defaults().snapshotReview(...)`, then `strictland.properties`, then the built-in `auto`.
