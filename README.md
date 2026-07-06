@@ -110,7 +110,7 @@ For instance, if your mapper writes snake_case fields, the snapshot records that
 {"shipment_id":"00000000-0000-0000-0000-000000000001","recipient_name":"Alice Smith","scheduled_at":"2024-01-01T12:00:00Z"}
 ```
 
-A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. If you do not choose a snapshot name, Strictland names it after the message class. Use `MessageSnapshot` when you need to point at another snapshot explicitly: by message-type name when the snapshot is named after a logical type rather than a Java class, by class, or by path.
+A snapshot is what your message looks like once serialized: the JSON you reviewed and approved. If you do not choose a snapshot name, Strictland names it after the message class.
 
 ## The contract registry
 
@@ -140,6 +140,47 @@ The file name carries the message name, contract version, example label, snapsho
 ```text
 OrderPlaced.1.default.snap.approved.json
 OrderPlaced.1.default.snap.received.json
+```
+
+## Using approved snapshots in checks
+
+A common flow starts by approving the message shape that exists today:
+
+```java
+@Test
+void orderPlacedContractIsUnchanged() {
+    MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+        .given(new OrderPlaced(orderId, "Alice", placedAt))
+        .whenSerialized()
+        .thenContractIsUnchanged();
+}
+```
+
+That test writes and then protects the approved `OrderPlaced` snapshot. The typical compatibility test reads that approved snapshot by class and deserializes it as the type you want to support now:
+
+```java
+@Test
+void currentOrderPlacedReaderStillReadsTheApprovedSnapshot() {
+    MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+        .given(MessageSnapshot.of(OrderPlaced.class))
+        .whenDeserializedAs(OrderPlacedWithCoupon.class)
+        .thenBackwardCompatible(order -> assertNull(order.couponCode()));
+}
+```
+
+Use `MessageSnapshot` when a check should point at a stored snapshot rather than a new object built inside the test. Start with the class-based form unless the contract is deliberately named another way:
+
+- `MessageSnapshot.of(OrderPlaced.class)` points at the snapshot named after the Java class.
+- `MessageSnapshot.ofTypeNamed("OrderPlaced")` uses a logical message type name, useful when the name comes from an event store or message bus.
+- `MessageSnapshot.at(path)` points at an explicit approved snapshot file.
+
+The same `MessageSnapshot` value can also choose where a serialization check writes the approved file. This is less common than the class-based flow above, but useful when the stored contract name is not the Java class name:
+
+```java
+MessageContract.specification(Json.Jackson.of(yourObjectMapper))
+    .given(new OrderPlaced(orderId, "Alice", placedAt))
+    .whenSerializedAs(MessageSnapshot.ofTypeNamed("orders.OrderPlaced"))
+    .thenContractIsUnchanged();
 ```
 
 ## Versions and variants
