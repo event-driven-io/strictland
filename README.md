@@ -119,16 +119,16 @@ Strictland keeps approved snapshots as files in the same Git repository as your 
 The registry groups snapshots by message type. Several contracts produce a tree like this:
 
 ```text
-src/test/resources/
-  contract-registry/
-    com/acme/orders/OrderPlaced/
-      OrderPlaced.1.default.snap.approved.json
-      OrderPlaced.2.default.snap.approved.json
-    com/acme/orders/OrderInitiated/
-      OrderInitiated.1.WithPromotion.snap.approved.json
-      OrderInitiated.1.NoPromotion.snap.approved.json
-    InvoiceIssuedEvent/
-      InvoiceIssuedEvent.1.default.snap.approved.json
+📁 src/test/resources/
+  📁 contract-registry/
+    📁 com/acme/orders/OrderPlaced/
+      📄 OrderPlaced.1.default.snap.approved.json
+      📄 OrderPlaced.2.default.snap.approved.json
+    📁 com/acme/orders/OrderInitiated/
+      📄 OrderInitiated.1.WithPromotion.snap.approved.json
+      📄 OrderInitiated.1.NoPromotion.snap.approved.json
+    📁 InvoiceIssuedEvent/
+      📄 InvoiceIssuedEvent.1.default.snap.approved.json
 ```
 
 That structure keeps contract files out of source packages without scattering them across the project. Each message contract has one place to look, and compatibility checks have a stable location for older shapes. The approved files are the baselines your tests compare against. When current code writes a different shape, Strictland puts the new payload next to it as `.snap.received` so you can inspect the change before accepting it.
