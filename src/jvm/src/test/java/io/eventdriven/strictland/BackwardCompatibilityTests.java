@@ -267,12 +267,59 @@ final class BackwardCompatibilityTests {
             }
         }
 
+        static final class StoredOrderWithCurrency {
+            public final UUID orderId;
+            public final String currency;
+
+            @JsonCreator
+            StoredOrderWithCurrency(@JsonProperty("orderId") UUID orderId, @JsonProperty("currency") String currency) {
+                this.orderId = orderId;
+                this.currency = currency;
+            }
+        }
+
+        static final class StoredOrderWithOptionalCoupon {
+            // A constant on the event class is not part of the message, so the check must skip it.
+            public static final String NO_COUPON = "none";
+
+            public final UUID orderId;
+            public final @Nullable String couponCode;
+
+            @JsonCreator
+            StoredOrderWithOptionalCoupon(
+                    @JsonProperty("orderId") UUID orderId, @JsonProperty("couponCode") @Nullable String couponCode) {
+                this.orderId = orderId;
+                this.couponCode = couponCode;
+            }
+        }
+
         @Test
         void given_anEventModelledAsAClass_whenReadByANewerClassVersion_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new StoredOrderV1(FIXED_ID))
                     .whenDeserializedAs(StoredOrder.class)
                     .thenBackwardCompatible();
+        }
+
+        @Test
+        void givenAnEventWithoutCoupon_whenReadByAClassThatAddedOptionalCoupon_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(new StoredOrderV1(FIXED_ID))
+                    .whenDeserializedAs(StoredOrderWithOptionalCoupon.class)
+                    .thenBackwardCompatible(order -> assertNull(order.couponCode));
+        }
+
+        @Test
+        void givenAnEventWithoutCurrency_whenReadByAClassThatAddedRequiredCurrency_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(new StoredOrderV1(FIXED_ID))
+                            .whenDeserializedAs(StoredOrderWithCurrency.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("currency"), message);
         }
     }
 
