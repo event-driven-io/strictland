@@ -278,6 +278,21 @@ MessageContract.specification(Json.Jackson.of(yourObjectMapper))
     .thenForwardCompatible();
 ```
 
+### What decides the outcome
+
+Both checks read the stored bytes as the type you pass to `whenDeserializedAs`. That type is the reader, and it's the reader's own declaration that decides pass or fail: every field it declares must be present in the data, unless it's marked optional with JSpecify's `@Nullable`.
+
+```java
+record OrderPlaced(UUID orderId, String customer, String coupon) {}            // coupon required
+record OrderPlaced(UUID orderId, String customer, @Nullable String coupon) {}  // coupon optional
+```
+
+Given `{"orderId": "...", "customer": "Alice"}`, the first fails with `Required field 'coupon'` and the second passes.
+
+That's one rule, and it runs the same way in both directions - the direction is which type you hand to `whenDeserializedAs`, not which method you call. Pass the newer type and you're checking it against older data, which is backward. Pass the older type and you're checking it against newer data, which is forward.
+
+It applies to records and to plain classes alike. For a class, its instance fields play the part of record components.
+
 ### Read an approved older snapshot
 
 Use `MessageSnapshot` when the old shape is already saved in the contract registry. This checks current code against the same bytes that were previously approved, instead of rebuilding the old message in the test:

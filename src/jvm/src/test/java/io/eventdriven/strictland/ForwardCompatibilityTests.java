@@ -81,12 +81,15 @@ final class ForwardCompatibilityTests {
 
         @Test
         void givenNewOrderWithAShippedStatus_whenReadByOldEnumWithoutIt_thenNotForwardCompatible() {
-            assertThrows(
+            var error = assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
                             .given(new OrderStatusChangedV2(FIXED_ID, OrderStatusV2.SHIPPED))
                             .whenDeserializedAs(OrderStatusChangedV1.class)
                             .thenForwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("SHIPPED"), message);
         }
     }
 
@@ -102,12 +105,15 @@ final class ForwardCompatibilityTests {
                     .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                     .build();
 
-            assertThrows(
+            var error = assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.of(strictMapper))
                             .given(new OrderReceivedWithCoupon(FIXED_ID, "Alice", "SAVE10"))
                             .whenDeserializedAs(OrderReceived.class)
                             .thenForwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("couponCode"), message);
         }
 
         @Test

@@ -6,7 +6,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -134,7 +139,8 @@ public class ThenCompatibilityStep<S, T> {
             sourceMap = toMap(jsonMapper, sourceBytes);
             targetMap = toMap(jsonMapper, serializer.serialize(deserialized));
         } catch (UncheckedIOException | IOException e) {
-            throw new RuntimeException("Deserialization as " + targetType.getSimpleName() + " failed", e);
+            throw new RuntimeException(
+                    "Deserialization as " + targetType.getSimpleName() + " failed: " + e.getMessage(), e);
         }
         assertRequiredFieldsSatisfied(sourceMap);
         assertSharedFieldsMatch(sourceMap, targetMap);
@@ -142,18 +148,34 @@ public class ThenCompatibilityStep<S, T> {
     }
 
     private void assertRequiredFieldsSatisfied(Map<String, Object> sourceMap) {
-        if (!targetType.isRecord()) return;
-        for (var component : targetType.getRecordComponents()) {
-            if (component.getAnnotatedType().getDeclaredAnnotation(Nullable.class) != null) continue;
-            if (!sourceMap.containsKey(component.getName()) || sourceMap.get(component.getName()) == null) {
+        for (var name : requiredFieldNames()) {
+            if (!sourceMap.containsKey(name) || sourceMap.get(name) == null) {
                 throw new AssertionError("Required field '"
-                        + component.getName()
+                        + name
                         + "' in "
                         + targetType.getSimpleName()
                         + " is null after deserialization. Source had keys: "
                         + sourceMap.keySet());
             }
         }
+    }
+
+    private List<String> requiredFieldNames() {
+        if (targetType.isRecord()) {
+            return Arrays.stream(targetType.getRecordComponents())
+                    .filter(component -> !isNullable(component.getAnnotatedType()))
+                    .map(RecordComponent::getName)
+                    .toList();
+        }
+        return Arrays.stream(targetType.getDeclaredFields())
+                .filter(field -> !Modifier.isStatic(field.getModifiers()))
+                .filter(field -> !isNullable(field.getAnnotatedType()))
+                .map(Field::getName)
+                .toList();
+    }
+
+    private static boolean isNullable(AnnotatedType type) {
+        return type.getDeclaredAnnotation(Nullable.class) != null;
     }
 
     private void assertSharedFieldsMatch(Map<String, Object> sourceMap, Map<String, Object> targetMap) {
