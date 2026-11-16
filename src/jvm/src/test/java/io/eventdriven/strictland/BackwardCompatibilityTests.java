@@ -255,12 +255,38 @@ final class BackwardCompatibilityTests {
 
     @Nested
     final class WhenTheSerializerDateFormatChanged {
+        private static final Path EPOCH_TIMESTAMP_SNAPSHOT = Path.of(
+                "WhenTheSerializerDateFormatChanged/InvoiceIssuedV1_EpochTimestamp.reference.snap.approved.json");
+
+        private record InvoiceIssuedV1(UUID invoiceId, long confirmedAt) {}
+
         private record InvoiceIssued(UUID invoiceId, OffsetDateTime confirmedAt) {}
 
         @Test
+        void
+                givenASnapshotReferencedByPathWithItsOriginalType_whenTargetReadsADateWrittenInAnotherFormat_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(MessageSnapshot.at(EPOCH_TIMESTAMP_SNAPSHOT).of(InvoiceIssuedV1.class))
+                            .whenDeserializedAs(InvoiceIssued.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Field 'confirmedAt' value differs"), message);
+        }
+
+        @Test
+        void givenASnapshotReferencedByPathWithItsOriginalType_whenReadByItsOwnType_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(MessageSnapshot.at(EPOCH_TIMESTAMP_SNAPSHOT).of(InvoiceIssuedV1.class))
+                    .whenDeserializedAs(InvoiceIssuedV1.class)
+                    .thenBackwardCompatible(invoice -> assertEquals(1704110400000L, invoice.confirmedAt()));
+        }
+
+        @Test
         void givenASnapshotReferencedByPath_whenTargetReadsADateWrittenInAnotherFormat_thenNotBackwardCompatible() {
-            var path = Path.of(
-                    "WhenTheSerializerDateFormatChanged/InvoiceIssuedV1_EpochTimestamp.reference.snap.approved.json");
+            var path = EPOCH_TIMESTAMP_SNAPSHOT;
 
             var issuedAt = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
 

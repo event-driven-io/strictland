@@ -46,8 +46,20 @@ tasks.withType<Test>().configureEach {
     finalizedBy(tasks.named("jacocoTestReport"))
 }
 
+// Spotless closes its cached formatter classloaders at the end of every project's `clean`, so a
+// Spotless task running beside another project's `clean` loses classes mid-format:
+// https://github.com/diffplug/spotless/issues/3067
+val cleanTasks = allprojects.map { if (it == rootProject) ":clean" else "${it.path}:clean" }
+allprojects {
+    tasks.withType<com.diffplug.gradle.spotless.SpotlessTask>().configureEach { mustRunAfter(cleanTasks) }
+}
+
+// Kotlin- and Scala-only paths, such as reading `String?` or `Option`, run only under the consumers' tests.
+val consumerCoverage = files("compat-kotlin/build/jacoco/test.exec", "compat-scala/build/jacoco/test.exec")
+
 tasks.named<JacocoReport>("jacocoTestReport") {
-    dependsOn(tasks.named("test"))
+    dependsOn(tasks.named("test"), ":compat-kotlin:test", ":compat-scala:test")
+    executionData(consumerCoverage)
     reports {
         xml.required = true
         html.required = true
@@ -55,7 +67,8 @@ tasks.named<JacocoReport>("jacocoTestReport") {
 }
 
 tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
-    dependsOn(tasks.named("test"))
+    dependsOn(tasks.named("test"), ":compat-kotlin:test", ":compat-scala:test")
+    executionData(consumerCoverage)
     violationRules {
         rule {
             limit {

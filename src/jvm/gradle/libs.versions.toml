@@ -19,6 +19,8 @@ jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 classgraph = { module = "io.github.classgraph:classgraph", version.ref = "classgraph" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+jackson-module-scala = { module = "com.fasterxml.jackson.module:jackson-module-scala_3", version.ref = "jackson" }
 scala-library = { module = "org.scala-lang:scala3-library_3", version.ref = "scala" }
 scalatest = { module = "org.scalatest:scalatest_3", version = "3.2.19" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }

@@ -1,5 +1,6 @@
 plugins {
     scala
+    jacoco
     alias(libs.plugins.spotless)
 }
 
@@ -14,6 +15,7 @@ tasks.withType<ScalaCompile>().configureEach {
 dependencies {
     implementation(libs.scala.library)
     implementation(project(":"))
+    testImplementation(libs.jackson.module.scala)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.scalatest)
     testRuntimeOnly("org.scalatestplus:junit-5-12_3:3.2.19.0")

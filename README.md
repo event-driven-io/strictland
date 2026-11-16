@@ -84,7 +84,7 @@ A message under contract goes through one of two checks.
 
 A **snapshot check** confirms the message still serializes exactly as it did when you last approved it, so nothing reading it downstream breaks. A failure means the format changed: a field renamed, a date format switched, a value newly dropped or added.
 
-A **compatibility check** is for intentional message evolution. It protects messages that already exist: stored events, queued messages, sent requests, or responses another service may still read. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote. Use `thenForwardCompatible()` to confirm an older reader still reads a message the newer version writes. Both compare the fields the two versions share, at every depth, and fail if a required one is missing or a shared value changed. A stored snapshot is first read as its original type: the class you pass to `MessageSnapshot.of(...)`, or the type your `MessageTypeMapper` resolves for `MessageSnapshot.ofTypeNamed(...)`. A snapshot referenced only by path, or by a type name the mapper can't resolve, has no original type, so only its required fields are checked; assert specific values with the `thenBackwardCompatible(message -> ...)` overload.
+A **compatibility check** is for intentional message evolution. It protects messages that already exist: stored events, queued messages, sent requests, or responses another service may still read. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote. Use `thenForwardCompatible()` to confirm an older reader still reads a message the newer version writes. Both compare the fields the two versions share, at every depth, and fail if a required one is missing or a shared value changed. A stored snapshot is first read as its original type: the class you pass to `MessageSnapshot.of(...)`, the type your `MessageTypeMapper` resolves for `MessageSnapshot.ofTypeNamed(...)`, or the class you name with `MessageSnapshot.at(path).of(...)`. A snapshot referenced by path without `.of(...)`, or by a type name the mapper can't resolve, has no original type, so only its required fields are checked; assert specific values with the `thenBackwardCompatible(message -> ...)` overload.
 
 Strictland includes a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read, and a missing or null primitive field failing the read instead of quietly becoming `0` or `false`. You can use it with `Json.Jackson.defaults()`:
 
@@ -172,7 +172,7 @@ Use `MessageSnapshot` when a check should point at a stored snapshot rather than
 
 - `MessageSnapshot.of(OrderPlaced.class)` points at the snapshot named after the Java class.
 - `MessageSnapshot.ofTypeNamed("OrderPlaced")` uses a logical message type name, useful when the name comes from an event store or message bus.
-- `MessageSnapshot.at(path)` points at an explicit approved snapshot file.
+- `MessageSnapshot.at(path)` points at an explicit approved snapshot file; add `.of(OldType.class)` to name the type it was written as, so compatibility checks compare its values too.
 
 The same `MessageSnapshot` value can also choose where a serialization check writes the approved file. This is less common than the class-based flow above, but useful when the stored contract name is not the Java class name:
 

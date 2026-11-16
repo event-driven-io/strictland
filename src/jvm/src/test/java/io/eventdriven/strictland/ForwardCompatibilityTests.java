@@ -80,13 +80,8 @@ final class ForwardCompatibilityTests {
         private record OrderStatusChangedV1(UUID orderId, OrderStatusV1 status) {}
 
         @Test
-<<<<<<< HEAD
-        void givenNewOrderWithAShippedStatus_whenReadByOldEnumWithoutIt_thenNotForwardCompatible() {
-            var error = assertThrows(
-=======
         void givenAMessageWithANewEnumConstant_whenReadByAnOlderEnumWithoutIt_thenNotForwardCompatible() {
-            assertThrows(
->>>>>>> 21ca60c (Tightened check for missing properties in Jackson)
+            var error = assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
                             .given(new OrderStatusChangedV2(FIXED_ID, OrderStatusV2.SHIPPED))

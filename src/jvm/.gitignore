@@ -39,3 +39,7 @@ out/
 ### Strictland ###
 # Drift artifacts written next to an approved snapshot on a failing check; never committed.
 *.snap.received.*
+
+### Kotlin ###
+# Session and error files the Kotlin Gradle plugin writes during a build.
+.kotlin/
