@@ -11,3 +11,6 @@
 .bsp/
 .scala-build/
 .ammonite/
+
+# Session markers written by the agent change-check hooks.
+.agents/.cache/
