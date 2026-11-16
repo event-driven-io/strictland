@@ -24,6 +24,8 @@ final class CsvMessageSerializerTests {
     private record OrderPlacedCsvWithCoupon(
             UUID orderId, String customer, @Nullable String couponCode) {}
 
+    private record OrderPlacedCsvWithCurrency(UUID orderId, String customer, String currency) {}
+
     private record OrderPlacedCsvValidated(UUID orderId, String customer) {
         private OrderPlacedCsvValidated {
             if (customer.isBlank()) {
@@ -46,6 +48,19 @@ final class CsvMessageSerializerTests {
                 .given(new OrderPlacedCsv(FIXED_ID, "Alice"))
                 .whenDeserializedAs(OrderPlacedCsvWithCoupon.class)
                 .thenBackwardCompatible(order -> assertNull(order.couponCode()));
+    }
+
+    @Test
+    void given_csvOrderWithoutCurrency_whenReadByTypeThatAddedRequiredCurrency_thenNotBackwardCompatible() {
+        var error = assertThrows(
+                AssertionError.class,
+                () -> MessageContract.specification(Csv.defaults())
+                        .given(new OrderPlacedCsv(FIXED_ID, "Alice"))
+                        .whenDeserializedAs(OrderPlacedCsvWithCurrency.class)
+                        .thenBackwardCompatible());
+
+        var message = requireNonNull(error.getMessage());
+        assertTrue(message.contains("Required field 'currency'"), message);
     }
 
     @Test

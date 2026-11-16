@@ -1,6 +1,7 @@
 package io.eventdriven.strictland;
 
 import static java.util.Objects.requireNonNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,6 +12,9 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -162,15 +166,14 @@ final class BackwardCompatibilityTests {
             var path = Path.of(
                     "WhenTheSerializerDateFormatChanged/InvoiceIssuedV1_EpochTimestamp.reference.snap.approved.json");
 
-            var error = assertThrows(
+            var issuedAt = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
+
+            assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
                             .given(MessageSnapshot.at(path))
                             .whenDeserializedAs(InvoiceIssued.class)
-                            .thenBackwardCompatible());
-
-            var message = requireNonNull(error.getMessage());
-            assertTrue(message.contains("Field 'confirmedAt' value differs"));
+                            .thenBackwardCompatible(invoice -> assertEquals(issuedAt, invoice.confirmedAt())));
         }
     }
 
@@ -186,6 +189,112 @@ final class BackwardCompatibilityTests {
                     .given(new PaymentCaptured(FIXED_ID, 100))
                     .whenDeserializedAs(PaymentCapturedWiderAmount.class)
                     .thenBackwardCompatible();
+        }
+    }
+
+    @Nested
+    final class EvolvingANestedValueObject {
+        private record Address(String street, String zipCode) {}
+
+        private record AddressWithCountry(
+                String street, String zipCode, @Nullable String country) {}
+
+        private record AddressWithNumericZipCode(String street, int zipCode) {}
+
+        private record CustomerRelocated(UUID customerId, Address address) {}
+
+        private record CustomerRelocatedWithCountry(UUID customerId, AddressWithCountry address) {}
+
+        private record CustomerRelocatedWithNumericZipCode(UUID customerId, AddressWithNumericZipCode address) {}
+
+        @Test
+        void givenANestedAddress_whenReadByTypeThatAddedAnOptionalFieldToIt_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(new CustomerRelocated(FIXED_ID, new Address("Main St 1", "01234")))
+                    .whenDeserializedAs(CustomerRelocatedWithCountry.class)
+                    .thenBackwardCompatible();
+        }
+
+        @Test
+        void givenANestedZipCodeWithLeadingZero_whenReadByTypeThatMadeItNumeric_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(new CustomerRelocated(FIXED_ID, new Address("Main St 1", "01234")))
+                            .whenDeserializedAs(CustomerRelocatedWithNumericZipCode.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Field 'address.zipCode' value differs"), message);
+        }
+    }
+
+    @Nested
+    final class EvolvingAListOfValueObjects {
+        private record OrderLine(String productId, int quantity) {}
+
+        private record OrderLineWithDiscount(
+                String productId, int quantity, @Nullable String discountCode) {}
+
+        private record OrderSubmitted(UUID orderId, List<OrderLine> lines) {}
+
+        private record OrderSubmittedWithDiscounts(UUID orderId, List<OrderLineWithDiscount> lines) {}
+
+        @Test
+        void givenOrderLines_whenReadByTypeThatAddedAnOptionalFieldToEachLine_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(new OrderSubmitted(FIXED_ID, List.of(new OrderLine("book", 2), new OrderLine("pen", 1))))
+                    .whenDeserializedAs(OrderSubmittedWithDiscounts.class)
+                    .thenBackwardCompatible();
+        }
+    }
+
+    @Nested
+    final class ChangingAListIntoASet {
+        private record ArticlePublished(UUID articleId, List<String> tags) {}
+
+        private record ArticlePublishedWithTagSet(UUID articleId, Set<String> tags) {}
+
+        @Test
+        void givenDistinctTags_whenReadByTypeThatStoresThemAsASet_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(new ArticlePublished(
+                            FIXED_ID, List.of("orders", "billing", "shipping", "inventory", "returns")))
+                    .whenDeserializedAs(ArticlePublishedWithTagSet.class)
+                    .thenBackwardCompatible();
+        }
+
+        @Test
+        void givenDuplicatedTags_whenReadByTypeThatStoresThemAsASet_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(new ArticlePublished(FIXED_ID, List.of("java", "java", "events")))
+                            .whenDeserializedAs(ArticlePublishedWithTagSet.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Field 'tags' value differs"), message);
+        }
+    }
+
+    @Nested
+    final class ChangingAStringIntoAnEnum {
+        private enum PaymentMethod {
+            CARD,
+            TRANSFER
+        }
+
+        private record PaymentRequested(UUID paymentId, String method) {}
+
+        private record PaymentRequestedWithMethodEnum(UUID paymentId, PaymentMethod method) {}
+
+        @Test
+        void givenAStringMethod_whenReadByTypeThatTurnedItIntoAnEnum_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(new PaymentRequested(FIXED_ID, "CARD"))
+                    .whenDeserializedAs(PaymentRequestedWithMethodEnum.class)
+                    .thenBackwardCompatible(payment -> assertEquals(PaymentMethod.CARD, payment.method()));
         }
     }
 
@@ -267,6 +376,121 @@ final class BackwardCompatibilityTests {
             }
         }
 
+        @Test
+        void given_anEventModelledAsAClass_whenReadByANewerClassVersion_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(new StoredOrderV1(FIXED_ID))
+                    .whenDeserializedAs(StoredOrder.class)
+                    .thenBackwardCompatible();
+        }
+
+        static final class StoredOrderWithCoupon {
+            public static final String EVENT_TYPE = "OrderStored";
+
+            public final UUID orderId;
+            public final @Nullable String couponCode;
+
+            @JsonCreator
+            StoredOrderWithCoupon(
+                    @JsonProperty("orderId") UUID orderId, @JsonProperty("couponCode") @Nullable String couponCode) {
+                this.orderId = orderId;
+                this.couponCode = couponCode;
+            }
+        }
+
+        static final class StoredOrderWithCustomer {
+            public final UUID orderId;
+            public final String customer;
+
+            @JsonCreator
+            StoredOrderWithCustomer(@JsonProperty("orderId") UUID orderId, @JsonProperty("customer") String customer) {
+                this.orderId = orderId;
+                this.customer = customer;
+            }
+        }
+
+        abstract static class StoredEvent {
+            public final UUID eventId;
+
+            StoredEvent(UUID eventId) {
+                this.eventId = eventId;
+            }
+        }
+
+        static final class StoredOrderWithEventId extends StoredEvent {
+            public final UUID orderId;
+
+            @JsonCreator
+            StoredOrderWithEventId(@JsonProperty("eventId") UUID eventId, @JsonProperty("orderId") UUID orderId) {
+                super(eventId);
+                this.orderId = orderId;
+            }
+        }
+
+        static final class StoredProduct {
+            public final String code;
+
+            StoredProduct(String code) {
+                this.code = code;
+            }
+        }
+
+        static final class StoredProductWithNumericCode {
+            public final int code;
+
+            @JsonCreator
+            StoredProductWithNumericCode(@JsonProperty("code") int code) {
+                this.code = code;
+            }
+        }
+
+        @Test
+        void givenAnOrderWithoutCoupon_whenReadByAClassThatAddedAnOptionalCoupon_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(new StoredOrderV1(FIXED_ID))
+                    .whenDeserializedAs(StoredOrderWithCoupon.class)
+                    .thenBackwardCompatible(order -> assertNull(order.couponCode));
+        }
+
+        @Test
+        void givenAnOrderWithoutCustomer_whenReadByAClassThatAddedARequiredCustomer_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(new StoredOrderV1(FIXED_ID))
+                            .whenDeserializedAs(StoredOrderWithCustomer.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Required field 'customer'"), message);
+        }
+
+        @Test
+        void givenAnOrderWithoutEventId_whenReadByAClassInheritingARequiredEventId_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(new StoredOrderV1(FIXED_ID))
+                            .whenDeserializedAs(StoredOrderWithEventId.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Required field 'eventId'"), message);
+        }
+
+        @Test
+        void givenAProductCodeWithLeadingZeros_whenReadByAClassThatMadeItNumeric_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(new StoredProduct("007"))
+                            .whenDeserializedAs(StoredProductWithNumericCode.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Field 'code' value differs"), message);
+        }
+
         static final class StoredOrderWithCurrency {
             public final UUID orderId;
             public final String currency;
@@ -291,14 +515,6 @@ final class BackwardCompatibilityTests {
                 this.orderId = orderId;
                 this.couponCode = couponCode;
             }
-        }
-
-        @Test
-        void given_anEventModelledAsAClass_whenReadByANewerClassVersion_thenBackwardCompatible() {
-            MessageContract.specification(Json.Jackson.defaults())
-                    .given(new StoredOrderV1(FIXED_ID))
-                    .whenDeserializedAs(StoredOrder.class)
-                    .thenBackwardCompatible();
         }
 
         @Test

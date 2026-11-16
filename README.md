@@ -84,7 +84,7 @@ A message under contract goes through one of two checks.
 
 A **snapshot check** confirms the message still serializes exactly as it did when you last approved it, so nothing reading it downstream breaks. A failure means the format changed: a field renamed, a date format switched, a value newly dropped or added.
 
-A **compatibility check** is for intentional message evolution. It protects messages that already exist: stored events, queued messages, sent requests, or responses another service may still read. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote. Use `thenForwardCompatible()` to confirm an older reader still reads a message the newer version writes. Both compare the fields the two versions share and fail if a required one is missing or a shared value changed.
+A **compatibility check** is for intentional message evolution. It protects messages that already exist: stored events, queued messages, sent requests, or responses another service may still read. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote. Use `thenForwardCompatible()` to confirm an older reader still reads a message the newer version writes. Given a message instance, both compare the fields the two versions share and fail if a required one is missing or a shared value changed. Given a stored snapshot, there is no older object to compare against, so they confirm the bytes read as the newer version with every required field set; assert specific values with the `thenBackwardCompatible(message -> ...)` overload.
 
 Strictland includes a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read. You can use it with `Json.Jackson.defaults()`:
 
