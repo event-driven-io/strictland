@@ -107,9 +107,8 @@ public class GivenStep<S> {
     /**
      * Deserializes the message's data into another version, {@code targetType}.
      *
-     * <p>The next {@code then} step fails if a required field is missing. Given a message instance, it
-     * also compares the fields the two versions share and fails if a shared value changed. Pick the
-     * direction: {@link
+     * <p>The next {@code then} step compares the fields the two versions share, at every depth, and
+     * fails if a required one is missing or a shared value changed. Pick the direction: {@link
      * ThenCompatibilityStep#thenForwardCompatible()} when an older reader takes newer data, {@link
      * ThenCompatibilityStep#thenBackwardCompatible()} when a newer reader takes older data.</p>
      *

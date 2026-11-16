@@ -40,7 +40,7 @@ final class DeepStructureCompatibilityTests {
     }
 
     @Nested
-    final class EvolvingAThreeLevelRecord {
+    final class EvolvingADeeplyNestedRecord {
         private record LocationWithCountry(
                 String street, String zipCode, @Nullable String country) {}
 
@@ -73,7 +73,7 @@ final class DeepStructureCompatibilityTests {
         private record OrderShippedWithoutZip(UUID orderId, RecipientWithoutZip recipient) {}
 
         @Test
-        void givenAShippedOrder_whenTheInnermostRecordAddsAnOptionalField_thenBackwardCompatible() {
+        void givenADeeplyNestedRecord_whenTheInnermostRecordAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(ORDER_SHIPPED)
                     .whenDeserializedAs(OrderShippedWithCountry.class)
@@ -81,7 +81,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenAShippedOrder_whenTheInnermostRecordAddsARequiredField_thenFailsAtItsPath() {
+        void givenADeeplyNestedRecord_whenTheInnermostRecordAddsARequiredField_thenFailsWithItsPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(ORDER_SHIPPED)
                     .whenDeserializedAs(OrderShippedWithRequiredCountry.class)
@@ -91,7 +91,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenAShippedOrder_whenTheInnermostZipCodeBecomesNumeric_thenFailsAtItsPath() {
+        void givenADeeplyNestedRecord_whenAnInnermostFieldChangesType_thenFailsWithItsPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(ORDER_SHIPPED)
                     .whenDeserializedAs(OrderShippedWithNumericZip.class)
@@ -101,7 +101,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenAShippedOrder_whenTheInnermostStreetIsRenamed_thenStructurallyIncompatibleAtItsPath() {
+        void givenADeeplyNestedRecord_whenAnInnermostFieldIsRenamed_thenStructurallyIncompatibleWithItsPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(ORDER_SHIPPED)
                     .whenDeserializedAs(OrderShippedWithStreetName.class)
@@ -111,7 +111,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenAShippedOrder_whenAnOlderReaderDropsTheInnermostZipCode_thenForwardCompatible() {
+        void givenADeeplyNestedRecord_whenAnOlderReaderLacksAnInnermostField_thenForwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(ORDER_SHIPPED)
                     .whenDeserializedAs(OrderShippedWithoutZip.class)
@@ -120,7 +120,18 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenAStoredShippedOrder_whenTheInnermostRecordAddsARequiredField_thenFailsAtItsPath() {
+        void givenADeeplyNestedSnapshotReferencedByClass_whenAnInnermostFieldChangesType_thenFailsWithItsPath() {
+            var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
+                    .given(MessageSnapshot.of(OrderShipped.class))
+                    .whenDeserializedAs(OrderShippedWithNumericZip.class)
+                    .thenBackwardCompatible());
+
+            assertTrue(message.contains("Field 'recipient.location.zipCode' value differs"), message);
+        }
+
+        @Test
+        void
+                givenADeeplyNestedSnapshotReferencedByPath_whenTheInnermostRecordAddsARequiredField_thenFailsWithItsPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(MessageSnapshot.at(Path.of("DeepStructures/OrderShippedV1.reference.snap.approved.json")))
                     .whenDeserializedAs(OrderShippedWithRequiredCountry.class)
@@ -175,7 +186,7 @@ final class DeepStructureCompatibilityTests {
                 FIXED_ID, List.of(new CartLine("pen", new Price(5, "EUR")), new CartLine("pen", new Price(5, "EUR"))));
 
         @Test
-        void givenCartLines_whenTheNestedPriceIsWidened_thenBackwardCompatible() {
+        void givenAListOfNestedRecords_whenANestedNumberIsWidened_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(CHECKED_OUT)
                     .whenDeserializedAs(CartCheckedOutInCents.class)
@@ -183,7 +194,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenCartLines_whenReadIntoASetOfEvolvedLines_thenBackwardCompatible() {
+        void givenAListOfNestedRecords_whenTargetReadsItAsASetOfEvolvedRecords_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(CHECKED_OUT)
                     .whenDeserializedAs(CartCheckedOutAsSet.class)
@@ -191,7 +202,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenADuplicatedCartLine_whenReadIntoASet_thenFailsAtTheListPath() {
+        void givenAListWithDuplicateRecords_whenTargetReadsItAsASet_thenFailsWithTheListPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(CHECKED_OUT_WITH_DUPLICATE)
                     .whenDeserializedAs(CartCheckedOutAsSet.class)
@@ -201,7 +212,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenCartLines_whenTheReaderReordersThem_thenFailsAtTheFirstReorderedLine() {
+        void givenAListOfRecords_whenTargetReordersIt_thenFailsWithTheFirstReorderedElementPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(CHECKED_OUT)
                     .whenDeserializedAs(CartCheckedOutSortedBySku.class)
@@ -211,7 +222,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenADuplicatedCartLine_whenTheReaderDropsDuplicates_thenFailsAtTheListPath() {
+        void givenAListWithDuplicateRecords_whenTargetDropsDuplicates_thenFailsWithTheListPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(CHECKED_OUT_WITH_DUPLICATE)
                     .whenDeserializedAs(CartCheckedOutWithoutDuplicates.class)
@@ -221,7 +232,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenCartLines_whenEachLineAddsARequiredWarehouse_thenFailsAtTheFirstLine() {
+        void givenAListOfRecords_whenEachElementAddsARequiredField_thenFailsWithTheFirstElementPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(CHECKED_OUT)
                     .whenDeserializedAs(CartCheckedOutWithWarehouse.class)
@@ -250,7 +261,7 @@ final class DeepStructureCompatibilityTests {
                 FIXED_ID, new TreeMap<>(Map.of("home", LOCATION, "work", new Location("Dock 2", "98765"))));
 
         @Test
-        void givenAddressesByLabel_whenEachAddressAddsAnOptionalCountry_thenBackwardCompatible() {
+        void givenAMapOfRecords_whenEachValueAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(PROFILED)
                     .whenDeserializedAs(CustomerProfiledWithCountry.class)
@@ -258,7 +269,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenAddressesByLabel_whenTheZipCodeBecomesNumeric_thenFailsAtTheEntryPath() {
+        void givenAMapOfRecords_whenAValueFieldChangesType_thenFailsWithTheEntryPath() {
             var message = failureOf(() -> MessageContract.specification(Json.Jackson.defaults())
                     .given(PROFILED)
                     .whenDeserializedAs(CustomerProfiledWithNumericZip.class)
@@ -296,7 +307,7 @@ final class DeepStructureCompatibilityTests {
         private record ScoresRecordedAsList(UUID studentId, List<Long> scores) {}
 
         @Test
-        void givenNestedPaymentDetails_whenTheMethodBecomesAnEnumAndCountIsWidened_thenBackwardCompatible() {
+        void givenNestedScalars_whenAStringBecomesAnEnumAndANumberIsWidened_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new PaymentSettled(FIXED_ID, new PaymentDetails("CARD", 3)))
                     .whenDeserializedAs(PaymentSettledWithMethodEnum.class)
@@ -305,7 +316,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenScoresAsAnArray_whenReadAsAListOfLongs_thenBackwardCompatible() {
+        void givenAnArray_whenTargetReadsItAsAListOfWiderNumbers_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new ScoresRecorded(FIXED_ID, new int[] {90, 75, 82}))
                     .whenDeserializedAs(ScoresRecordedAsList.class)
@@ -358,7 +369,7 @@ final class DeepStructureCompatibilityTests {
         }
 
         @Test
-        void givenAFolderWhoseDocumentsPointBack_whenBothSidesAddOptionalFields_thenBackwardCompatible() {
+        void givenAGraphWithBackReferences_whenEachLevelAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(folderWith("NDA", "Offer"))
                     .whenDeserializedAs(FolderWithOwner.class)
