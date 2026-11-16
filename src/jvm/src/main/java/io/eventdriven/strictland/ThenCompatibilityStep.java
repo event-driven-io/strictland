@@ -1,20 +1,7 @@
 package io.eventdriven.strictland;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.reflect.AnnotatedType;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.RecordComponent;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
 
@@ -25,8 +12,10 @@ import org.jspecify.annotations.Nullable;
  * <p>Reached after {@link GivenStep#whenDeserializedAs(Class)}. Use {@link #thenBackwardCompatible()}
  * to confirm the newer version still reads a message the older one wrote - the events you stored last
  * year, a request already sent. Use {@link #thenForwardCompatible()} to confirm a reader that hasn't
- * upgraded yet still reads a message the newer version writes. Both compare the fields the two
- * versions share and fail if a required one is missing or a shared value changed.</p>
+ * upgraded yet still reads a message the newer version writes. Both fail if a required field is
+ * missing. Given a message instance, they also compare the fields the two versions share and fail if
+ * a shared value changed; a stored snapshot has no older object to compare against, so assert its
+ * values through the overloads that take a {@link Consumer}.</p>
  *
  * @param <S> the version you started from
  * @param <T> the version you check it against
@@ -116,109 +105,47 @@ public class ThenCompatibilityStep<S, T> {
         verifySharedFields(extra);
     }
 
+    private record Source(SnapshotData data, @Nullable Object instance) {}
+
     private void verifySharedFields(Consumer<T> extra) {
-        for (var sourceBytes : resolveSourceBytesList()) {
-            verifyOne(sourceBytes, extra);
+        for (var source : resolveSources()) {
+            verifyOne(source, extra);
         }
     }
 
-    private void verifyOne(byte[] sourceBytes, Consumer<T> extra) {
-        var jsonMapper = (serializer instanceof JacksonMessageSerializer j) ? j.mapper() : null;
-        T deserialized;
-        Map<String, Object> sourceMap;
-        Map<String, Object> targetMap;
+    private void verifyOne(Source source, Consumer<T> extra) {
+        T target;
         try {
-            deserialized = serializer.deserialize(sourceBytes, targetType);
-            if (deserialized == null) {
-                throw new AssertionError("Deserialization as " + targetType.getSimpleName() + " returned empty");
-            }
-            if (jsonMapper == null) {
-                extra.accept(deserialized);
-                return;
-            }
-            sourceMap = toMap(jsonMapper, sourceBytes);
-            targetMap = toMap(jsonMapper, serializer.serialize(deserialized));
-        } catch (UncheckedIOException | IOException e) {
-            throw new RuntimeException(
-                    "Deserialization as " + targetType.getSimpleName() + " failed: " + e.getMessage(), e);
+            target = serializer.deserialize(source.data().bytes(), targetType);
+        } catch (UncheckedIOException e) {
+            throw new RuntimeException("Deserialization as " + targetType.getSimpleName() + " failed", e);
         }
-        assertRequiredFieldsSatisfied(sourceMap);
-        assertSharedFieldsMatch(sourceMap, targetMap);
-        extra.accept(deserialized);
-    }
-
-    private void assertRequiredFieldsSatisfied(Map<String, Object> sourceMap) {
-        for (var name : requiredFieldNames()) {
-            if (!sourceMap.containsKey(name) || sourceMap.get(name) == null) {
-                throw new AssertionError("Required field '"
-                        + name
-                        + "' in "
-                        + targetType.getSimpleName()
-                        + " is null after deserialization. Source had keys: "
-                        + sourceMap.keySet());
-            }
+        if (target == null) {
+            throw new AssertionError("Deserialization as " + targetType.getSimpleName() + " returned empty");
         }
-    }
-
-    private List<String> requiredFieldNames() {
-        if (targetType.isRecord()) {
-            return Arrays.stream(targetType.getRecordComponents())
-                    .filter(component -> !isNullable(component.getAnnotatedType()))
-                    .map(RecordComponent::getName)
-                    .toList();
+        var failure = source.instance() != null
+                ? StructuralComparison.difference(source.instance(), target)
+                : StructuralComparison.missingRequiredField(target);
+        if (failure != null) {
+            throw new AssertionError(failure);
         }
-        return Arrays.stream(targetType.getDeclaredFields())
-                .filter(field -> !Modifier.isStatic(field.getModifiers()))
-                .filter(field -> !isNullable(field.getAnnotatedType()))
-                .map(Field::getName)
-                .toList();
+        extra.accept(target);
     }
 
-    private static boolean isNullable(AnnotatedType type) {
-        return type.getDeclaredAnnotation(Nullable.class) != null;
-    }
-
-    private void assertSharedFieldsMatch(Map<String, Object> sourceMap, Map<String, Object> targetMap) {
-        var sourceOnly = new ArrayList<>(sourceMap.keySet());
-        sourceOnly.removeAll(targetMap.keySet());
-        var targetOnly = new ArrayList<>(targetMap.keySet());
-        targetOnly.removeAll(sourceMap.keySet());
-        var diagnostics = " [source-only: " + sourceOnly + ", target-only: " + targetOnly + "]";
-
-        if (!sourceOnly.isEmpty() && !targetOnly.isEmpty()) {
-            throw new AssertionError(
-                    "Structural incompatibility detected: source and target have different unmapped fields"
-                            + diagnostics);
-        }
-
-        var sharedKeys = new HashSet<>(sourceMap.keySet());
-        sharedKeys.retainAll(targetMap.keySet());
-
-        for (var key : sharedKeys) {
-            assertEquals(
-                    sourceMap.get(key),
-                    targetMap.get(key),
-                    "Field '" + key + "' value differs between versions" + diagnostics);
-        }
-    }
-
-    private Map<String, Object> toMap(ObjectMapper mapper, byte[] bytes) throws IOException {
-        return mapper.readValue(bytes, new TypeReference<>() {});
-    }
-
-    private List<byte[]> resolveSourceBytesList() {
+    private List<Source> resolveSources() {
         var ext = "." + serializer.fileExtension();
         return switch (source) {
             case MessageSnapshot.OfInstance<?> v -> {
                 var instance = v.message();
                 try {
-                    yield List.of(serializer.serialize(instance));
+                    yield List.of(new Source(new SnapshotData(serializer.serialize(instance)), instance));
                 } catch (UncheckedIOException e) {
                     throw new RuntimeException(
                             "Serialization of " + instance.getClass().getSimpleName() + " failed", e);
                 }
             }
-            case MessageSnapshot.ByPath byPath -> List.of(readOne(SnapshotLocation.ofRelativePath(byPath.path())));
+            case MessageSnapshot.ByPath byPath ->
+                List.of(new Source(readOne(SnapshotLocation.ofRelativePath(byPath.path())), null));
             case MessageSnapshot.ByClass<?> s ->
                 resolveFamilyOrVariant(
                         context.typeMapper().name(s.messageClass()), resolveVersion(s.version()), s.variant(), ext);
@@ -228,7 +155,7 @@ public class ThenCompatibilityStep<S, T> {
         };
     }
 
-    private List<byte[]> resolveFamilyOrVariant(
+    private List<Source> resolveFamilyOrVariant(
             MessageTypeName messageType, String resolvedVersion, SnapshotVariant variant, String ext) {
         if (variant instanceof SnapshotVariant.Unset) {
             var payloads = context.storage().readAll(SnapshotFilter.of(messageType, resolvedVersion));
@@ -236,13 +163,13 @@ public class ThenCompatibilityStep<S, T> {
                 throw new RuntimeException(
                         "Cannot read snapshot file: " + messageType.shortName() + "." + resolvedVersion + ".");
             }
-            return payloads.stream().map(SnapshotData::bytes).toList();
+            return payloads.stream().map(payload -> new Source(payload, null)).toList();
         }
-        return List.of(readOne(SnapshotLocation.of(messageType, resolvedVersion, variant, ext)));
+        return List.of(new Source(readOne(SnapshotLocation.of(messageType, resolvedVersion, variant, ext)), null));
     }
 
-    private byte[] readOne(SnapshotLocation location) {
-        return context.storage().read(location).bytes();
+    private SnapshotData readOne(SnapshotLocation location) {
+        return context.storage().read(location);
     }
 
     private String resolveVersion(String snapshotVersion) {
