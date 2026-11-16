@@ -12,6 +12,7 @@ record JacksonMessageSerializer(ObjectMapper mapper) implements MessageSerialize
     private static final ObjectMapper DEFAULT_MAPPER = new JsonMapper()
             .registerModule(new JavaTimeModule())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
             .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
     static JacksonMessageSerializer withDefaults() {

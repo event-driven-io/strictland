@@ -30,7 +30,7 @@ final class CustomJsonMessageSerializerTests {
             UUID shoppingCartId, @Nullable String clientId, OffsetDateTime confirmedAt, String confirmedBy) {}
 
     @Test
-    void givenV1Event_whenReadByV3AddingARequiredField_thenNotBackwardCompatible() {
+    void givenAMessage_whenANewerVersionAddsARequiredField_thenNotBackwardCompatible() {
         var error = assertThrows(
                 AssertionError.class,
                 () -> MessageContract.specification(OPTIONS)
@@ -57,7 +57,7 @@ final class CustomJsonMessageSerializerTests {
         private record InvoiceIssued(UUID invoiceId, OffsetDateTime confirmedAt) {}
 
         @Test
-        void givenOrderWithoutCoupon_whenReadByTypeThatAddedOptionalCoupon_thenBackwardCompatible() {
+        void givenAMessage_whenTargetAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(OPTIONS)
                     .given(new OrderPlaced(FIXED_ID, "Alice"))
                     .whenDeserializedAs(OrderPlacedWithCoupon.class)
@@ -65,7 +65,7 @@ final class CustomJsonMessageSerializerTests {
         }
 
         @Test
-        void givenOrderWithoutCurrency_whenReadByTypeThatAddedRequiredCurrency_thenNotBackwardCompatible() {
+        void givenAMessage_whenTargetAddsARequiredField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(OPTIONS)
@@ -78,7 +78,7 @@ final class CustomJsonMessageSerializerTests {
         }
 
         @Test
-        void givenOrderWithoutQuantity_whenReadByTypeThatAddedRequiredPrimitiveQuantity_thenNotBackwardCompatible() {
+        void givenAMessage_whenTargetAddsARequiredPrimitiveField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(OPTIONS)
@@ -91,7 +91,7 @@ final class CustomJsonMessageSerializerTests {
         }
 
         @Test
-        void givenOrderWithCustomer_whenReadByTypeThatRenamedItToClient_thenNotBackwardCompatible() {
+        void givenAMessage_whenTargetRenamesAField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(OPTIONS)
@@ -103,7 +103,7 @@ final class CustomJsonMessageSerializerTests {
         }
 
         @Test
-        void givenAnOldEpochTimestampEvent_whenReadByTheCurrentIsoType_thenNotBackwardCompatible() {
+        void givenASnapshotReferencedByPath_whenTargetReadsADateWrittenInAnotherFormat_thenNotBackwardCompatible() {
             assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(OPTIONS)
@@ -131,7 +131,7 @@ final class CustomJsonMessageSerializerTests {
                 UUID shipmentId, @Nullable UUID clientId) {}
 
         @Test
-        void givenNewOrderWithCoupon_whenReadByOldTypeWithoutCoupon_thenForwardCompatible() {
+        void givenAMessageWithAnExtraField_whenReadByAnOlderTypeWithoutIt_thenForwardCompatible() {
             MessageContract.specification(OPTIONS)
                     .given(new OrderShippedWithCoupon(FIXED_ID, "Alice", "SAVE10"))
                     .whenDeserializedAs(OrderShipped.class)
@@ -139,7 +139,7 @@ final class CustomJsonMessageSerializerTests {
         }
 
         @Test
-        void givenANestedShipment_whenReadByOldFlatType_thenNotForwardCompatible() {
+        void givenANestedMessage_whenReadByAnOlderFlatType_thenNotForwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(OPTIONS)

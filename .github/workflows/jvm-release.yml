@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 26
+          java-version: 27
 
       - uses: gradle/actions/setup-gradle@v6
 

@@ -43,7 +43,7 @@ final class CsvMessageSerializerTests {
     }
 
     @Test
-    void given_csvOrderWithoutCoupon_whenReadByTypeThatAddedOptionalCoupon_thenBackwardCompatible() {
+    void given_csvMessage_whenTargetAddsAnOptionalField_thenBackwardCompatible() {
         MessageContract.specification(Csv.defaults())
                 .given(new OrderPlacedCsv(FIXED_ID, "Alice"))
                 .whenDeserializedAs(OrderPlacedCsvWithCoupon.class)

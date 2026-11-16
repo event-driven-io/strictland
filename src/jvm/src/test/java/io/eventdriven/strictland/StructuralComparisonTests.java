@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -176,6 +177,28 @@ final class StructuralComparisonTests {
                 new Case("evolved enum keys", true, Map.of(Status.ACTIVE, 1), Map.of(StatusWithSuspended.ACTIVE, 1)),
                 new Case("string keys read as enum keys", true, Map.of("ACTIVE", 1), Map.of(Status.ACTIVE, 1)),
                 new Case("map is not a list", false, Map.of("a", 1), List.of(1)),
+                new Case("both optionals empty", true, Optional.empty(), Optional.empty()),
+                new Case("empty optional read as null", true, Optional.empty(), null),
+                new Case("null read as empty optional", true, null, Optional.empty()),
+                new Case("present optional read as null", false, Optional.of("a"), null),
+                new Case("value read into optional", true, "a", Optional.of("a")),
+                new Case("optional value mismatch", false, Optional.of("a"), Optional.of("b")),
+                new Case("widened optional value", true, Optional.of(1), Optional.of(1L)),
+                new Case(
+                        "optional of evolved record",
+                        true,
+                        Optional.of(new Address("Main St 1", "01234")),
+                        Optional.of(new AddressWithCountry("Main St 1", "01234", null))),
+                new Case(
+                        "target adds optional-typed member",
+                        true,
+                        new Person("Alice", 30),
+                        new PersonWithOptionalNickname("Alice", 30, Optional.empty())),
+                new Case(
+                        "nested optional member mismatch",
+                        false,
+                        new PersonWithOptionalNickname("Alice", 30, Optional.of("Al")),
+                        new PersonWithOptionalNickname("Alice", 30, Optional.of("Ally"))),
                 new Case("same reference cycle", true, sharedCycle, sharedCycle),
                 new Case("distinct equivalent cycles", true, cycle("a"), cycle("a")),
                 new Case("distinct different cycles", false, cycle("a"), cycle("b")),
@@ -209,6 +232,8 @@ final class StructuralComparisonTests {
 
     private record PersonWithNickname(
             String name, int age, @Nullable String nickname) {}
+
+    private record PersonWithOptionalNickname(String name, int age, Optional<String> nickname) {}
 
     private record PersonWithAlias(
             String name, int age, @Nullable String alias) {}
