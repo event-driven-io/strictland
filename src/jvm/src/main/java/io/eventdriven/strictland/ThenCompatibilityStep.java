@@ -15,9 +15,10 @@ import org.jspecify.annotations.Nullable;
  * upgraded yet still reads a message the newer version writes. Both compare the fields the two
  * versions share, at every depth, and fail if a required one is missing or a shared value changed.
  * A stored snapshot is first read as its original type, taken from its class or resolved by your
- * {@link MessageTypeMapper}. A snapshot referenced only by path, or by a type name the mapper can't
- * resolve, has no original type, so only its required fields are checked; assert its values through
- * the overloads that take a {@link Consumer}.</p>
+ * {@link MessageTypeMapper}, or named with {@link MessageSnapshot.ByPath#of(Class)}. A snapshot
+ * referenced by path without {@code of(...)}, or by a type name the mapper can't resolve, has no
+ * original type, so only its required fields are checked; assert its values through the overloads
+ * that take a {@link Consumer}.</p>
  *
  * @param <S> the version you started from
  * @param <T> the version you check it against
@@ -138,7 +139,7 @@ public class ThenCompatibilityStep<S, T> {
         try {
             value = serializer.deserialize(data.bytes(), type);
         } catch (UncheckedIOException e) {
-            throw new RuntimeException("Deserialization as " + type.getSimpleName() + " failed", e);
+            throw new RuntimeException("Deserialization as " + type.getSimpleName() + " failed: " + e.getMessage(), e);
         }
         if (value == null) {
             throw new AssertionError("Deserialization as " + type.getSimpleName() + " returned empty");
@@ -159,7 +160,8 @@ public class ThenCompatibilityStep<S, T> {
                 }
             }
             case MessageSnapshot.ByPath byPath ->
-                List.of(new Source(readOne(SnapshotLocation.ofRelativePath(byPath.path())), null, null));
+                List.of(new Source(
+                        readOne(SnapshotLocation.ofRelativePath(byPath.path())), null, byPath.messageClass()));
             case MessageSnapshot.ByClass<?> s ->
                 resolveFamilyOrVariant(
                         context.typeMapper().name(s.messageClass()),

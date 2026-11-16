@@ -1,6 +1,7 @@
 package io.eventdriven.strictland;
 
 import java.nio.file.Path;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A message snapshot is what your message looks like once serialized: the JSON you reviewed and
@@ -107,8 +108,27 @@ public sealed interface MessageSnapshot
      * A snapshot found by an explicit file path, for one kept somewhere other than the default contract snapshots location.
      *
      * @param path the file to read the snapshot from
+     * @param messageClass the type the snapshot was written as, or {@code null} when you don't name it
      */
-    record ByPath(Path path) implements MessageSnapshot {}
+    record ByPath(Path path, @Nullable Class<?> messageClass) implements MessageSnapshot {
+        /**
+         * A snapshot at {@code path}, without the type it was written as.
+         * @param path the file to read the snapshot from
+         */
+        public ByPath(Path path) {
+            this(path, null);
+        }
+
+        /**
+         * Names the type the snapshot was written as, so a compatibility check reads it as that type
+         * first and compares every shared value with the newer version, not only its required fields.
+         * @param messageClass the type the snapshot was written as
+         * @return the snapshot at the same {@link #path()}, read as {@code messageClass}
+         */
+        public ByPath of(Class<?> messageClass) {
+            return new ByPath(path, messageClass);
+        }
+    }
 
     /**
      * A message your current code holds in hand, serialized at check time rather than read from the

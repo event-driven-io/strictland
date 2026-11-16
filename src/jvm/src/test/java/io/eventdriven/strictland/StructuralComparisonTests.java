@@ -177,6 +177,8 @@ final class StructuralComparisonTests {
                 new Case("evolved enum keys", true, Map.of(Status.ACTIVE, 1), Map.of(StatusWithSuspended.ACTIVE, 1)),
                 new Case("string keys read as enum keys", true, Map.of("ACTIVE", 1), Map.of(Status.ACTIVE, 1)),
                 new Case("map is not a list", false, Map.of("a", 1), List.of(1)),
+                new Case("generic member read by another generic type", true, new Box<>("a"), new Parcel<>("a")),
+                new Case("generic member mismatch", false, new Box<>("a"), new Parcel<>("b")),
                 new Case("both optionals empty", true, Optional.empty(), Optional.empty()),
                 new Case("empty optional read as null", true, Optional.empty(), null),
                 new Case("null read as empty optional", true, null, Optional.empty()),
@@ -227,6 +229,10 @@ final class StructuralComparisonTests {
         CLOSED,
         SUSPENDED
     }
+
+    private record Box<T>(T value) {}
+
+    private record Parcel<T>(T value) {}
 
     private record Person(String name, int age) {}
 

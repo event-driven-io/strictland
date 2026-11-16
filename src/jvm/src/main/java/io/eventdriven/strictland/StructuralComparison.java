@@ -10,10 +10,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
@@ -22,9 +24,37 @@ final class StructuralComparison {
 
     private record MessageField(boolean nullable, @Nullable Object value) {}
 
-    private interface FieldReader {
+    private interface ReflectiveRead {
         @Nullable Object read() throws ReflectiveOperationException;
     }
+
+    // Looked up by name, like Kotlin below, to keep Scala off Strictland's own classpath.
+    private enum ScalaKind {
+        OPTION("scala.Option"),
+        MAP("scala.collection.Map"),
+        SEQUENCE("scala.collection.Seq"),
+        SET("scala.collection.Set");
+
+        private final String typeName;
+
+        ScalaKind(String typeName) {
+            this.typeName = typeName;
+        }
+    }
+
+    private static final ClassValue<Optional<ScalaKind>> SCALA_KINDS = new ClassValue<>() {
+        @Override
+        protected Optional<ScalaKind> computeValue(Class<?> type) {
+            return scalaKind(type);
+        }
+    };
+
+    private static final ClassValue<Set<String>> KOTLIN_NULLABLE_PROPERTIES = new ClassValue<>() {
+        @Override
+        protected Set<String> computeValue(Class<?> type) {
+            return kotlinNullableProperties(type);
+        }
+    };
 
     private final List<Ancestor> ancestors = new ArrayList<>();
 
@@ -181,7 +211,7 @@ final class StructuralComparison {
                         field(
                                 message,
                                 component.getName(),
-                                component.getAnnotatedType(),
+                                isOptional(component.getAnnotatedType()),
                                 () -> accessor.invoke(message)));
             }
             return fields;
@@ -190,31 +220,103 @@ final class StructuralComparison {
             for (var declared : current.getDeclaredFields()) {
                 if (Modifier.isStatic(declared.getModifiers())) continue;
                 declared.setAccessible(true);
+                var nullable = isOptional(declared.getAnnotatedType())
+                        || KOTLIN_NULLABLE_PROPERTIES.get(current).contains(declared.getName());
                 fields.put(
-                        declared.getName(),
-                        field(message, declared.getName(), declared.getAnnotatedType(), () -> declared.get(message)));
+                        declared.getName(), field(message, declared.getName(), nullable, () -> declared.get(message)));
             }
         }
         return fields;
     }
 
-    private static MessageField field(Object message, String name, AnnotatedType type, FieldReader reader) {
+    private static MessageField field(Object message, String name, boolean nullable, ReflectiveRead reader) {
+        return new MessageField(
+                nullable,
+                reflectively("field '" + name + "' of " + message.getClass().getSimpleName(), reader));
+    }
+
+    private static @Nullable Object reflectively(String what, ReflectiveRead reader) {
         try {
-            return new MessageField(isOptional(type), reader.read());
+            return reader.read();
         } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(
-                    "Cannot read field '" + name + "' of " + message.getClass().getSimpleName(), e);
+            throw new RuntimeException("Cannot read " + what, e);
         }
     }
 
     private static boolean isOptional(AnnotatedType type) {
+        var declared =
+                type.getType() instanceof ParameterizedType parameterized ? parameterized.getRawType() : type.getType();
         return type.getDeclaredAnnotation(Nullable.class) != null
-                || (type.getType() instanceof ParameterizedType parameterized
-                        && parameterized.getRawType() == Optional.class);
+                || declared == Optional.class
+                || (declared instanceof Class<?> raw && SCALA_KINDS.get(raw).equals(Optional.of(ScalaKind.OPTION)));
+    }
+
+    // Kotlin writes `String?` as an annotation that reflection can't see, so its nullability is read
+    // through kotlin-reflect, looked up by name to keep Kotlin off Strictland's own classpath.
+    private static Set<String> kotlinNullableProperties(Class<?> type) {
+        try {
+            var loader = type.getClassLoader();
+            var kotlinClass = Class.forName("kotlin.jvm.JvmClassMappingKt", true, loader)
+                    .getMethod("getKotlinClass", Class.class)
+                    .invoke(null, type);
+            var properties = (Collection<?>) Class.forName("kotlin.reflect.full.KClasses", true, loader)
+                    .getMethod("getMemberProperties", Class.forName("kotlin.reflect.KClass", true, loader))
+                    .invoke(null, kotlinClass);
+            var name = Class.forName("kotlin.reflect.KCallable", true, loader).getMethod("getName");
+            var returnType =
+                    Class.forName("kotlin.reflect.KCallable", true, loader).getMethod("getReturnType");
+            var markedNullable =
+                    Class.forName("kotlin.reflect.KType", true, loader).getMethod("isMarkedNullable");
+            var nullable = new HashSet<String>();
+            for (var property : properties) {
+                if (Boolean.TRUE.equals(markedNullable.invoke(returnType.invoke(property)))) {
+                    nullable.add(String.valueOf(name.invoke(property)));
+                }
+            }
+            return nullable;
+        } catch (ReflectiveOperationException e) {
+            return Set.of();
+        }
     }
 
     private static @Nullable Object presentValue(@Nullable Object value) {
-        return value instanceof Optional<?> optional ? optional.orElse(null) : value;
+        if (value instanceof Optional<?> optional) return presentValue(optional.orElse(null));
+        if (value == null) return null;
+        var kind = SCALA_KINDS.get(value.getClass());
+        if (kind.isEmpty()) return value;
+        return kind.get() == ScalaKind.OPTION ? presentValue(scalaOptionValue(value)) : scalaAsJava(value, kind.get());
+    }
+
+    private static Optional<ScalaKind> scalaKind(Class<?> type) {
+        try {
+            for (var kind : ScalaKind.values()) {
+                if (Class.forName(kind.typeName, false, type.getClassLoader()).isAssignableFrom(type)) {
+                    return Optional.of(kind);
+                }
+            }
+            return Optional.empty();
+        } catch (ClassNotFoundException e) {
+            return Optional.empty();
+        }
+    }
+
+    private static @Nullable Object scalaOptionValue(Object option) {
+        return reflectively("Scala Option " + option, () -> {
+            var type = Class.forName(
+                    ScalaKind.OPTION.typeName, true, option.getClass().getClassLoader());
+            return Boolean.TRUE.equals(type.getMethod("isEmpty").invoke(option))
+                    ? null
+                    : type.getMethod("get").invoke(option);
+        });
+    }
+
+    private static Object scalaAsJava(Object collection, ScalaKind kind) {
+        return requireNonNull(reflectively("Scala " + kind.typeName + " as a Java collection", () -> {
+            var loader = collection.getClass().getClassLoader();
+            return Class.forName("scala.jdk.javaapi.CollectionConverters", true, loader)
+                    .getMethod("asJava", Class.forName(kind.typeName, true, loader))
+                    .invoke(null, collection);
+        }));
     }
 
     private static boolean sameNumber(Number source, Number target) {
