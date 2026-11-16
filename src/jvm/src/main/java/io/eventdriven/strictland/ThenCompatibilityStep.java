@@ -12,10 +12,12 @@ import org.jspecify.annotations.Nullable;
  * <p>Reached after {@link GivenStep#whenDeserializedAs(Class)}. Use {@link #thenBackwardCompatible()}
  * to confirm the newer version still reads a message the older one wrote - the events you stored last
  * year, a request already sent. Use {@link #thenForwardCompatible()} to confirm a reader that hasn't
- * upgraded yet still reads a message the newer version writes. Both fail if a required field is
- * missing. Given a message instance, they also compare the fields the two versions share and fail if
- * a shared value changed; a stored snapshot has no older object to compare against, so assert its
- * values through the overloads that take a {@link Consumer}.</p>
+ * upgraded yet still reads a message the newer version writes. Both compare the fields the two
+ * versions share, at every depth, and fail if a required one is missing or a shared value changed.
+ * A stored snapshot is first read as its original type, taken from its class or resolved by your
+ * {@link MessageTypeMapper}. A snapshot referenced only by path, or by a type name the mapper can't
+ * resolve, has no original type, so only its required fields are checked; assert its values through
+ * the overloads that take a {@link Consumer}.</p>
  *
  * @param <S> the version you started from
  * @param <T> the version you check it against
@@ -105,7 +107,10 @@ public class ThenCompatibilityStep<S, T> {
         verifySharedFields(extra);
     }
 
-    private record Source(SnapshotData data, @Nullable Object instance) {}
+    private record Source(
+            SnapshotData data,
+            @Nullable Object instance,
+            @Nullable Class<?> type) {}
 
     private void verifySharedFields(Consumer<T> extra) {
         for (var source : resolveSources()) {
@@ -114,22 +119,31 @@ public class ThenCompatibilityStep<S, T> {
     }
 
     private void verifyOne(Source source, Consumer<T> extra) {
-        T target;
-        try {
-            target = serializer.deserialize(source.data().bytes(), targetType);
-        } catch (UncheckedIOException e) {
-            throw new RuntimeException("Deserialization as " + targetType.getSimpleName() + " failed", e);
+        var target = read(source.data(), targetType);
+        var original = source.instance();
+        if (original == null && source.type() != null) {
+            original = read(source.data(), source.type());
         }
-        if (target == null) {
-            throw new AssertionError("Deserialization as " + targetType.getSimpleName() + " returned empty");
-        }
-        var failure = source.instance() != null
-                ? StructuralComparison.difference(source.instance(), target)
+        var failure = original != null
+                ? StructuralComparison.difference(original, target)
                 : StructuralComparison.missingRequiredField(target);
         if (failure != null) {
             throw new AssertionError(failure);
         }
         extra.accept(target);
+    }
+
+    private <R> R read(SnapshotData data, Class<R> type) {
+        R value;
+        try {
+            value = serializer.deserialize(data.bytes(), type);
+        } catch (UncheckedIOException e) {
+            throw new RuntimeException("Deserialization as " + type.getSimpleName() + " failed", e);
+        }
+        if (value == null) {
+            throw new AssertionError("Deserialization as " + type.getSimpleName() + " returned empty");
+        }
+        return value;
     }
 
     private List<Source> resolveSources() {
@@ -138,34 +152,49 @@ public class ThenCompatibilityStep<S, T> {
             case MessageSnapshot.OfInstance<?> v -> {
                 var instance = v.message();
                 try {
-                    yield List.of(new Source(new SnapshotData(serializer.serialize(instance)), instance));
+                    yield List.of(new Source(new SnapshotData(serializer.serialize(instance)), instance, null));
                 } catch (UncheckedIOException e) {
                     throw new RuntimeException(
                             "Serialization of " + instance.getClass().getSimpleName() + " failed", e);
                 }
             }
             case MessageSnapshot.ByPath byPath ->
-                List.of(new Source(readOne(SnapshotLocation.ofRelativePath(byPath.path())), null));
+                List.of(new Source(readOne(SnapshotLocation.ofRelativePath(byPath.path())), null, null));
             case MessageSnapshot.ByClass<?> s ->
                 resolveFamilyOrVariant(
-                        context.typeMapper().name(s.messageClass()), resolveVersion(s.version()), s.variant(), ext);
+                        context.typeMapper().name(s.messageClass()),
+                        resolveVersion(s.version()),
+                        s.variant(),
+                        ext,
+                        s.messageClass());
             case MessageSnapshot.ByMessageType s ->
                 resolveFamilyOrVariant(
-                        MessageTypeName.of(s.messageType()), resolveVersion(s.version()), s.variant(), ext);
+                        MessageTypeName.of(s.messageType()),
+                        resolveVersion(s.version()),
+                        s.variant(),
+                        ext,
+                        context.typeMapper().type(s.messageType()).orElse(null));
         };
     }
 
     private List<Source> resolveFamilyOrVariant(
-            MessageTypeName messageType, String resolvedVersion, SnapshotVariant variant, String ext) {
+            MessageTypeName messageType,
+            String resolvedVersion,
+            SnapshotVariant variant,
+            String ext,
+            @Nullable Class<?> type) {
         if (variant instanceof SnapshotVariant.Unset) {
             var payloads = context.storage().readAll(SnapshotFilter.of(messageType, resolvedVersion));
             if (payloads.isEmpty()) {
                 throw new RuntimeException(
                         "Cannot read snapshot file: " + messageType.shortName() + "." + resolvedVersion + ".");
             }
-            return payloads.stream().map(payload -> new Source(payload, null)).toList();
+            return payloads.stream()
+                    .map(payload -> new Source(payload, null, type))
+                    .toList();
         }
-        return List.of(new Source(readOne(SnapshotLocation.of(messageType, resolvedVersion, variant, ext)), null));
+        return List.of(
+                new Source(readOne(SnapshotLocation.of(messageType, resolvedVersion, variant, ext)), null, type));
     }
 
     private SnapshotData readOne(SnapshotLocation location) {

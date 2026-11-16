@@ -51,7 +51,7 @@ final class CsvMessageSerializerTests {
     }
 
     @Test
-    void given_csvOrderWithoutCurrency_whenReadByTypeThatAddedRequiredCurrency_thenNotBackwardCompatible() {
+    void given_csvMessage_whenTargetAddsARequiredField_thenNotBackwardCompatible() {
         var error = assertThrows(
                 AssertionError.class,
                 () -> MessageContract.specification(Csv.defaults())

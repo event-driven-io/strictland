@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
@@ -158,6 +159,61 @@ final class BackwardCompatibilityTests {
     }
 
     @Nested
+    final class ComparingASnapshotWithItsOriginalType {
+        private record InvoiceRaisedV1(UUID invoiceId, long raisedAt) {}
+
+        private record InvoiceRaised(UUID invoiceId, OffsetDateTime raisedAt) {}
+
+        private static final MessageTypeMapper RESOLVING_INVOICE_RAISED_V1 = new MessageTypeMapper() {
+            @Override
+            public MessageTypeName name(Class<?> type) {
+                return MessageTypeName.of(type.getSimpleName());
+            }
+
+            @Override
+            public Optional<Class<?>> type(String name) {
+                return Optional.of(InvoiceRaisedV1.class);
+            }
+        };
+
+        @Test
+        void givenASnapshotReferencedByClass_whenTargetReadsAFieldAsADifferentValue_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(MessageSnapshot.of(InvoiceRaisedV1.class))
+                            .whenDeserializedAs(InvoiceRaised.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Field 'raisedAt' value differs"), message);
+        }
+
+        @Test
+        void
+                givenASnapshotReferencedByAResolvableMessageType_whenTargetReadsAFieldAsADifferentValue_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    AssertionError.class,
+                    () -> MessageContract.specification(
+                                    Json.Jackson.defaults().messageTypeMapper(RESOLVING_INVOICE_RAISED_V1))
+                            .given(MessageSnapshot.ofTypeNamed("InvoiceRaisedV1"))
+                            .whenDeserializedAs(InvoiceRaised.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Field 'raisedAt' value differs"), message);
+        }
+
+        @Test
+        void givenASnapshotReferencedByClass_whenReadByItsOwnType_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(MessageSnapshot.of(InvoiceRaisedV1.class))
+                    .whenDeserializedAs(InvoiceRaisedV1.class)
+                    .thenBackwardCompatible(invoice -> assertEquals(1704110400000L, invoice.raisedAt()));
+        }
+    }
+
+    @Nested
     final class WhenTheSerializerDateFormatChanged {
         private record InvoiceIssued(UUID invoiceId, OffsetDateTime confirmedAt) {}
 
@@ -208,7 +264,7 @@ final class BackwardCompatibilityTests {
         private record CustomerRelocatedWithNumericZipCode(UUID customerId, AddressWithNumericZipCode address) {}
 
         @Test
-        void givenANestedAddress_whenReadByTypeThatAddedAnOptionalFieldToIt_thenBackwardCompatible() {
+        void givenANestedRecord_whenTargetAddsAnOptionalFieldToIt_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new CustomerRelocated(FIXED_ID, new Address("Main St 1", "01234")))
                     .whenDeserializedAs(CustomerRelocatedWithCountry.class)
@@ -216,7 +272,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void givenANestedZipCodeWithLeadingZero_whenReadByTypeThatMadeItNumeric_thenNotBackwardCompatible() {
+        void givenANestedRecord_whenTargetChangesTheTypeOfItsField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -241,7 +297,7 @@ final class BackwardCompatibilityTests {
         private record OrderSubmittedWithDiscounts(UUID orderId, List<OrderLineWithDiscount> lines) {}
 
         @Test
-        void givenOrderLines_whenReadByTypeThatAddedAnOptionalFieldToEachLine_thenBackwardCompatible() {
+        void givenAListOfRecords_whenTargetAddsAnOptionalFieldToEachElement_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderSubmitted(FIXED_ID, List.of(new OrderLine("book", 2), new OrderLine("pen", 1))))
                     .whenDeserializedAs(OrderSubmittedWithDiscounts.class)
@@ -256,7 +312,7 @@ final class BackwardCompatibilityTests {
         private record ArticlePublishedWithTagSet(UUID articleId, Set<String> tags) {}
 
         @Test
-        void givenDistinctTags_whenReadByTypeThatStoresThemAsASet_thenBackwardCompatible() {
+        void givenAListOfDistinctElements_whenTargetReadsItAsASet_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new ArticlePublished(
                             FIXED_ID, List.of("orders", "billing", "shipping", "inventory", "returns")))
@@ -265,7 +321,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void givenDuplicatedTags_whenReadByTypeThatStoresThemAsASet_thenNotBackwardCompatible() {
+        void givenAListWithDuplicates_whenTargetReadsItAsASet_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -290,7 +346,7 @@ final class BackwardCompatibilityTests {
         private record PaymentRequestedWithMethodEnum(UUID paymentId, PaymentMethod method) {}
 
         @Test
-        void givenAStringMethod_whenReadByTypeThatTurnedItIntoAnEnum_thenBackwardCompatible() {
+        void givenAStringField_whenTargetReadsItAsAnEnum_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new PaymentRequested(FIXED_ID, "CARD"))
                     .whenDeserializedAs(PaymentRequestedWithMethodEnum.class)
@@ -445,7 +501,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void givenAnOrderWithoutCoupon_whenReadByAClassThatAddedAnOptionalCoupon_thenBackwardCompatible() {
+        void givenARecord_whenTargetClassAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new StoredOrderV1(FIXED_ID))
                     .whenDeserializedAs(StoredOrderWithCoupon.class)
@@ -453,7 +509,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void givenAnOrderWithoutCustomer_whenReadByAClassThatAddedARequiredCustomer_thenNotBackwardCompatible() {
+        void givenARecord_whenTargetClassAddsARequiredField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -466,7 +522,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void givenAnOrderWithoutEventId_whenReadByAClassInheritingARequiredEventId_thenNotBackwardCompatible() {
+        void givenARecord_whenTargetClassInheritsARequiredField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -479,7 +535,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void givenAProductCodeWithLeadingZeros_whenReadByAClassThatMadeItNumeric_thenNotBackwardCompatible() {
+        void givenAClass_whenTargetClassChangesTheTypeOfAField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
