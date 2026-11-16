@@ -5,6 +5,7 @@ import static java.util.Objects.requireNonNull;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,6 +13,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
@@ -37,14 +39,16 @@ final class StructuralComparison {
     }
 
     private @Nullable String compare(@Nullable Object source, @Nullable Object target, String path) {
-        if (source == null || target == null) {
-            return source == target ? null : valueDiffers(path, source, target);
+        var sourcePresent = presentValue(source);
+        var targetPresent = presentValue(target);
+        if (sourcePresent == null || targetPresent == null) {
+            return sourcePresent == targetPresent ? null : valueDiffers(path, source, target);
         }
-        if (source instanceof Number sourceNumber && target instanceof Number targetNumber) {
+        if (sourcePresent instanceof Number sourceNumber && targetPresent instanceof Number targetNumber) {
             return sameNumber(sourceNumber, targetNumber) ? null : valueDiffers(path, source, target);
         }
-        var sourceValue = enumAsName(source);
-        var targetValue = enumAsName(target);
+        var sourceValue = enumAsName(sourcePresent);
+        var targetValue = enumAsName(targetPresent);
         if (isContainer(sourceValue) || isContainer(targetValue)) {
             return nested(sourceValue, targetValue, () -> compareContainers(sourceValue, targetValue, path));
         }
@@ -196,11 +200,21 @@ final class StructuralComparison {
 
     private static MessageField field(Object message, String name, AnnotatedType type, FieldReader reader) {
         try {
-            return new MessageField(type.getDeclaredAnnotation(Nullable.class) != null, reader.read());
+            return new MessageField(isOptional(type), reader.read());
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(
                     "Cannot read field '" + name + "' of " + message.getClass().getSimpleName(), e);
         }
+    }
+
+    private static boolean isOptional(AnnotatedType type) {
+        return type.getDeclaredAnnotation(Nullable.class) != null
+                || (type.getType() instanceof ParameterizedType parameterized
+                        && parameterized.getRawType() == Optional.class);
+    }
+
+    private static @Nullable Object presentValue(@Nullable Object value) {
+        return value instanceof Optional<?> optional ? optional.orElse(null) : value;
     }
 
     private static boolean sameNumber(Number source, Number target) {

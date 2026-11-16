@@ -31,7 +31,7 @@ and the Git hooks already configured:
    [VS Code](https://code.visualstudio.com/) with the **Dev Containers** extension.
 2. Open the repo and run **Dev Containers: Reopen in Container**.
 
-To work on your own machine instead, install **JDK 26** (we use Temurin) - that's the version the
+To work on your own machine instead, install **JDK 27** (we use Temurin) - that's the version the
 build compiles with. Gradle fetches any other JDK it needs on its own (for example JDK 21, which the
 tests also run against), so you don't have to manage them by hand.
 

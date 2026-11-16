@@ -34,7 +34,8 @@ public interface Json {
 
         /**
          * JSON options using Strictland's default Jackson mapper, which writes ISO-8601 dates, keeps null
-         * fields, and ignores unknown properties on read. Use it when your application hasn't
+         * fields, ignores unknown properties on read, and fails on read when a primitive field is missing
+         * or null instead of quietly reading {@code 0} or {@code false}. Use it when your application hasn't
          * customized Jackson; otherwise pass your own mapper to {@link #of(ObjectMapper)}.
          *
          * @return options bound to the default Jackson serializer

@@ -86,7 +86,7 @@ A **snapshot check** confirms the message still serializes exactly as it did whe
 
 A **compatibility check** is for intentional message evolution. It protects messages that already exist: stored events, queued messages, sent requests, or responses another service may still read. Use `thenBackwardCompatible()` to confirm the newer version still reads a message the older one wrote. Use `thenForwardCompatible()` to confirm an older reader still reads a message the newer version writes. Both compare the fields the two versions share, at every depth, and fail if a required one is missing or a shared value changed. A stored snapshot is first read as its original type: the class you pass to `MessageSnapshot.of(...)`, or the type your `MessageTypeMapper` resolves for `MessageSnapshot.ofTypeNamed(...)`. A snapshot referenced only by path, or by a type name the mapper can't resolve, has no original type, so only its required fields are checked; assert specific values with the `thenBackwardCompatible(message -> ...)` overload.
 
-Strictland includes a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read. You can use it with `Json.Jackson.defaults()`:
+Strictland includes a sensible Jackson setup: ISO-8601 dates, nulls kept, unknown properties ignored on read, and a missing or null primitive field failing the read instead of quietly becoming `0` or `false`. You can use it with `Json.Jackson.defaults()`:
 
 ```java
 MessageContract.specification(Json.Jackson.defaults())

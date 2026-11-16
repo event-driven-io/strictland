@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        test-jdk: ['21', '26']
+        test-jdk: ['21', '27']
 
     steps:
       - uses: actions/checkout@v6
@@ -28,7 +28,7 @@ jobs:
           distribution: temurin
           java-version: |
             21
-            26
+            27
 
       - uses: gradle/actions/setup-gradle@v6
 

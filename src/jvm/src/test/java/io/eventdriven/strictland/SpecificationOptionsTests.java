@@ -129,7 +129,7 @@ final class SpecificationOptionsTests {
     }
 
     @Test
-    void givenANonJacksonSerializer_whenCheckedForCompatibility_thenTier1Runs() {
+    void givenANonJacksonSerializer_whenCheckedForBackwardCompatibility_thenTheComparisonRunsAndHandsOverTheResult() {
         var captured = new boolean[1];
 
         MessageContract.specification(SpecificationOptions.serializer(new CustomMessageSerializer(new JsonMapper())))
@@ -144,7 +144,7 @@ final class SpecificationOptionsTests {
     }
 
     @Test
-    void givenANonJacksonSerializer_whenCheckedForForwardCompatibility_thenTier1RunsWithoutFieldDiff() {
+    void givenANonJacksonSerializer_whenCheckedForForwardCompatibility_thenTheComparisonRuns() {
         MessageContract.specification(SpecificationOptions.serializer(new CustomMessageSerializer(new JsonMapper())))
                 .given(new MemberJoined(FIXED_ID, "Alice"))
                 .whenDeserializedAs(MemberJoined.class)

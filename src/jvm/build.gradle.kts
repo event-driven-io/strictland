@@ -22,7 +22,7 @@ group = "io.event-driven"
 version = providers.gradleProperty("version").getOrElse("0.4.1-SNAPSHOT")
 
 java {
-    toolchain { languageVersion = JavaLanguageVersion.of(26) }
+    toolchain { languageVersion = JavaLanguageVersion.of(27) }
 }
 
 tasks.withType<JavaCompile>().configureEach {
@@ -39,7 +39,7 @@ nullaway {
     onlyNullMarked = true
 }
 
-val testJdk = providers.gradleProperty("testJdk").map(String::toInt).getOrElse(26)
+val testJdk = providers.gradleProperty("testJdk").map(String::toInt).getOrElse(27)
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     javaLauncher.set(javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(testJdk) })

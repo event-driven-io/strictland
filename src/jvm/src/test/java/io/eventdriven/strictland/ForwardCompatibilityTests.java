@@ -28,7 +28,7 @@ final class ForwardCompatibilityTests {
         private record OrderPlacedWithCoupon(UUID orderId, String customer, String couponCode) {}
 
         @Test
-        void givenNewOrderWithCoupon_whenReadByOldTypeWithoutCoupon_thenForwardCompatible() {
+        void givenAMessageWithAnExtraField_whenReadByAnOlderTypeWithoutIt_thenForwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderPlacedWithCoupon(FIXED_ID, "Alice", "SAVE10"))
                     .whenDeserializedAs(OrderPlaced.class)
@@ -44,7 +44,7 @@ final class ForwardCompatibilityTests {
                 UUID orderId, @Nullable String currency) {}
 
         @Test
-        void givenNewOrderOmittingTheNowOptionalCurrency_whenReadByOldRequiredType_thenNotForwardCompatible() {
+        void givenAMessageOmittingANowOptionalField_whenReadByAnOlderTypeRequiringIt_thenNotForwardCompatible() {
             // NON_NULL drops the null currency from the JSON entirely, so the old required reader
             // genuinely sees the key as absent rather than present-and-null.
             var omitNulls =
@@ -80,8 +80,13 @@ final class ForwardCompatibilityTests {
         private record OrderStatusChangedV1(UUID orderId, OrderStatusV1 status) {}
 
         @Test
+<<<<<<< HEAD
         void givenNewOrderWithAShippedStatus_whenReadByOldEnumWithoutIt_thenNotForwardCompatible() {
             var error = assertThrows(
+=======
+        void givenAMessageWithANewEnumConstant_whenReadByAnOlderEnumWithoutIt_thenNotForwardCompatible() {
+            assertThrows(
+>>>>>>> 21ca60c (Tightened check for missing properties in Jackson)
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
                             .given(new OrderStatusChangedV2(FIXED_ID, OrderStatusV2.SHIPPED))
@@ -100,7 +105,7 @@ final class ForwardCompatibilityTests {
         private record OrderReceived(UUID orderId, String customer) {}
 
         @Test
-        void givenNewOrderWithExtraField_whenReadByOldTypeUsingAStrictMapper_thenNotForwardCompatible() {
+        void givenAMessageWithAnExtraField_whenReadByAnOlderTypeUsingAStrictMapper_thenNotForwardCompatible() {
             var strictMapper = JsonMapper.builder()
                     .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                     .build();
@@ -117,7 +122,7 @@ final class ForwardCompatibilityTests {
         }
 
         @Test
-        void givenNewOrderWithExtraField_whenReadByOldTypeUsingTheLenientDefaultMapper_thenForwardCompatible() {
+        void givenAMessageWithAnExtraField_whenReadByAnOlderTypeUsingTheLenientDefaultMapper_thenForwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderReceivedWithCoupon(FIXED_ID, "Alice", "SAVE10"))
                     .whenDeserializedAs(OrderReceived.class)
@@ -136,7 +141,7 @@ final class ForwardCompatibilityTests {
                 UUID shipmentId, @Nullable UUID clientId) {}
 
         @Test
-        void givenANestedShipment_whenReadByOldFlatType_thenNotForwardCompatible() {
+        void givenANestedMessage_whenReadByAnOlderFlatType_thenNotForwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -169,7 +174,7 @@ final class ForwardCompatibilityTests {
         private record ShipmentDelivered(UUID shipmentId) implements ShipmentEventV2 {}
 
         @Test
-        void givenANewVariant_whenReadByOldHierarchyThatDoesNotKnowIt_thenNotForwardCompatible() {
+        void givenANewSubtype_whenReadByAnOlderHierarchyWithoutIt_thenNotForwardCompatible() {
             assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -186,7 +191,7 @@ final class ForwardCompatibilityTests {
         private record OrderTaggedWithNumbers(UUID orderId, List<Integer> tags) {}
 
         @Test
-        void givenNewStringTags_whenReadByOldTypeExpectingNumbers_thenNotForwardCompatible() {
+        void givenAListOfStrings_whenReadByAnOlderTypeExpectingNumbers_thenNotForwardCompatible() {
             assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())

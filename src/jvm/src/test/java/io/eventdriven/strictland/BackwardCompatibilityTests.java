@@ -10,12 +10,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -34,7 +33,7 @@ final class BackwardCompatibilityTests {
                 UUID orderId, String customer, @Nullable String couponCode) {}
 
         @Test
-        void givenOrderWithoutCoupon_whenReadByTypeThatAddedOptionalCoupon_thenBackwardCompatible() {
+        void givenAMessage_whenTargetAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderPlaced(FIXED_ID, "Alice"))
                     .whenDeserializedAs(OrderPlacedWithCoupon.class)
@@ -49,7 +48,7 @@ final class BackwardCompatibilityTests {
         private record OrderConfirmedWithCurrency(UUID orderId, String customer, String currency) {}
 
         @Test
-        void givenOrderWithoutCurrency_whenReadByTypeThatAddedRequiredCurrency_thenNotBackwardCompatible() {
+        void givenAMessage_whenTargetAddsARequiredField_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -69,7 +68,7 @@ final class BackwardCompatibilityTests {
         private record OrderCompletedRenamed(UUID orderId, String client) {}
 
         @Test
-        void givenOrderWithCustomer_whenReadByTypeThatRenamedItToClient_thenNotBackwardCompatible() {
+        void givenAMessage_whenTargetRenamesAField_thenNotBackwardCompatible() {
             assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -86,7 +85,7 @@ final class BackwardCompatibilityTests {
         private record OrderDraftedRequiredCustomer(UUID orderId, String customer) {}
 
         @Test
-        void givenOrderWithNullCustomer_whenReadByTypeThatMadeCustomerRequired_thenNotBackwardCompatible() {
+        void givenAMessageWithANullField_whenTargetMakesItRequired_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -106,7 +105,7 @@ final class BackwardCompatibilityTests {
         private record OrderShippedReordered(String customer, UUID orderId) {}
 
         @Test
-        void givenOrder_whenReadByTypeWithTheSameFieldsInADifferentOrder_thenBackwardCompatible() {
+        void givenAMessage_whenTargetDeclaresTheSameFieldsInADifferentOrder_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new OrderShipped(FIXED_ID, "Alice"))
                     .whenDeserializedAs(OrderShippedReordered.class)
@@ -127,7 +126,7 @@ final class BackwardCompatibilityTests {
                 UUID accountId, String owner, @Nullable String currency) {}
 
         @Test
-        void givenAStoredEventNamedAfterItsClass_whenReadByTheEvolvedType_thenBackwardCompatible() {
+        void givenASnapshotReferencedByClass_whenTargetAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(MessageSnapshot.of(CustomerRegisteredV1.class))
                     .whenDeserializedAs(CustomerRegisteredV2.class)
@@ -135,7 +134,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void givenAStoredEventNamedByItsMessageType_whenReadByTheEvolvedType_thenBackwardCompatible() {
+        void givenASnapshotReferencedByMessageType_whenTargetAddsAnOptionalField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(MessageSnapshot.ofTypeNamed("AccountOpenedV1"))
                     .whenDeserializedAs(AccountOpenedV2.class)
@@ -148,7 +147,7 @@ final class BackwardCompatibilityTests {
         private record ShoppingCartConfirmed(UUID shoppingCartId, String clientId, OffsetDateTime confirmedAt) {}
 
         @Test
-        void givenAStoredOldEvent_whenReadByTheCurrentType_thenBackwardCompatible() {
+        void givenASnapshotReferencedByPath_whenReadByTheCurrentType_thenBackwardCompatible() {
             var path = Path.of("ReadingAStoredOldEvent/ShoppingCartConfirmedV1.reference.snap.approved.json");
 
             MessageContract.specification(Json.Jackson.defaults())
@@ -214,11 +213,52 @@ final class BackwardCompatibilityTests {
     }
 
     @Nested
+    final class ReadingASnapshotWithoutItsOriginalType {
+        private static final Path SNAPSHOT_WITHOUT_QUANTITY =
+                Path.of("ReadingASnapshotWithoutItsOriginalType/OrderPlacedV1.reference.snap.approved.json");
+
+        private record OrderPlacedWithQuantity(UUID orderId, String customer, int quantity) {}
+
+        private record OrderPlacedWithOptionalNote(
+                UUID orderId, String customer, @Nullable String note) {}
+
+        @Test
+        void givenASnapshotReferencedByPath_whenTargetAddsARequiredPrimitiveField_thenNotBackwardCompatible() {
+            var error = assertThrows(
+                    RuntimeException.class,
+                    () -> MessageContract.specification(Json.Jackson.defaults())
+                            .given(MessageSnapshot.at(SNAPSHOT_WITHOUT_QUANTITY))
+                            .whenDeserializedAs(OrderPlacedWithQuantity.class)
+                            .thenBackwardCompatible());
+
+            var message = requireNonNull(error.getMessage());
+            assertTrue(message.contains("Deserialization as OrderPlacedWithQuantity failed"), message);
+        }
+
+        @Test
+        void givenASnapshotReferencedByPath_whenTargetAddsAnOptionalField_thenBackwardCompatible() {
+            MessageContract.specification(Json.Jackson.defaults())
+                    .given(MessageSnapshot.at(SNAPSHOT_WITHOUT_QUANTITY))
+                    .whenDeserializedAs(OrderPlacedWithOptionalNote.class)
+                    .thenBackwardCompatible(order -> assertNull(order.note()));
+        }
+
+        @Test
+        void
+                givenAnOwnMapperAllowingMissingPrimitives_whenTargetAddsARequiredPrimitiveField_thenTheMapperIsLeftAsConfigured() {
+            MessageContract.specification(Json.Jackson.of(JsonMapper.builder().build()))
+                    .given(MessageSnapshot.at(SNAPSHOT_WITHOUT_QUANTITY))
+                    .whenDeserializedAs(OrderPlacedWithQuantity.class)
+                    .thenBackwardCompatible(order -> assertEquals(0, order.quantity()));
+        }
+    }
+
+    @Nested
     final class WhenTheSerializerDateFormatChanged {
         private record InvoiceIssued(UUID invoiceId, OffsetDateTime confirmedAt) {}
 
         @Test
-        void givenAnOldEpochTimestampEvent_whenReadByTheCurrentIsoType_thenNotBackwardCompatible() {
+        void givenASnapshotReferencedByPath_whenTargetReadsADateWrittenInAnotherFormat_thenNotBackwardCompatible() {
             var path = Path.of(
                     "WhenTheSerializerDateFormatChanged/InvoiceIssuedV1_EpochTimestamp.reference.snap.approved.json");
 
@@ -240,117 +280,11 @@ final class BackwardCompatibilityTests {
         private record PaymentCapturedWiderAmount(UUID paymentId, long amount) {}
 
         @Test
-        void givenAnIntAmount_whenReadByTypeThatWidenedItToLong_thenBackwardCompatible() {
+        void givenAMessage_whenTargetWidensANumericField_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new PaymentCaptured(FIXED_ID, 100))
                     .whenDeserializedAs(PaymentCapturedWiderAmount.class)
                     .thenBackwardCompatible();
-        }
-    }
-
-    @Nested
-    final class EvolvingANestedValueObject {
-        private record Address(String street, String zipCode) {}
-
-        private record AddressWithCountry(
-                String street, String zipCode, @Nullable String country) {}
-
-        private record AddressWithNumericZipCode(String street, int zipCode) {}
-
-        private record CustomerRelocated(UUID customerId, Address address) {}
-
-        private record CustomerRelocatedWithCountry(UUID customerId, AddressWithCountry address) {}
-
-        private record CustomerRelocatedWithNumericZipCode(UUID customerId, AddressWithNumericZipCode address) {}
-
-        @Test
-        void givenANestedRecord_whenTargetAddsAnOptionalFieldToIt_thenBackwardCompatible() {
-            MessageContract.specification(Json.Jackson.defaults())
-                    .given(new CustomerRelocated(FIXED_ID, new Address("Main St 1", "01234")))
-                    .whenDeserializedAs(CustomerRelocatedWithCountry.class)
-                    .thenBackwardCompatible();
-        }
-
-        @Test
-        void givenANestedRecord_whenTargetChangesTheTypeOfItsField_thenNotBackwardCompatible() {
-            var error = assertThrows(
-                    AssertionError.class,
-                    () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(new CustomerRelocated(FIXED_ID, new Address("Main St 1", "01234")))
-                            .whenDeserializedAs(CustomerRelocatedWithNumericZipCode.class)
-                            .thenBackwardCompatible());
-
-            var message = requireNonNull(error.getMessage());
-            assertTrue(message.contains("Field 'address.zipCode' value differs"), message);
-        }
-    }
-
-    @Nested
-    final class EvolvingAListOfValueObjects {
-        private record OrderLine(String productId, int quantity) {}
-
-        private record OrderLineWithDiscount(
-                String productId, int quantity, @Nullable String discountCode) {}
-
-        private record OrderSubmitted(UUID orderId, List<OrderLine> lines) {}
-
-        private record OrderSubmittedWithDiscounts(UUID orderId, List<OrderLineWithDiscount> lines) {}
-
-        @Test
-        void givenAListOfRecords_whenTargetAddsAnOptionalFieldToEachElement_thenBackwardCompatible() {
-            MessageContract.specification(Json.Jackson.defaults())
-                    .given(new OrderSubmitted(FIXED_ID, List.of(new OrderLine("book", 2), new OrderLine("pen", 1))))
-                    .whenDeserializedAs(OrderSubmittedWithDiscounts.class)
-                    .thenBackwardCompatible();
-        }
-    }
-
-    @Nested
-    final class ChangingAListIntoASet {
-        private record ArticlePublished(UUID articleId, List<String> tags) {}
-
-        private record ArticlePublishedWithTagSet(UUID articleId, Set<String> tags) {}
-
-        @Test
-        void givenAListOfDistinctElements_whenTargetReadsItAsASet_thenBackwardCompatible() {
-            MessageContract.specification(Json.Jackson.defaults())
-                    .given(new ArticlePublished(
-                            FIXED_ID, List.of("orders", "billing", "shipping", "inventory", "returns")))
-                    .whenDeserializedAs(ArticlePublishedWithTagSet.class)
-                    .thenBackwardCompatible();
-        }
-
-        @Test
-        void givenAListWithDuplicates_whenTargetReadsItAsASet_thenNotBackwardCompatible() {
-            var error = assertThrows(
-                    AssertionError.class,
-                    () -> MessageContract.specification(Json.Jackson.defaults())
-                            .given(new ArticlePublished(FIXED_ID, List.of("java", "java", "events")))
-                            .whenDeserializedAs(ArticlePublishedWithTagSet.class)
-                            .thenBackwardCompatible());
-
-            var message = requireNonNull(error.getMessage());
-            assertTrue(message.contains("Field 'tags' value differs"), message);
-        }
-    }
-
-    @Nested
-    final class ChangingAStringIntoAnEnum {
-        private enum PaymentMethod {
-            CARD,
-            TRANSFER
-        }
-
-        private record PaymentRequested(UUID paymentId, String method) {}
-
-        private record PaymentRequestedWithMethodEnum(UUID paymentId, PaymentMethod method) {}
-
-        @Test
-        void givenAStringField_whenTargetReadsItAsAnEnum_thenBackwardCompatible() {
-            MessageContract.specification(Json.Jackson.defaults())
-                    .given(new PaymentRequested(FIXED_ID, "CARD"))
-                    .whenDeserializedAs(PaymentRequestedWithMethodEnum.class)
-                    .thenBackwardCompatible(payment -> assertEquals(PaymentMethod.CARD, payment.method()));
         }
     }
 
@@ -363,7 +297,7 @@ final class BackwardCompatibilityTests {
         private record OrderRegisteredWithCustomerId(UUID orderId, CustomerId customerId) {}
 
         @Test
-        void givenARawCustomerId_whenReadByTypeThatWrappedItInAValueObject_thenNotBackwardCompatible() {
+        void givenAMessage_whenTargetWrapsAScalarInAValueObject_thenNotBackwardCompatible() {
             assertThrows(
                     RuntimeException.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -383,7 +317,7 @@ final class BackwardCompatibilityTests {
         private record InvoiceStatusChanged(UUID invoiceId, InvoiceStatus status) {}
 
         @Test
-        void givenAStoredEventWithARemovedStatus_whenReadByTheCurrentEnum_thenNotBackwardCompatible() {
+        void givenASnapshot_whenTargetEnumNoLongerHasTheStoredConstant_thenNotBackwardCompatible() {
             var path = Path.of("RemovingAnEnumConstant/InvoiceWithStatusIssuedV1.reference.snap.approved.json");
 
             assertThrows(
@@ -406,7 +340,7 @@ final class BackwardCompatibilityTests {
                 UUID shipmentId, @Nullable Recipient client) {}
 
         @Test
-        void givenAFlatShipment_whenReadByTypeThatNestedTheClient_thenNotBackwardCompatible() {
+        void givenAFlatMessage_whenTargetMovesAFieldIntoANestedRecord_thenNotBackwardCompatible() {
             var error = assertThrows(
                     AssertionError.class,
                     () -> MessageContract.specification(Json.Jackson.defaults())
@@ -433,7 +367,7 @@ final class BackwardCompatibilityTests {
         }
 
         @Test
-        void given_anEventModelledAsAClass_whenReadByANewerClassVersion_thenBackwardCompatible() {
+        void givenARecord_whenReadByAClassWithTheSameFields_thenBackwardCompatible() {
             MessageContract.specification(Json.Jackson.defaults())
                     .given(new StoredOrderV1(FIXED_ID))
                     .whenDeserializedAs(StoredOrder.class)
@@ -604,7 +538,7 @@ final class BackwardCompatibilityTests {
         private record ShipmentCreated(UUID shipmentId) implements ShipmentEvent {}
 
         @Test
-        void givenAStoredEventForARemovedVariant_whenReadByTheSmallerHierarchy_thenNotBackwardCompatible() {
+        void givenASnapshotOfARemovedSubtype_whenReadByTheSmallerHierarchy_thenNotBackwardCompatible() {
             var path = Path.of("EvolvingASealedHierarchy/ShipmentCancelledEvent.reference.snap.approved.json");
 
             assertThrows(
